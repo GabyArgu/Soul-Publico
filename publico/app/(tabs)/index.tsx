@@ -2,8 +2,25 @@
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, FlatList, ScrollView } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
+import { useLocalSearchParams  } from "expo-router";
+
 
 export default function Index() {
+    const params = useLocalSearchParams ();
+    
+    const rawNombreParam = params.nombreUsuario;
+    const rawNombre = Array.isArray(rawNombreParam) ? rawNombreParam[0] : rawNombreParam || "Gabriela";
+
+    const procesarNombre = (nombre: string) => {
+        const palabras = nombre.split(" ");
+        if (palabras.length > 3) {
+            return `${palabras[0]} ${palabras[2]}`;
+        }
+        return nombre;
+    };
+
+    const nombre = procesarNombre(rawNombre);
+
 
     const router = useRouter();
 
@@ -51,7 +68,7 @@ export default function Index() {
             <View style={styles.header}>
                 <View>
                     <Text style={styles.hola}>Hola,</Text>
-                    <Text style={styles.nombre}>Gabriela Méndez</Text>
+                    <Text style={styles.nombre}>{nombre}</Text>
                 </View>
                 <Image source={require("../../assets/images/avatar.png")} style={styles.avatar} />
             </View>

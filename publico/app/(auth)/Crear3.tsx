@@ -1,14 +1,16 @@
-// app/(auth)/Crear3.tsx
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ImageBackground, Switch } from "react-native";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Picker } from "@react-native-picker/picker";
 import { Ionicons } from "@expo/vector-icons";
 import Toast from "react-native-root-toast";
 import * as DocumentPicker from "expo-document-picker";
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
+import axios from "axios";
 
 export default function Crear3() {
     const router = useRouter();
+    const API_URL = "http://192.168.1.11:4000/api";
 
     // Estados
     const [transportarse, setTransportarse] = useState(false);
@@ -16,29 +18,35 @@ export default function Crear3() {
     const [cv, setCv] = useState(""); // ruta del archivo
     const [password, setPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
+    const [opcionesDisponibilidad, setOpcionesDisponibilidad] = useState<{ id: number; nombre: string }[]>([]);
+
+    // Cargar datos de la API para la disponibilidad horaria
+    useEffect(() => {
+        axios.get(`${API_URL}/disponibilidad`)
+            .then(res => setOpcionesDisponibilidad(res.data))
+            .catch(err => {
+                console.error("Error al obtener opciones de disponibilidad:", err);
+                showToast("❌ Error al cargar opciones de horario");
+            });
+    }, []);
 
     // Función para seleccionar archivo
     const pickDocument = async () => {
-    try {
-        const result = await DocumentPicker.getDocumentAsync({});
+        try {
+            const result = await DocumentPicker.getDocumentAsync({});
 
-        if (!result.canceled) {
-            // Accede al primer elemento del array de assets
-            const selectedAsset = result.assets[0]; 
-            setCv(selectedAsset.uri);
-            showToast("📄 Archivo seleccionado: " + selectedAsset.name, true);
-        } else {
-            showToast("Selección de archivo cancelada", false);
+            if (!result.canceled) {
+                // Accede al primer elemento del array de assets
+                const selectedAsset = result.assets[0];
+                setCv(selectedAsset.uri);
+                showToast("📄 Archivo seleccionado: " + selectedAsset.name, true);
+            } else {
+                showToast("Selección de archivo cancelada", false);
+            }
+        } catch (error) {
+            showToast("❌ Error al seleccionar archivo");
+            console.error("Error al seleccionar documento:", error);
         }
-    } catch (error) {
-        showToast("❌ Error al seleccionar archivo");
-        console.error("Error al seleccionar documento:", error);
-    }
-};
-
-    // Validaciones
-    const formularioValido = () => {
-        return horario && password && confirmPassword && password === confirmPassword;
     };
 
     // Toast
@@ -67,10 +75,38 @@ export default function Crear3() {
     };
 
     const handleSubmit = () => {
-        if (!formularioValido()) {
-            showToast("⚠️ Completa todos los campos");
+        // Validaciones individuales
+        if (!horario) {
+            showToast("⚠️ Por favor, selecciona tu disponibilidad horaria");
             return;
         }
+
+        if (!cv) {
+            showToast("⚠️ Por favor, sube tu CV");
+            return;
+        }
+
+        if (!password) {
+            showToast("⚠️ Por favor, escribe tu contraseña");
+            return;
+        }
+
+        if (password.length < 6) {
+            showToast("⚠️ La contraseña debe tener al menos 6 caracteres");
+            return;
+        }
+
+        if (!confirmPassword) {
+            showToast("⚠️ Por favor, confirma tu contraseña");
+            return;
+        }
+
+        if (password !== confirmPassword) {
+            showToast("⚠️ Las contraseñas no coinciden");
+            return;
+        }
+
+        // Si todas las validaciones pasan
         showToast("✅ Usuario Creado", true);
         router.push("/SplashH");
     };
@@ -81,7 +117,7 @@ export default function Crear3() {
             style={styles.background}
             resizeMode="cover"
         >
-            <View style={styles.container}>
+            <KeyboardAwareScrollView style={styles.scrollContent} contentContainerStyle={styles.scrollContainer} extraScrollHeight={20} enableOnAndroid>
                 <View style={styles.formContainer}>
                     <Text style={styles.title}>Información Extra</Text>
 
@@ -105,9 +141,9 @@ export default function Crear3() {
                             dropdownIconColor="#213A8E"
                         >
                             <Picker.Item label="Disponibilidad horaria" value="" />
-                            <Picker.Item label="Mañana" value="Mañana" />
-                            <Picker.Item label="Tarde" value="Tarde" />
-                            <Picker.Item label="Noche" value="Noche" />
+                            {opcionesDisponibilidad.map(opcion => (
+                                <Picker.Item key={opcion.id} label={opcion.nombre} value={opcion.nombre} />
+                            ))}
                         </Picker>
                     </View>
 
@@ -155,9 +191,8 @@ export default function Crear3() {
                             <Ionicons name="arrow-forward" size={28} color="#fff" />
                         </TouchableOpacity>
                     </View>
-
                 </View>
-            </View>
+            </KeyboardAwareScrollView>
         </ImageBackground>
     );
 }
@@ -168,11 +203,15 @@ const styles = StyleSheet.create({
         width: "100%",
         height: "100%",
     },
-    container: {
+    scrollContent: {
         flex: 1,
-        justifyContent: "flex-start",
+    },
+    scrollContainer: {
+        flexGrow: 1,
+        justifyContent: "center",
         alignItems: "center",
-        marginTop: 220,
+        paddingTop: 220,
+        paddingBottom: 40,
     },
     formContainer: {
         width: "85%",

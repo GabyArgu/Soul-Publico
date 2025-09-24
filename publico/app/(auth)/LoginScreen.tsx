@@ -1,80 +1,110 @@
-// app/(auth)/LoginScreen.tsx
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ImageBackground } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ImageBackground, Platform } from "react-native";
 import { useRouter } from "expo-router";
 import { useState } from "react";
+import axios from "axios";
+import Toast from "react-native-root-toast";
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 
 export default function Login() {
     const router = useRouter();
     const [carnet, setCarnet] = useState("");
     const [password, setPassword] = useState("");
+    const API_URL = "http://192.168.1.11:4000/api/auth";
 
     const validarCarnet = (text: string) => {
-        if (/^[A-Z]{0,2}[0-9]{0,6}$/.test(text)) {
-            setCarnet(text);
+        if (/^[A-Za-z]{0,2}[0-9]{0,6}$/.test(text)) {
+            setCarnet(text.toUpperCase());
         }
     };
-    
+
+    const showToast = (message: string, success: boolean = false) => {
+        Toast.show(message, {
+            duration: 3000,
+            position: Toast.positions.TOP,
+            shadow: true,
+            animation: true,
+            hideOnPress: true,
+            backgroundColor: success ? "#4CAF50" : "#E53935",
+            textColor: "#fff",
+            opacity: 0.95,
+            containerStyle: { borderRadius: 10, paddingHorizontal: 15, paddingVertical: 10, marginTop: 60, alignSelf: "center" },
+            textStyle: { fontFamily: "Inter-Medium", fontSize: 14 },
+        });
+    };
+
+    const handleLogin = async () => {
+        if (!carnet || !password) {
+            showToast("⚠️ Completa carnet y contraseña");
+            return;
+        }
+
+        console.log("=== LOGIN REQUEST FROM APP ===");
+        console.log("Carnet:", carnet);
+        console.log("Password:", password);
+
+        try {
+            const res = await axios.post(`${API_URL}/login`, { carnet, password });
+            console.log("Response login:", res.data);
+            showToast("¡Login exitoso!", true);
+            const fullName = res.data.user.nombreCompleto;
+            const nameParts = fullName.split(" ");
+            const displayName = nameParts.length >= 3 ? `${nameParts[0]} ${nameParts[2]}` : nameParts[0];
+            router.push({ pathname: "/(tabs)", params: { nombreUsuario: displayName } });
+        } catch (err: any) {
+            console.error("Error login:", err.response?.data || err.message || err);
+            showToast("❌ Carnet o contraseña incorrectos");
+        }
+    };
+
     return (
-        <ImageBackground
-            source={require('../../assets/images/fondo-l.png')}
-            style={styles.background}
-            resizeMode="cover"
+        <KeyboardAwareScrollView
+            contentContainerStyle={styles.scrollContainer}
+            keyboardShouldPersistTaps="handled"
+            extraScrollHeight={Platform.select({ ios: 0, android: 20 })}
+            enableOnAndroid={true}
         >
-            <View style={styles.container}>
-                <View style={styles.formContainer}>
-
-                    {/* Carnet */}
-                    <TextInput
-                        style={[styles.input, styles.inputCarnet]}
-                        placeholder="Ingresa tu carnet"
-                        placeholderTextColor="#666"
-                        value={carnet}
-                        onChangeText={validarCarnet}
-                        keyboardType="numeric"
-                    />
-
-                    {/* Contraseña */}
-                    <TextInput
-                        style={[styles.input, styles.inputPassword]}
-                        placeholder="Ingresa tu contraseña"
-                        placeholderTextColor="#666"
-                        value={password}
-                        onChangeText={setPassword}
-                        secureTextEntry
-                    />
-
-                    {/* Olvidaste contraseña */}
-                    <TouchableOpacity>
-                        <Text style={styles.forgotPassword}>¿Olvidaste tu contraseña?</Text>
-                    </TouchableOpacity>
-
-                    <View style={styles.separator} />
-
-                    {/* Botón Ingresar */}
-                    <TouchableOpacity
-                        style={styles.loginButton}
-                        onPress={() => router.push('/(tabs)')}
-                    >
-                        <Text style={styles.loginButtonText}>Ingresar</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        style={styles.registerButton}
-                        onPress={() => router.push('/(auth)/Crear')}
-                    >
-                        <Text style={styles.registerButtonText}>Registrarme</Text>
-                    </TouchableOpacity>
+            <ImageBackground source={require('../../assets/images/fondo-l.png')} style={styles.background} resizeMode="cover">
+                <View style={styles.container}>
+                    <View style={styles.formContainer}>
+                        <TextInput
+                            style={[styles.input, styles.inputCarnet]}
+                            placeholder="Ingresa tu carnet"
+                            placeholderTextColor="#666"
+                            value={carnet}
+                            onChangeText={validarCarnet}
+                            keyboardType="default"
+                        />
+                        <TextInput
+                            style={[styles.input, styles.inputPassword]}
+                            placeholder="Ingresa tu contraseña"
+                            placeholderTextColor="#666"
+                            value={password}
+                            onChangeText={setPassword}
+                            secureTextEntry
+                        />
+                        <TouchableOpacity onPress={handleLogin} style={styles.loginButton}>
+                            <Text style={styles.loginButtonText}>Ingresar</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={styles.registerButton} onPress={() => router.push('/(auth)/Crear')}>
+                            <Text style={styles.registerButtonText}>Registrarme</Text>
+                        </TouchableOpacity>
+                    </View>
                 </View>
-            </View>
-        </ImageBackground>
+            </ImageBackground>
+        </KeyboardAwareScrollView>
     );
 }
 
 const styles = StyleSheet.create({
+    scrollContainer: {
+        flexGrow: 1,
+    },
     background: {
         flex: 1,
         width: '100%',
         height: '100%',
+        justifyContent: 'flex-end',
+        alignItems: 'center',
     },
     container: {
         flex: 1,
@@ -83,73 +113,16 @@ const styles = StyleSheet.create({
         marginBottom: 45,
     },
     formContainer: {
-        width: '85%',
+        width: 300,
         borderRadius: 15,
         padding: 8,
-        elevation: 0,
-        shadowColor: 'transparent',
-        backgroundColor: 'transparent',
+        backgroundColor: 'transparent'
     },
-
-    /** INPUTS **/
-    input: {
-        backgroundColor: '#EFF1F8',
-        borderRadius: 12,
-        padding: 15,
-        marginBottom: 20,
-        fontSize: 16,
-        fontFamily: 'Inter-Bold',
-    },
-    inputCarnet: {
-        borderLeftWidth: 15,
-        borderLeftColor: '#F9DC50',
-    },
-    inputPassword: {
-        borderLeftWidth: 15,
-        borderLeftColor: '#2666DE',
-    },
-
-    /** OLVIDASTE CONTRASEÑA **/
-    forgotPassword: {
-        textAlign: 'right',
-        color: '#1942BF',
-        marginBottom: 20,
-        fontFamily: 'Inter-Bold',
-    },
-
-    separator: {
-        height: 1,
-        backgroundColor: '#EEEEEE',
-        marginVertical: 15,
-    },
-
-    /** BOTÓN INGRESAR **/
-    loginButton: {
-        backgroundColor: '#2666DE',
-        borderRadius: 25,
-        paddingVertical: 16,
-        alignItems: 'center',
-        marginBottom: 12,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 3 },
-        shadowOpacity: 0.2,
-        shadowRadius: 4,
-        elevation: 5,
-    },
-    loginButtonText: {
-        color: 'white',
-        fontSize: 16,
-        fontFamily: 'Inter-Bold',
-    },
-
-    /** BOTÓN REGISTRAR **/
-    registerButton: {
-        padding: 12,
-        alignItems: 'center',
-    },
-    registerButtonText: {
-        color: '#1942BF',
-        fontSize: 16,
-        fontFamily: 'Inter-Bold',
-    },
+    input: { backgroundColor: '#EFF1F8', borderRadius: 12, padding: 15, marginBottom: 20, fontSize: 16, fontFamily: 'Inter-Bold' },
+    inputCarnet: { borderLeftWidth: 15, borderLeftColor: '#F9DC50' },
+    inputPassword: { borderLeftWidth: 15, borderLeftColor: '#2666DE' },
+    loginButton: { backgroundColor: '#2666DE', borderRadius: 25, paddingVertical: 16, alignItems: 'center', marginBottom: 12 },
+    loginButtonText: { color: 'white', fontSize: 16, fontFamily: 'Inter-Bold' },
+    registerButton: { padding: 12, alignItems: 'center' },
+    registerButtonText: { color: '#1942BF', fontSize: 16, fontFamily: 'Inter-Bold' },
 });
