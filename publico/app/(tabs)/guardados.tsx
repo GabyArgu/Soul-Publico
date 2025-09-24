@@ -1,10 +1,9 @@
-// app/(main)/Index.tsx
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, FlatList, ScrollView } from "react-native";
-import { useRouter } from "expo-router";
+// app/(main)/Guardados.tsx
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, FlatList, ScrollView } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useRouter } from "expo-router";
 
-export default function Index() {
-
+export default function Guardados() {
     const router = useRouter();
 
     const institucionales = [
@@ -38,22 +37,25 @@ export default function Index() {
                     <Text style={styles.cardInfo}><Text style={styles.bold}>Capacidad: </Text><Text style={styles.regular}>{item.capacidad}</Text></Text>
                     <Text style={styles.cardInfo}><Text style={styles.bold}>Horas: </Text><Text style={styles.regular}>{item.horas}</Text></Text>
                 </View>
-                <TouchableOpacity style={[styles.cardButton, { backgroundColor: palette.button }]} onPress={() => router.push("/(tabs)/detalles")}>
+                <TouchableOpacity style={[styles.cardButton, { backgroundColor: palette.button }]}>
                     <Text style={[styles.cardButtonText, { color: palette.text }]}>Detalles</Text>
                 </TouchableOpacity>
             </View>
         );
     };
 
+
     return (
         <View style={styles.container}>
             {/* Header */}
             <View style={styles.header}>
-                <View>
-                    <Text style={styles.hola}>Hola,</Text>
-                    <Text style={styles.nombre}>Gabriela Méndez</Text>
-                </View>
-                <Image source={require("../../assets/images/avatar.png")} style={styles.avatar} />
+                <Text style={styles.headerTitle}>Proyecto Guardados</Text>
+                <Ionicons
+                    name="arrow-back"
+                    size={28}
+                    color="#000"
+                    onPress={() => router.back()}
+                />
             </View>
 
             {/* Fondo de todo lo demás */}
@@ -64,7 +66,6 @@ export default function Index() {
                         <TextInput style={styles.searchInput} placeholder="Buscar" placeholderTextColor="#666" />
                         <Ionicons name="search" size={20} color="#EAC306" style={styles.searchIconInside} />
                     </View>
-                    <TouchableOpacity style={styles.iconButton}><Ionicons name="add" size={22} color="#fff" onPress={() => router.push("/(tabs)/proyecto")}/></TouchableOpacity>
                     <TouchableOpacity style={styles.iconButton}><Ionicons name="filter" size={22} color="#fff" /></TouchableOpacity>
                 </View>
 
@@ -94,13 +95,13 @@ export default function Index() {
             {/* Bottom nav */}
             <View style={styles.bottomNav}>
                 <Ionicons
-                    name="home"
+                    name="home-outline"
                     size={28}
                     color="#fff"
                     onPress={() => router.push("/")}
                 />
                 <Ionicons
-                    name="cloud-outline"
+                    name="star"
                     size={28}
                     color="#fff"
                     onPress={() => router.push("/(tabs)/guardados")}
@@ -129,55 +130,37 @@ export default function Index() {
     );
 }
 
-
-
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: "#fff",
+        backgroundColor: "#fff"
     },
-
-    // Header
     header: {
         flexDirection: "row",
-        justifyContent: "space-between",
         alignItems: "center",
+        justifyContent: "space-between",
         paddingHorizontal: 20,
-        paddingTop: 65,
+        paddingTop: 91,
         marginBottom: 20,
-        backgroundColor: "#fff",
+        backgroundColor: "#fff"
     },
-    hola: {
-        fontSize: 16,
-        color: "#555",
-        fontFamily: "MyriadPro-Regular",
-    },
-    nombre: {
-        fontSize: 18,
+    headerTitle: {
+        fontSize: 20,
         fontWeight: "bold",
         color: "#000",
-        fontFamily: "MyriadPro-Bold",
+        fontFamily: "MyriadPro-Bold"
     },
-    avatar: {
-        width: 55,
-        height: 55,
-        borderRadius: 22,
-    },
-
-    // Fondo de contenido
     contentBackground: {
         flex: 1,
         backgroundColor: "#F2F6FC",
-        paddingBottom: 20,
+        paddingBottom: 20
     },
-
-    // Buscador + botones
     searchRow: {
         flexDirection: "row",
         alignItems: "center",
         marginHorizontal: 20,
         marginTop: 20,
-        marginBottom: 15,
+        marginBottom: 15
     },
     searchBox: {
         flex: 1,
@@ -191,7 +174,10 @@ const styles = StyleSheet.create({
         height: 45,
         position: "relative",
         shadowColor: "#2666DE",
-        shadowOffset: { width: 0, height: 0 },
+        shadowOffset: {
+            width: 0,
+            height: 0
+        },
         shadowOpacity: 0.6,
         shadowRadius: 8,
         elevation: 6,
@@ -200,11 +186,11 @@ const styles = StyleSheet.create({
         flex: 1,
         fontFamily: "Inter-Medium",
         fontSize: 14,
-        color: "#000",
+        color: "#000"
     },
     searchIconInside: {
         position: "absolute",
-        right: 10,
+        right: 10
     },
     iconButton: {
         backgroundColor: "#F9DC50",
@@ -215,13 +201,14 @@ const styles = StyleSheet.create({
         justifyContent: "center",
         alignItems: "center",
         shadowColor: "#EAC306",
-        shadowOffset: { width: 0, height: 0 },
+        shadowOffset: {
+            width: 0,
+            height: 0
+        },
         shadowOpacity: 0.6,
         shadowRadius: 8,
         elevation: 6,
     },
-
-    // Secciones
     sectionTitle: {
         fontSize: 19,
         fontFamily: "MyriadPro-Bold",
@@ -230,8 +217,6 @@ const styles = StyleSheet.create({
         marginHorizontal: 20,
         marginVertical: 10,
     },
-
-    // Cards
     card: {
         width: 260,
         minHeight: 210,
@@ -244,7 +229,7 @@ const styles = StyleSheet.create({
     cardIcon: {
         position: "absolute",
         top: 19,
-        right: 13,
+        right: 13
     },
     cardTitle: {
         fontSize: 15,
@@ -268,14 +253,14 @@ const styles = StyleSheet.create({
     },
     cardInfo: {
         fontSize: 13,
-        color: "#444",
+        color: "#444"
     },
     bold: {
         fontFamily: "MyriadPro-Bold",
-        fontWeight: "bold",
+        fontWeight: "bold"
     },
     regular: {
-        fontFamily: "MyriadPro-Regular",
+        fontFamily: "MyriadPro-Regular"
     },
     cardButton: {
         position: "absolute",
@@ -291,8 +276,6 @@ const styles = StyleSheet.create({
         fontFamily: "MyriadPro-Bold",
         fontWeight: "bold",
     },
-
-    // Bottom nav
     bottomNav: {
         flexDirection: "row",
         justifyContent: "space-around",

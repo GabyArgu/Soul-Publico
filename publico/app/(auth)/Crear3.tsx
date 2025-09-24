@@ -72,7 +72,7 @@ export default function Crear3() {
             return;
         }
         showToast("✅ Usuario Creado", true);
-        router.push("/(auth)/LoginScreen");
+        router.push("/SplashH");
     };
 
     return (
