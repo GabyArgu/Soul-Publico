@@ -7,6 +7,7 @@ import { Ionicons } from "@expo/vector-icons";
 import Toast from "react-native-root-toast";
 import axios from "axios";
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function Crear() {
     const router = useRouter();
@@ -63,18 +64,39 @@ export default function Crear() {
     };
 
     // Validar formulario con retroalimentación específica
-    const handleSubmit = () => {
-        if (!nombre.trim()) { showToast("⚠️ El nombre es obligatorio"); return; }
-        if (!/^[A-Z]{2}[0-9]{6}$/.test(carnet)) { showToast("⚠️ El carnet debe tener 2 letras y 6 números"); return; }
-        if (!fechaNacimiento) { showToast("⚠️ Selecciona una fecha de nacimiento"); return; }
-        if (fechaNacimiento >= new Date()) { showToast("⚠️ La fecha de nacimiento debe ser menor a hoy"); return; }
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showToast("⚠️ Ingresa un correo válido"); return; }
-        if (!departamento) { showToast("⚠️ Selecciona un departamento"); return; }
-        if (!municipio) { showToast("⚠️ Selecciona un municipio"); return; }
-        if (!/^\d{4}-\d{4}$/.test(telefono)) { showToast("⚠️ Ingresa un teléfono válido (XXXX-XXXX)"); return; }
+    const handleSubmit = async () => {
+    if (!nombre.trim()) { showToast("⚠️ El nombre es obligatorio"); return; }
+    if (!/^[A-Z]{2}[0-9]{6}$/.test(carnet)) { showToast("⚠️ El carnet debe tener 2 letras y 6 números"); return; }
+    if (!fechaNacimiento) { showToast("⚠️ Selecciona una fecha de nacimiento"); return; }
+    if (fechaNacimiento >= new Date()) { showToast("⚠️ La fecha de nacimiento debe ser menor a hoy"); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showToast("⚠️ Ingresa un correo válido"); return; }
+    if (!departamento) { showToast("⚠️ Selecciona un departamento"); return; }
+    if (!municipio) { showToast("⚠️ Selecciona un municipio"); return; }
+    if (!/^\d{4}-\d{4}$/.test(telefono)) { showToast("⚠️ Ingresa un teléfono válido (XXXX-XXXX)"); return; }
+
+    try {
+        const paso1Data = {
+            nombre,
+            carnet,
+            fechaNacimiento: fechaNacimiento.toISOString(),
+            email,
+            telefono,
+            departamento: Number(departamento),
+            municipio: Number(municipio)
+        };
+
+        await AsyncStorage.setItem("crearPaso1", JSON.stringify(paso1Data));
+
+        console.log("Datos del paso 1 guardados:", paso1Data); // log para debug
+        showToast("✅ Paso 1 completado", true);
 
         router.push("/(auth)/Crear2");
-    };
+    } catch (error) {
+        console.error("Error guardando datos del paso 1:", error);
+        showToast("❌ Error guardando datos");
+    }
+};
+
 
     return (
         <ImageBackground source={require("../../assets/images/fondo-c.png")} style={styles.background} resizeMode="cover">

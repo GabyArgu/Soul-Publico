@@ -1,26 +1,29 @@
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ImageBackground, Platform } from "react-native";
-import { useRouter } from "expo-router";
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ImageBackground } from "react-native";
+import { useRouter, useLocalSearchParams } from "expo-router";
 import { useState, useEffect } from "react";
 import { Picker } from "@react-native-picker/picker";
 import { Ionicons } from "@expo/vector-icons";
 import Toast from "react-native-root-toast";
 import axios from "axios";
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 interface Habilidad { idHabilidad: number; nombre: string; tipo: string; }
 
 export default function Crear2() {
     const router = useRouter();
     const API_URL = "http://192.168.1.11:4000/api";
+    const params = useLocalSearchParams();
+    const userData = params.userData ? JSON.parse(params.userData as string) : {};
 
     // Estados de selects
     const [carreras, setCarreras] = useState<{ idCarrera: number; nombre: string }[]>([]);
-    const [idiomas, setIdiomas] = useState<{ id: number; nombre: string }[]>([]);
-    const [niveles, setNiveles] = useState<{ id: number; nombre: string }[]>([]);
-    const [carrera, setCarrera] = useState("");
-    const [idioma, setIdioma] = useState("");
-    const [nivel, setNivel] = useState("");
+    const [idiomas, setIdiomas] = useState<{ idIdioma: number; nombre: string }[]>([]);
+    const [niveles, setNiveles] = useState<{ idINivel: number; nombre: string }[]>([]);
     const [unidades, setUnidades] = useState("");
+    const [carrera, setCarrera] = useState<number | "">("");
+    const [idioma, setIdioma] = useState<number | "">("");
+    const [nivel, setNivel] = useState<number | "">("");
 
     // Habilidades
     const [habilidades, setHabilidades] = useState<Habilidad[]>([]);
@@ -30,8 +33,8 @@ export default function Crear2() {
     const [habilidadesBlandas, setHabilidadesBlandas] = useState<Habilidad[]>([]);
     const [sugerenciasTecnicas, setSugerenciasTecnicas] = useState<Habilidad[]>([]);
     const [sugerenciasBlandas, setSugerenciasBlandas] = useState<Habilidad[]>([]);
-    
-    // Estados para la posición de las sugerencias
+
+    // Posición de sugerencias
     const [layoutTecnicas, setLayoutTecnicas] = useState({ y: 0, width: 0 });
     const [layoutBlandas, setLayoutBlandas] = useState({ y: 0, width: 0 });
 
@@ -83,12 +86,43 @@ export default function Crear2() {
         });
     };
 
-    const handleSubmit = () => {
-        if (!carrera || !unidades || !idioma || !nivel || habilidadesTecnicas.length === 0 || habilidadesBlandas.length === 0) {
-            showToast("⚠️ Completa todos los campos");
-            return;
+    const handleSubmit = async () => {
+        try {
+            const paso1DataString = await AsyncStorage.getItem("crearPaso1");
+            const paso1Data = paso1DataString ? JSON.parse(paso1DataString) : {};
+
+            // Validación de selects obligatorios
+            if (!carrera) return showToast("❌ Debes seleccionar tu carrera");
+            if (!unidades) return showToast("❌ Debes ingresar UV's ganadas");
+            if (!idioma) return showToast("❌ Debes seleccionar un idioma");
+            if (!nivel) return showToast("❌ Debes seleccionar nivel de idioma");
+
+            if (habilidadesTecnicas.length === 0) return showToast("❌ Debes agregar al menos una habilidad técnica");
+            if (habilidadesBlandas.length === 0) return showToast("❌ Debes agregar al menos una habilidad blanda");
+
+            const combinedData = {
+                ...paso1Data,
+                idCarrera: Number(carrera),
+                uvs: parseInt(unidades),
+                idIdioma: Number(idioma),
+                idNivel: Number(nivel),
+                habilidadesTecnicas: habilidadesTecnicas.map(h => h.idHabilidad).join(","),
+                habilidadesBlandas: habilidadesBlandas.map(h => h.idHabilidad).join(","),
+            };
+
+            await AsyncStorage.setItem("crearPaso2", JSON.stringify(combinedData));
+
+            console.log("Datos del paso 2 guardados:", combinedData);
+            showToast("✅ Paso 2 completado", true);
+
+            router.push({
+                pathname: "/(auth)/Crear3",
+                params: { combinedData: JSON.stringify(combinedData) }
+            });
+        } catch (error) {
+            console.error("Error guardando datos del paso 2:", error);
+            showToast("❌ Error guardando datos");
         }
-        router.push("/(auth)/Crear3");
     };
 
     return (
@@ -100,9 +134,9 @@ export default function Crear2() {
 
                         {/* Carrera */}
                         <View style={styles.inputContainer}>
-                            <Picker selectedValue={carrera} onValueChange={setCarrera} style={styles.picker} dropdownIconColor="#213A8E">
+                            <Picker selectedValue={carrera} onValueChange={(val) => setCarrera(Number(val))} style={styles.picker} dropdownIconColor="#213A8E">
                                 <Picker.Item label="Selecciona tu carrera" value="" />
-                                {carreras.map(c => <Picker.Item key={c.idCarrera} label={c.nombre} value={c.nombre} />)}
+                                {carreras.map(c => <Picker.Item key={c.idCarrera} label={c.nombre} value={c.idCarrera} />)}
                             </Picker>
                         </View>
 
@@ -115,18 +149,16 @@ export default function Crear2() {
                         <View style={styles.inputContainer}>
                             <Picker selectedValue={idioma} onValueChange={setIdioma} style={styles.picker} dropdownIconColor="#213A8E">
                                 <Picker.Item label="Idioma que dominas" value="" />
-                                {idiomas.map(i => <Picker.Item key={i.id} label={i.nombre} value={i.nombre} />)}
-                            </Picker>
-                        </View>
+                                {idiomas.map(i => <Picker.Item key={i.idIdioma} label={i.nombre} value={i.idIdioma} />)}
+                            </Picker></View>
 
                         {/* Nivel */}
                         <View style={styles.inputContainer}>
                             <Picker selectedValue={nivel} onValueChange={setNivel} style={styles.picker} dropdownIconColor="#213A8E">
                                 <Picker.Item label="Nivel de dominio" value="" />
-                                {niveles.map(n => <Picker.Item key={n.id} label={n.nombre} value={n.nombre} />)}
-                            </Picker>
-                        </View>
-                        
+                                {niveles.map(n => <Picker.Item key={n.idINivel} label={n.nombre} value={n.idINivel} />)}
+                            </Picker></View>
+
                         {/* Habilidades técnicas */}
                         <View style={{ zIndex: 20 }}>
                             <View style={styles.chipsInputContainer} onLayout={(event) => {
@@ -219,65 +251,17 @@ const styles = StyleSheet.create({
     inputContainer: { flexDirection: "row", alignItems: "center", backgroundColor: "#EFF1F8", borderRadius: 12, paddingHorizontal: 10, marginBottom: 15, borderLeftWidth: 15, borderLeftColor: "#2666DE", height: 52 },
     input: { flex: 1, fontSize: 15, fontFamily: "Inter-Medium", color: "#000" },
     picker: { flex: 1, fontSize: 15, fontFamily: "Inter-Medium", color: "#000", height: 52 },
-    
-    // Estilos para el campo de entrada de chips
-    chipsInputContainer: {
-        backgroundColor: '#EFF1F8',
-        borderRadius: 12,
-        marginBottom: 15,
-        borderLeftWidth: 15,
-        borderLeftColor: '#2666DE',
-        paddingVertical: 10,
-        minHeight: 52,
-        paddingHorizontal: 5,
-        justifyContent: 'center',
-    },
-    chipsContainer: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        alignItems: 'center',
-    },
-    chip: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        backgroundColor: '#2666DE',
-        paddingHorizontal: 10,
-        paddingVertical: 5,
-        borderRadius: 20,
-        margin: 5,
-    },
-    chipText: {
-        color: '#fff',
-        fontFamily: 'Inter-Medium',
-    },
-    chipClose: {
-        marginLeft: 5,
-    },
-    chipTextInput: {
-        flexGrow: 1,
-        fontSize: 15,
-        fontFamily: 'Inter-Medium',
-        color: '#000',
-        minWidth: 100,
-        // Eliminado la altura fija para que se ajuste con el padding
-    },
-    
-    // Estilos para la lista de sugerencias ahora con posición absoluta
-    suggestionsList: {
-        position: 'absolute',
-        backgroundColor: '#fff',
-        borderWidth: 1,
-        borderColor: '#ddd',
-        borderRadius: 8,
-        zIndex: 100, // Asegura que esté por encima de otros elementos
-        elevation: 5,
-    },
-    suggestionItem: {
-        padding: 10,
-        borderBottomWidth: 1,
-        borderBottomColor: '#eee',
-    },
-    
+
+    chipsInputContainer: { backgroundColor: '#EFF1F8', borderRadius: 12, marginBottom: 15, borderLeftWidth: 15, borderLeftColor: '#2666DE', paddingVertical: 10, minHeight: 52, paddingHorizontal: 5, justifyContent: 'center' },
+    chipsContainer: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center' },
+    chip: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#2666DE', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, margin: 5 },
+    chipText: { color: '#fff', fontFamily: 'Inter-Medium' },
+    chipClose: { marginLeft: 5 },
+    chipTextInput: { flexGrow: 1, fontSize: 15, fontFamily: 'Inter-Medium', color: '#000', minWidth: 100 },
+
+    suggestionsList: { position: 'absolute', backgroundColor: '#fff', borderWidth: 1, borderColor: '#ddd', borderRadius: 8, zIndex: 100, elevation: 5 },
+    suggestionItem: { padding: 10, borderBottomWidth: 1, borderBottomColor: '#eee' },
+
     buttonsRow: { flexDirection: "row", justifyContent: "space-between", marginTop: 15 },
     buttonYellow: { backgroundColor: "#2666DE", width: 60, height: 60, borderRadius: 30, justifyContent: "center", alignItems: "center", shadowColor: "#000", shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 5 },
     buttonBlue: { backgroundColor: "#F9DC50", width: 60, height: 60, borderRadius: 30, justifyContent: "center", alignItems: "center", shadowColor: "#000", shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 5 },

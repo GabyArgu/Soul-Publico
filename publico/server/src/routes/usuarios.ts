@@ -4,121 +4,102 @@ import bcrypt from "bcryptjs";
 
 const router = Router();
 
-// GET usuario por id
-router.get("/:id", async (req, res) => {
+router.post("/crear", async (req, res) => {
+  // Usa los nombres que vienen de React Native
+  const {
+    nombre,                    // ✅ Viene de React Native
+    carnet,                    // ✅ Viene de React Native  
+    fechaNacimiento,           // ✅ Viene de React Native
+    email,                     // ✅ Viene de React Native
+    telefono,                  // ✅ Viene de React Native
+    departamento,              // ✅ Viene de React Native
+    municipio,                 // ✅ Viene de React Native
+    idCarrera,                 // ✅ Viene de React Native (se llama idCarrera)
+    uvs,                       // ✅ Viene de React Native
+    idIdioma,                  // ✅ Viene de React Native (se llama idIdioma)
+    idNivel,                   // ✅ Viene de React Native (se llama idNivel)
+    idHorario,                 // ✅ Viene de React Native (se llama idHorario)
+    habilidadesTecnicas, 
+    habilidadesBlandas,
+    transportarse, 
+    urlCv, 
+    password
+  } = req.body;
+
+  console.log("🔍 Todos los campos recibidos:", req.body);
+
+  let transaction: sql.Transaction | undefined;
+
   try {
-    const { id } = req.params;
     const pool = await getConnection();
-    const result = await pool.request()
-      .input("id", sql.Int, id)
-      .query("SELECT * FROM usuarios WHERE idUsuario=@id");
-    res.json(result.recordset[0]);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Error al obtener usuario" });
-  }
-});
+    transaction = new sql.Transaction(pool);
+    await transaction.begin();
 
-// POST crear usuario
-router.post("/", async (req, res) => {
-  try {
-    const {
-      nombreCompleto,
-      carnet,
-      fechaNacimiento,
-      email,
-      telefono,
-      idDepartamento,
-      idMunicipio,
-      idCarrera,
-      uvs = 0,
-      idDisponibilidad,
-      tieneTransporte = 0,
-      urlCv,
-      password
-    } = req.body;
-
+    // 1️⃣ Hash de la contraseña
     const passwordHash = await bcrypt.hash(password, 10);
 
-    const pool = await getConnection();
-    await pool.request()
-      .input("nombreCompleto", sql.NVarChar(150), nombreCompleto)
-      .input("carnet", sql.NVarChar(30), carnet)
-      .input("fechaNacimiento", sql.Date, fechaNacimiento)
-      .input("email", sql.NVarChar(150), email)
-      .input("telefono", sql.NVarChar(30), telefono)
-      .input("idDepartamento", sql.Int, idDepartamento)
-      .input("idMunicipio", sql.Int, idMunicipio)
-      .input("idCarrera", sql.Int, idCarrera)
-      .input("uvs", sql.SmallInt, uvs)
-      .input("idDisponibilidad", sql.TinyInt, idDisponibilidad)
-      .input("tieneTransporte", sql.Bit, tieneTransporte)
-      .input("urlCv", sql.NVarChar(500), urlCv)
-      .input("passwordHash", sql.VarBinary(256), Buffer.from(passwordHash, "utf8"))
-      .query(`INSERT INTO usuarios 
-        (nombreCompleto,carnet,fechaNacimiento,email,telefono,idDepartamento,idMunicipio,idCarrera,uvs,idDisponibilidad,tieneTransporte,urlCv,passwordHash) 
-        VALUES 
-        (@nombreCompleto,@carnet,@fechaNacimiento,@email,@telefono,@idDepartamento,@idMunicipio,@idCarrera,@uvs,@idDisponibilidad,@tieneTransporte,@urlCv,@passwordHash)`);
+    // 2️⃣ Inserción en tabla 'usuarios' - USANDO LOS NOMBRES CORRECTOS
+    const resultUsuario = await transaction.request()
+      .input('nombreCompleto', sql.NVarChar(150), nombre)        // ✅ nombre → nombreCompleto
+      .input('carnet', sql.NVarChar(30), carnet)
+      .input('fechaNacimiento', sql.Date, fechaNacimiento)
+      .input('email', sql.NVarChar(150), email)
+      .input('telefono', sql.NVarChar(30), telefono)
+      .input('idDepartamento', sql.Int, Number(departamento))
+      .input('idMunicipio', sql.Int, Number(municipio))
+      .input('idCarrera', sql.Int, Number(idCarrera))            // ✅ idCarrera → idCarrera
+      .input('uvs', sql.SmallInt, Number(uvs))
+      .input('idDisponibilidad', sql.TinyInt, Number(idHorario)) // ✅ idHorario → idDisponibilidad
+      .input('tieneTransporte', sql.Bit, transportarse)
+      .input('urlCv', sql.NVarChar(500), urlCv)
+      .input('passwordHash', sql.VarBinary(256), Buffer.from(passwordHash))
+      .query(`
+        INSERT INTO usuarios (nombreCompleto, carnet, fechaNacimiento, email, telefono, idDepartamento, idMunicipio, idCarrera, uvs, idDisponibilidad, tieneTransporte, urlCv, passwordHash)
+        OUTPUT INSERTED.idUsuario
+        VALUES (@nombreCompleto, @carnet, @fechaNacimiento, @email, @telefono, @idDepartamento, @idMunicipio, @idCarrera, @uvs, @idDisponibilidad, @tieneTransporte, @urlCv, @passwordHash);
+      `);
 
-    res.json({ message: "Usuario creado" });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Error al crear usuario" });
+    const idUsuario = resultUsuario.recordset[0].idUsuario;
+
+    // 3️⃣ Insertar habilidades
+    const insertarHabilidades = async (habilidadesStr: string) => {
+      if (!habilidadesStr) return;
+      
+      const ids = habilidadesStr.split(',').map(id => id.trim()).filter(id => id !== '').map(Number);
+      
+      console.log(`📝 Insertando habilidades: ${ids.join(', ')}`);
+      
+      for (const idHabilidad of ids) {
+        if (!isNaN(idHabilidad)) {
+          await transaction!.request()
+            .input('idUsuario', sql.Int, idUsuario)
+            .input('idHabilidad', sql.Int, idHabilidad)
+            .query(`INSERT INTO habilidadesUsuario (idUsuario, idHabilidad) VALUES (@idUsuario, @idHabilidad);`);
+        }
+      }
+    };
+
+    await insertarHabilidades(habilidadesTecnicas);
+    await insertarHabilidades(habilidadesBlandas);
+
+    // 4️⃣ Inserción en 'idiomasUsuario'
+    if (idIdioma && idNivel) {  // ✅ idIdioma y idNivel
+      await transaction.request()
+        .input('idUsuario', sql.Int, idUsuario)
+        .input('idIdioma', sql.Int, Number(idIdioma))
+        .input('idINivel', sql.Int, Number(idNivel))
+        .query(`INSERT INTO idiomasUsuario (idUsuario, idIdioma, idINivel) VALUES (@idUsuario, @idIdioma, @idINivel);`);
+    }
+
+    // 5️⃣ Commit
+    await transaction.commit();
+    res.status(201).json({ mensaje: "Usuario creado con éxito", idUsuario });
+
+  } catch (error) {
+    if (transaction) await transaction.rollback();
+    console.error("❌ Error al crear usuario:", error);
+    const errorMessage = error instanceof Error ? error.message : "Error desconocido";
+    res.status(500).json({ error: "Error interno del servidor", detalle: errorMessage });
   }
 });
-
-// PUT editar usuario
-router.put("/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-    const {
-      nombreCompleto,
-      fechaNacimiento,
-      email,
-      telefono,
-      idDepartamento,
-      idMunicipio,
-      idCarrera,
-      uvs,
-      idDisponibilidad,
-      tieneTransporte,
-      urlCv
-    } = req.body;
-
-    const pool = await getConnection();
-    await pool.request()
-      .input("id", sql.Int, id)
-      .input("nombreCompleto", sql.NVarChar(150), nombreCompleto)
-      .input("fechaNacimiento", sql.Date, fechaNacimiento)
-      .input("email", sql.NVarChar(150), email)
-      .input("telefono", sql.NVarChar(30), telefono)
-      .input("idDepartamento", sql.Int, idDepartamento)
-      .input("idMunicipio", sql.Int, idMunicipio)
-      .input("idCarrera", sql.Int, idCarrera)
-      .input("uvs", sql.SmallInt, uvs)
-      .input("idDisponibilidad", sql.TinyInt, idDisponibilidad)
-      .input("tieneTransporte", sql.Bit, tieneTransporte)
-      .input("urlCv", sql.NVarChar(500), urlCv)
-      .query(`UPDATE usuarios SET 
-        nombreCompleto=@nombreCompleto,
-        fechaNacimiento=@fechaNacimiento,
-        email=@email,
-        telefono=@telefono,
-        idDepartamento=@idDepartamento,
-        idMunicipio=@idMunicipio,
-        idCarrera=@idCarrera,
-        uvs=@uvs,
-        idDisponibilidad=@idDisponibilidad,
-        tieneTransporte=@tieneTransporte,
-        urlCv=@urlCv,
-        fechaActualizado=SYSUTCDATETIME()
-        WHERE idUsuario=@id`);
-
-    res.json({ message: "Usuario actualizado" });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: "Error al actualizar usuario" });
-  }
-});
-
 export default router;
