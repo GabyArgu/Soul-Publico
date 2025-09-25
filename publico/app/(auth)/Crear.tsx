@@ -16,6 +16,7 @@ export default function Crear() {
     // Estados del formulario
     const [nombre, setNombre] = useState("");
     const [carnet, setCarnet] = useState("");
+    const [genero, setGenero] = useState<"M" | "F" | "O" | "">(""); // ✅ NUEVO ESTADO
     const [fechaNacimiento, setFechaNacimiento] = useState<Date | null>(null);
     const [showDatePicker, setShowDatePicker] = useState(false);
     const [email, setEmail] = useState("");
@@ -65,38 +66,39 @@ export default function Crear() {
 
     // Validar formulario con retroalimentación específica
     const handleSubmit = async () => {
-    if (!nombre.trim()) { showToast("⚠️ El nombre es obligatorio"); return; }
-    if (!/^[A-Z]{2}[0-9]{6}$/.test(carnet)) { showToast("⚠️ El carnet debe tener 2 letras y 6 números"); return; }
-    if (!fechaNacimiento) { showToast("⚠️ Selecciona una fecha de nacimiento"); return; }
-    if (fechaNacimiento >= new Date()) { showToast("⚠️ La fecha de nacimiento debe ser menor a hoy"); return; }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showToast("⚠️ Ingresa un correo válido"); return; }
-    if (!departamento) { showToast("⚠️ Selecciona un departamento"); return; }
-    if (!municipio) { showToast("⚠️ Selecciona un municipio"); return; }
-    if (!/^\d{4}-\d{4}$/.test(telefono)) { showToast("⚠️ Ingresa un teléfono válido (XXXX-XXXX)"); return; }
+        if (!nombre.trim()) { showToast("⚠️ El nombre es obligatorio"); return; }
+        if (!/^[A-Z]{2}[0-9]{6}$/.test(carnet)) { showToast("⚠️ El carnet debe tener 2 letras y 6 números"); return; }
+        if (!genero) { showToast("⚠️ Selecciona tu género"); return; } // ✅ NUEVA VALIDACIÓN
+        if (!fechaNacimiento) { showToast("⚠️ Selecciona una fecha de nacimiento"); return; }
+        if (fechaNacimiento >= new Date()) { showToast("⚠️ La fecha de nacimiento debe ser menor a hoy"); return; }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showToast("⚠️ Ingresa un correo válido"); return; }
+        if (!departamento) { showToast("⚠️ Selecciona un departamento"); return; }
+        if (!municipio) { showToast("⚠️ Selecciona un municipio"); return; }
+        if (!/^\d{4}-\d{4}$/.test(telefono)) { showToast("⚠️ Ingresa un teléfono válido (XXXX-XXXX)"); return; }
 
-    try {
-        const paso1Data = {
-            nombre,
-            carnet,
-            fechaNacimiento: fechaNacimiento.toISOString(),
-            email,
-            telefono,
-            departamento: Number(departamento),
-            municipio: Number(municipio)
-        };
+        try {
+            const paso1Data = {
+                nombre,
+                carnet,
+                genero, // ✅ AÑADIR GÉNERO
+                fechaNacimiento: fechaNacimiento.toISOString(),
+                email,
+                telefono,
+                departamento: Number(departamento),
+                municipio: Number(municipio)
+            };
 
-        await AsyncStorage.setItem("crearPaso1", JSON.stringify(paso1Data));
+            await AsyncStorage.setItem("crearPaso1", JSON.stringify(paso1Data));
 
-        console.log("Datos del paso 1 guardados:", paso1Data); // log para debug
-        showToast("✅ Paso 1 completado", true);
+            console.log("Datos del paso 1 guardados:", paso1Data);
+            showToast("✅ Paso 1 completado", true);
 
-        router.push("/(auth)/Crear2");
-    } catch (error) {
-        console.error("Error guardando datos del paso 1:", error);
-        showToast("❌ Error guardando datos");
-    }
-};
-
+            router.push("/(auth)/Crear2");
+        } catch (error) {
+            console.error("Error guardando datos del paso 1:", error);
+            showToast("❌ Error guardando datos");
+        }
+    };
 
     return (
         <ImageBackground source={require("../../assets/images/fondo-c.png")} style={styles.background} resizeMode="cover">
@@ -117,6 +119,21 @@ export default function Crear() {
 
                         <View style={styles.inputContainer}>
                             <TextInput style={styles.input} placeholder="Carnet" placeholderTextColor="#666" value={carnet} onChangeText={validarCarnet} />
+                        </View>
+
+                        {/* ✅ NUEVO PICKER DE GÉNERO */}
+                        <View style={styles.inputContainer}>
+                            <Picker 
+                                selectedValue={genero} 
+                                onValueChange={(itemValue) => setGenero(itemValue)} 
+                                style={styles.picker} 
+                                dropdownIconColor="#213A8E"
+                            >
+                                <Picker.Item label="Género" value="" />
+                                <Picker.Item label="Masculino" value="M" />
+                                <Picker.Item label="Femenino" value="F" />
+                                <Picker.Item label="Otro" value="O" />
+                            </Picker>
                         </View>
 
                         <TouchableOpacity style={styles.inputContainer} onPress={() => setShowDatePicker(true)}>

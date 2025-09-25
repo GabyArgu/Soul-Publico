@@ -1,9 +1,9 @@
 import React, { createContext, useContext, useState, ReactNode } from "react";
 
-// 1. Definir el tipo del usuario
 export interface UserCreation {
   nombre?: string;
   carnet?: string;
+  genero?: "M" | "F" | "O"; 
   fechaNacimiento?: string; // iso string
   email?: string;
   departamento?: string;

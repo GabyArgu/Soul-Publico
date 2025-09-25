@@ -4,6 +4,7 @@ import { useState } from "react";
 import axios from "axios";
 import Toast from "react-native-root-toast";
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export default function Login() {
     const router = useRouter();
@@ -32,6 +33,7 @@ export default function Login() {
         });
     };
 
+// En tu Login.tsx, modifica la función handleLogin:
     const handleLogin = async () => {
         if (!carnet || !password) {
             showToast("⚠️ Completa carnet y contraseña");
@@ -46,16 +48,36 @@ export default function Login() {
             const res = await axios.post(`${API_URL}/login`, { carnet, password });
             console.log("Response login:", res.data);
             showToast("¡Login exitoso!", true);
+
             const fullName = res.data.user.nombreCompleto;
+            const genero = res.data.user.genero || "O";
+            const userCarnet = res.data.user.carnet; // ✅ OBTENER CARNET
+
+            // ✅ GUARDAR EN ASYNCSTORAGE
+            await AsyncStorage.setItem('userData', JSON.stringify({
+                carnet: userCarnet,
+                nombreCompleto: fullName,
+                genero: genero
+            }));
+
+            // ✅ MANTENER TU LÓGICA ORIGINAL DE NOMBRE
             const nameParts = fullName.split(" ");
             const displayName = nameParts.length >= 3 ? `${nameParts[0]} ${nameParts[2]}` : nameParts[0];
-            router.push({ pathname: "/(tabs)", params: { nombreUsuario: displayName } });
+
+            // ✅ NAVEGAR SIN PASAR EL CARNET POR PARÁMETROS
+            router.push({
+                pathname: "/(tabs)",
+                params: {
+                    nombreUsuario: displayName,
+                    generoUsuario: genero,
+                }
+            });
+
         } catch (err: any) {
             console.error("Error login:", err.response?.data || err.message || err);
             showToast("❌ Carnet o contraseña incorrectos");
         }
     };
-
     return (
         <KeyboardAwareScrollView
             contentContainerStyle={styles.scrollContainer}

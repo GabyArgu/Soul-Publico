@@ -108,8 +108,6 @@ const uploadCv = async () => {
             // 3️⃣ Crear usuario en backend
             await axios.post(`${API_URL}/usuarios/crear`, combinedData);
 
-            showToast("✅ Usuario creado con éxito", true);
-
             // Limpiar AsyncStorage si quieres
             await AsyncStorage.removeItem("crearPaso1");
             await AsyncStorage.removeItem("crearPaso2");

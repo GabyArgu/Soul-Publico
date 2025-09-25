@@ -2,24 +2,47 @@
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, FlatList, ScrollView } from "react-native";
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { useLocalSearchParams  } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 
 
 export default function Index() {
-    const params = useLocalSearchParams ();
-    
+    const params = useLocalSearchParams();
+
     const rawNombreParam = params.nombreUsuario;
     const rawNombre = Array.isArray(rawNombreParam) ? rawNombreParam[0] : rawNombreParam || "Gabriela";
+    
+    // ✅ OBTENER GÉNERO DE LOS PARÁMETROS
+    const generoParam = params.generoUsuario;
+    const genero = Array.isArray(generoParam) ? generoParam[0] : generoParam || "O";
 
     const procesarNombre = (nombre: string) => {
-        const palabras = nombre.split(" ");
-        if (palabras.length > 3) {
-            return `${palabras[0]} ${palabras[2]}`;
-        }
-        return nombre;
+        const palabras = nombre.trim().split(" ");
+        if (palabras.length === 1) return palabras[0];
+        const primerNombre = palabras[0];
+        const apellido = palabras[palabras.length - 1];
+        return `${primerNombre} ${apellido}`;
     };
 
     const nombre = procesarNombre(rawNombre);
+
+    const obtenerSaludo = (genero: string) => {
+        switch(genero) {
+            case 'F': return '¡Bienvenida';
+            case 'M': return '¡Bienvenido';
+            default: return '¡Bienvenido/a';
+        }
+    };
+
+    const obtenerAvatar = (genero: string) => {
+        switch(genero) {
+            case 'F': return require("../../assets/images/avatar.png");
+            case 'M': return require("../../assets/images/avatar2.png");
+            default: return require("../../assets/images/avatar3.png");
+        }
+    };
+
+    const saludo = obtenerSaludo(genero); 
+    const avatar = obtenerAvatar(genero); 
 
 
     const router = useRouter();
@@ -67,10 +90,10 @@ export default function Index() {
             {/* Header */}
             <View style={styles.header}>
                 <View>
-                    <Text style={styles.hola}>Hola,</Text>
+                    <Text style={styles.hola}>{saludo},</Text> 
                     <Text style={styles.nombre}>{nombre}</Text>
                 </View>
-                <Image source={require("../../assets/images/avatar.png")} style={styles.avatar} />
+                <Image source={avatar} style={styles.avatar} /> 
             </View>
 
             {/* Fondo de todo lo demás */}
@@ -81,7 +104,7 @@ export default function Index() {
                         <TextInput style={styles.searchInput} placeholder="Buscar" placeholderTextColor="#666" />
                         <Ionicons name="search" size={20} color="#EAC306" style={styles.searchIconInside} />
                     </View>
-                    <TouchableOpacity style={styles.iconButton}><Ionicons name="add" size={22} color="#fff" onPress={() => router.push("/(tabs)/proyecto")}/></TouchableOpacity>
+                    <TouchableOpacity style={styles.iconButton}><Ionicons name="add" size={22} color="#fff" onPress={() => router.push("/(tabs)/proyecto")} /></TouchableOpacity>
                     <TouchableOpacity style={styles.iconButton}><Ionicons name="filter" size={22} color="#fff" /></TouchableOpacity>
                 </View>
 
@@ -138,7 +161,12 @@ export default function Index() {
                     name="person-outline"
                     size={28}
                     color="#fff"
-                    onPress={() => router.push("/(tabs)/cuenta")}
+                    onPress={() => router.push({
+                        pathname: "/(tabs)/cuenta",
+                        params: {
+                            carnet: params.carnetUsuario
+                        }
+                    })}
                 />
             </View>
 

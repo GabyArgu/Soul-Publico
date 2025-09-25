@@ -27,7 +27,7 @@ router.post("/login", async (req, res) => {
     }
 
     const user = result.recordset[0];
-    console.log("Usuario encontrado:", user.carnet, user.nombreCompleto);
+    console.log("Usuario encontrado:", user.carnet, user.nombreCompleto, user.genero);
 
     // Convertir VARBINARY correctamente a string UTF-8
     const storedHash = Buffer.from(user.passwordHash).toString("utf8");
@@ -52,6 +52,7 @@ router.post("/login", async (req, res) => {
       user: {
         id: user.id,
         nombreCompleto: user.nombreCompleto,
+        genero: user.genero, // ✅ CORREGIDO: "genero" no "enero"
         carnet: user.carnet,
       },
     });
