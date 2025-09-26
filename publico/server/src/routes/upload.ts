@@ -8,7 +8,7 @@ const router = Router();
 // Configurar multer para guardar archivos en la carpeta 'uploads'
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        const uploadDir = path.join(__dirname, "./uploads");
+        const uploadDir = path.join(__dirname, "../uploads");
         if (!fs.existsSync(uploadDir)) {
             fs.mkdirSync(uploadDir);
         }

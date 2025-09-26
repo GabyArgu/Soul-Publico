@@ -1,4 +1,4 @@
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ImageBackground } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ImageBackground, Dimensions } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useState, useEffect } from "react";
 import { Picker } from "@react-native-picker/picker";
@@ -24,6 +24,7 @@ export default function Crear2() {
     const [carrera, setCarrera] = useState<number | "">("");
     const [idioma, setIdioma] = useState<number | "">("");
     const [nivel, setNivel] = useState<number | "">("");
+    const [carreraSeleccionada, setCarreraSeleccionada] = useState("");
 
     // Habilidades
     const [habilidades, setHabilidades] = useState<Habilidad[]>([]);
@@ -38,6 +39,28 @@ export default function Crear2() {
     const [layoutTecnicas, setLayoutTecnicas] = useState({ y: 0, width: 0 });
     const [layoutBlandas, setLayoutBlandas] = useState({ y: 0, width: 0 });
 
+    // Función para abreviar SOLO las palabras problemáticas
+    const abreviarPalabrasProblematicas = (nombreCarrera: string): string => {
+        if (!nombreCarrera) return "";
+        
+        // Abreviar palabras específicas que causan problemas
+        return nombreCarrera
+            .replace(/Licenciatura/gi, 'Lic.')
+            .replace(/Ingeniería/gi, 'Ing.')
+            .replace(/Técnico/gi, 'Tec.')
+            .replace(/Técnica/gi, 'Tec.')
+            .replace(/Especialización/gi, 'Espe.')
+            .replace(/Especialidad/gi, 'Espe.')
+            .replace(/Adquisición/gi, 'Adq.')
+            .replace(/Extranjeras/gi, 'Ext.');
+    };
+
+    // Función para obtener el nombre completo de la carrera seleccionada
+    const getCarreraCompleta = (idCarrera: number): string => {
+        const carreraEncontrada = carreras.find(c => c.idCarrera === idCarrera);
+        return carreraEncontrada ? carreraEncontrada.nombre : '';
+    };
+
     // Cargar datos desde API
     useEffect(() => {
         axios.get(`${API_URL}/carreras`).then(res => setCarreras(res.data)).catch(console.error);
@@ -45,6 +68,15 @@ export default function Crear2() {
         axios.get(`${API_URL}/niveles`).then(res => setNiveles(res.data)).catch(console.error);
         axios.get(`${API_URL}/habilidades`).then(res => setHabilidades(res.data)).catch(console.error);
     }, []);
+
+    // Cuando se selecciona una carrera, mostrar el nombre completo
+    useEffect(() => {
+        if (carrera) {
+            setCarreraSeleccionada(getCarreraCompleta(carrera));
+        } else {
+            setCarreraSeleccionada("");
+        }
+    }, [carrera, carreras]);
 
     // Filtrar habilidades mientras se escribe
     useEffect(() => {
@@ -134,30 +166,78 @@ export default function Crear2() {
 
                         {/* Carrera */}
                         <View style={styles.inputContainer}>
-                            <Picker selectedValue={carrera} onValueChange={(val) => setCarrera(Number(val))} style={styles.picker} dropdownIconColor="#213A8E">
-                                <Picker.Item label="Selecciona tu carrera" value="" />
-                                {carreras.map(c => <Picker.Item key={c.idCarrera} label={c.nombre} value={c.idCarrera} />)}
+                            <Picker 
+                                selectedValue={carrera} 
+                                onValueChange={(val) => setCarrera(Number(val))} 
+                                style={styles.picker} 
+                                dropdownIconColor="#213A8E"
+                                mode="dropdown"
+                            >
+                                <Picker.Item 
+                                    label="Selecciona tu carrera" 
+                                    value="" 
+                                />
+                                {carreras.map(c => (
+                                    <Picker.Item 
+                                        key={c.idCarrera} 
+                                        label={abreviarPalabrasProblematicas(c.nombre)} 
+                                        value={c.idCarrera} 
+                                    />
+                                ))}
                             </Picker>
                         </View>
 
                         {/* UV's */}
                         <View style={styles.inputContainer}>
-                            <TextInput style={styles.input} placeholder="UV'S ganadas" value={unidades} onChangeText={validarUnidades} keyboardType="numeric" />
+                            <TextInput 
+                                style={styles.input} 
+                                placeholder="UV'S ganadas" 
+                                placeholderTextColor="#666"
+                                value={unidades} 
+                                onChangeText={validarUnidades} 
+                                keyboardType="numeric" 
+                            />
                         </View>
 
-                        {/* Idioma */}
+                        {/* Idioma - Mismo diseño que carrera */}
                         <View style={styles.inputContainer}>
-                            <Picker selectedValue={idioma} onValueChange={setIdioma} style={styles.picker} dropdownIconColor="#213A8E">
+                            <Picker 
+                                selectedValue={idioma} 
+                                onValueChange={setIdioma} 
+                                style={styles.picker} 
+                                dropdownIconColor="#213A8E"
+                                mode="dropdown"
+                            >
                                 <Picker.Item label="Idioma que dominas" value="" />
-                                {idiomas.map(i => <Picker.Item key={i.idIdioma} label={i.nombre} value={i.idIdioma} />)}
-                            </Picker></View>
+                                {idiomas.map(i => (
+                                    <Picker.Item 
+                                        key={i.idIdioma} 
+                                        label={i.nombre} 
+                                        value={i.idIdioma} 
+                                    />
+                                ))}
+                            </Picker>
+                        </View>
 
-                        {/* Nivel */}
+                        {/* Nivel - Mismo diseño que carrera */}
                         <View style={styles.inputContainer}>
-                            <Picker selectedValue={nivel} onValueChange={setNivel} style={styles.picker} dropdownIconColor="#213A8E">
+                            <Picker 
+                                selectedValue={nivel} 
+                                onValueChange={setNivel} 
+                                style={styles.picker} 
+                                dropdownIconColor="#213A8E"
+                                mode="dropdown"
+                            >
                                 <Picker.Item label="Nivel de dominio" value="" />
-                                {niveles.map(n => <Picker.Item key={n.idINivel} label={n.nombre} value={n.idINivel} />)}
-                            </Picker></View>
+                                {niveles.map(n => (
+                                    <Picker.Item 
+                                        key={n.idINivel} 
+                                        label={n.nombre} 
+                                        value={n.idINivel} 
+                                    />
+                                ))}
+                            </Picker>
+                        </View>
 
                         {/* Habilidades técnicas */}
                         <View style={{ zIndex: 20 }}>
@@ -187,7 +267,7 @@ export default function Crear2() {
                                 <View style={[styles.suggestionsList, { top: layoutTecnicas.y, width: layoutTecnicas.width }]}>
                                     {sugerenciasTecnicas.map(item => (
                                         <TouchableOpacity key={item.idHabilidad} onPress={() => agregarHabilidad(item, "Técnica")} style={styles.suggestionItem}>
-                                            <Text>{item.nombre}</Text>
+                                            <Text style={styles.suggestionText}>{item.nombre}</Text>
                                         </TouchableOpacity>
                                     ))}
                                 </View>
@@ -222,7 +302,7 @@ export default function Crear2() {
                                 <View style={[styles.suggestionsList, { top: layoutBlandas.y, width: layoutBlandas.width }]}>
                                     {sugerenciasBlandas.map(item => (
                                         <TouchableOpacity key={item.idHabilidad} onPress={() => agregarHabilidad(item, "Blanda")} style={styles.suggestionItem}>
-                                            <Text>{item.nombre}</Text>
+                                            <Text style={styles.suggestionText}>{item.nombre}</Text>
                                         </TouchableOpacity>
                                     ))}
                                 </View>
@@ -250,19 +330,150 @@ const styles = StyleSheet.create({
     title: { fontSize: 23, fontWeight: "bold", color: "#213A8E", marginBottom: 18, fontFamily: "Inter-Bold" },
     inputContainer: { flexDirection: "row", alignItems: "center", backgroundColor: "#EFF1F8", borderRadius: 12, paddingHorizontal: 10, marginBottom: 15, borderLeftWidth: 15, borderLeftColor: "#2666DE", height: 52 },
     input: { flex: 1, fontSize: 15, fontFamily: "Inter-Medium", color: "#000" },
-    picker: { flex: 1, fontSize: 15, fontFamily: "Inter-Medium", color: "#000", height: 52 },
 
-    chipsInputContainer: { backgroundColor: '#EFF1F8', borderRadius: 12, marginBottom: 15, borderLeftWidth: 15, borderLeftColor: '#2666DE', paddingVertical: 10, minHeight: 52, paddingHorizontal: 5, justifyContent: 'center' },
-    chipsContainer: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center' },
-    chip: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#2666DE', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20, margin: 5 },
-    chipText: { color: '#fff', fontFamily: 'Inter-Medium' },
-    chipClose: { marginLeft: 5 },
-    chipTextInput: { flexGrow: 1, fontSize: 15, fontFamily: 'Inter-Medium', color: '#000', minWidth: 100 },
+    picker: { 
+        flex: 1, 
+        fontSize: 15, 
+        fontFamily: "Inter-Medium", 
+        color: "#000", 
+        height: 52,
+        minHeight: 52,
+        includeFontPadding: false,
+        textAlignVertical: 'center',
+        marginVertical: 0,
+        paddingVertical: 0,
+    },
 
-    suggestionsList: { position: 'absolute', backgroundColor: '#fff', borderWidth: 1, borderColor: '#ddd', borderRadius: 8, zIndex: 100, elevation: 5 },
-    suggestionItem: { padding: 10, borderBottomWidth: 1, borderBottomColor: '#eee' },
+    // Estilo para mostrar la carrera completa
+    carreraCompletaContainer: {
+        backgroundColor: '#F8F9FA',
+        borderRadius: 8,
+        padding: 10,
+        marginBottom: 15,
+        borderLeftWidth: 3,
+        borderLeftColor: '#2666DE',
+        shadowColor: "#2666DE",
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 1,
+        elevation: 1,
+    },
+    
+    carreraCompletaText: {
+        fontSize: 12,
+        fontFamily: 'Inter-Regular',
+        color: '#666',
+        fontStyle: 'italic',
+        textAlign: 'center',
+    },
 
-    buttonsRow: { flexDirection: "row", justifyContent: "space-between", marginTop: 15 },
-    buttonYellow: { backgroundColor: "#2666DE", width: 60, height: 60, borderRadius: 30, justifyContent: "center", alignItems: "center", shadowColor: "#000", shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 5 },
-    buttonBlue: { backgroundColor: "#F9DC50", width: 60, height: 60, borderRadius: 30, justifyContent: "center", alignItems: "center", shadowColor: "#000", shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 5 },
+    chipsInputContainer: { 
+        backgroundColor: '#EFF1F8', 
+        borderRadius: 12, 
+        marginBottom: 15, 
+        borderLeftWidth: 15, 
+        borderLeftColor: '#2666DE', 
+        paddingVertical: 10, 
+        minHeight: 52, 
+        paddingHorizontal: 5, 
+        justifyContent: 'center',
+    },
+    
+    chipsContainer: { 
+        flexDirection: 'row', 
+        flexWrap: 'wrap', 
+        alignItems: 'center' 
+    },
+    
+    chip: { 
+        flexDirection: 'row', 
+        alignItems: 'center', 
+        backgroundColor: '#2666DE', 
+        paddingHorizontal: 10, 
+        paddingVertical: 5, 
+        borderRadius: 20, 
+        margin: 5,
+    },
+    
+    chipText: { 
+        color: '#fff', 
+        fontFamily: 'Inter-Medium', 
+        fontSize: 12 
+    },
+    
+    chipClose: { 
+        marginLeft: 5 
+    },
+    
+    chipTextInput: { 
+        flexGrow: 1, 
+        fontSize: 15, 
+        fontFamily: 'Inter-Medium', 
+        color: '#000', 
+        minWidth: 100,
+        includeFontPadding: false,
+        textAlignVertical: 'center',
+        paddingVertical: 0,
+        marginVertical: 0,
+    },
+
+    suggestionsList: { 
+        position: 'absolute', 
+        backgroundColor: '#fff', 
+        borderWidth: 1, 
+        borderColor: '#ddd', 
+        borderRadius: 8, 
+        zIndex: 100, 
+        elevation: 5,
+        maxHeight: 150,
+        shadowColor: "#000",
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+    },
+    
+    suggestionItem: { 
+        padding: 10, 
+        borderBottomWidth: 1, 
+        borderBottomColor: '#eee' 
+    },
+    
+    suggestionText: { 
+        fontSize: 14, 
+        fontFamily: 'Inter-Medium' 
+    },
+
+    buttonsRow: { 
+        flexDirection: "row", 
+        justifyContent: "space-between", 
+        marginTop: 15 
+    },
+    
+    buttonYellow: { 
+        backgroundColor: "#2666DE", 
+        width: 60, 
+        height: 60, 
+        borderRadius: 30, 
+        justifyContent: "center", 
+        alignItems: "center", 
+        shadowColor: "#000", 
+        shadowOffset: { width: 0, height: 3 }, 
+        shadowOpacity: 0.2, 
+        shadowRadius: 4, 
+        elevation: 5 
+    },
+    
+    buttonBlue: { 
+        backgroundColor: "#F9DC50", 
+        width: 60, 
+        height: 60, 
+        borderRadius: 30, 
+        justifyContent: "center", 
+        alignItems: "center", 
+        shadowColor: "#000", 
+        shadowOffset: { width: 0, height: 3 }, 
+        shadowOpacity: 0.2, 
+        shadowRadius: 4, 
+        elevation: 5 
+    },
 });

@@ -11,7 +11,9 @@ import idiomasNivelesRoutes from "./routes/nivelesIdioma";
 import habilidadesRoutes from "./routes/habilidades";
 import opcionesDisponibilidadRoutes from "./routes/opcionesDisponibilidad";
 import usuariosRoutes from "./routes/usuarios";
-import uploadRoutes from "./routes/upload"; // ✅ AÑADE ESTA LÍNEA
+import uploadRoutes from "./routes/upload"; 
+import proyectosRoutes from "./routes/proyectos";
+import institucionesRoutes from "./routes/instituciones";
 
 dotenv.config();
 
@@ -34,7 +36,9 @@ app.use("/api/niveles", idiomasNivelesRoutes);
 app.use("/api/habilidades", habilidadesRoutes);
 app.use("/api/disponibilidad", opcionesDisponibilidadRoutes);
 app.use("/api/usuarios", usuariosRoutes);
-app.use("/api", uploadRoutes); // ✅ AÑADE ESTA LÍNEA (importante que vaya después)
+app.use("/api", uploadRoutes); 
+app.use("/api/proyectos", proyectosRoutes);
+app.use("/api/instituciones", institucionesRoutes);
 
 app.listen(4000, "0.0.0.0", () => {
     console.log("Servidor corriendo en http://0.0.0.0:4000");

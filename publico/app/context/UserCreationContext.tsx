@@ -47,3 +47,6 @@ export const useUserCreation = () => {
   if (!context) throw new Error("useUserCreation debe usarse dentro de UserCreationProvider");
   return context;
 };
+
+
+export default UserCreationContext;

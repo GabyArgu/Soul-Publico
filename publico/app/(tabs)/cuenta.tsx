@@ -1,13 +1,11 @@
 // app/(main)/Perfil.tsx
-import { View, Text, StyleSheet, Image, TouchableOpacity, Alert } from "react-native";
+import { View, Text, StyleSheet, Image, TouchableOpacity, Linking } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useState, useEffect } from "react";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-// ✅ CORRECCIÓN: Importar FileSystem correctamente
-import * as FileSystem from 'expo-file-system';
-import * as Sharing from "expo-sharing";
+import { Dialog, Portal, Button, Paragraph } from 'react-native-paper';
 
 // Interface para los datos del usuario
 interface Usuario {
@@ -32,6 +30,9 @@ export default function Perfil() {
     const [usuario, setUsuario] = useState<Usuario | null>(null);
     const [cargando, setCargando] = useState(true);
     const [error, setError] = useState<string | null>(null);
+    const [logoutVisible, setLogoutVisible] = useState(false);
+    const [cvErrorVisible, setCvErrorVisible] = useState(false);
+    const [cvErrorMessage, setCvErrorMessage] = useState("");
     const API_URL = "http://192.168.1.11:4000/api";
 
     // Obtener carnet del usuario logeado
@@ -93,23 +94,19 @@ export default function Perfil() {
     }, []);
 
     // Función para manejar cierre de sesión
-    const handleLogout = async () => {
-        Alert.alert("Cerrar Sesión", "¿Estás seguro de que quieres cerrar sesión?", [
-            { text: "Cancelar", style: "cancel" },
-            {
-                text: "Cerrar Sesión",
-                style: "destructive",
-                onPress: async () => {
-                    try {
-                        await AsyncStorage.multiRemove(["userData", "authToken"]);
-                        router.replace("/(auth)/LoginScreen");
-                    } catch (error) {
-                        console.error("Error cerrando sesión:", error);
-                        router.replace("/(auth)/LoginScreen");
-                    }
-                },
-            },
-        ]);
+    const handleLogout = () => {
+        setLogoutVisible(true);
+    };
+
+    const confirmLogout = async () => {
+        try {
+            await AsyncStorage.multiRemove(["userData", "authToken"]);
+            setLogoutVisible(false);
+            router.replace("/(auth)/LoginScreen");
+        } catch (error) {
+            console.error("Error cerrando sesión:", error);
+            router.replace("/(auth)/LoginScreen");
+        }
     };
 
     // Función para formatear fecha
@@ -146,24 +143,21 @@ export default function Perfil() {
         return partes[partes.length - 1] || "curriculum.pdf";
     };
 
-    // ✅ SOLUCIÓN SIMPLE - Abrir en navegador
-const handleDownloadCv = async () => {
-    if (!usuario?.urlCv) {
-        Alert.alert("CV no disponible", "No hay currículum cargado para este usuario.");
-        return;
-    }
+    const handleDownloadCv = async () => {
+        if (!usuario?.urlCv) {
+            setCvErrorMessage("No hay currículum cargado para este usuario.");
+            setCvErrorVisible(true);
+            return;
+        }
 
-    try {
-        const { Linking } = require('react-native');
-        
-        // Abrir directamente en el navegador
-        await Linking.openURL(usuario.urlCv);
-        
-    } catch (err: any) {
-        console.error("Error abriendo CV:", err);
-        Alert.alert("Error", "No se pudo abrir el CV. Verifica la conexión al servidor.");
-    }
-};
+        try {
+            await Linking.openURL(usuario.urlCv);
+        } catch (err: any) {
+            console.error("Error abriendo CV:", err);
+            setCvErrorMessage("No se pudo abrir el CV. Verifica la conexión al servidor.");
+            setCvErrorVisible(true);
+        }
+    };
 
     if (cargando) {
         return (
@@ -297,32 +291,135 @@ const handleDownloadCv = async () => {
 
             {/* Bottom nav */}
             <View style={styles.bottomNav}>
-                <Ionicons name="home-outline" size={28} color="#fff" onPress={() => router.push("/(tabs)")} />
-                <Ionicons
-                    name="star-outline"
-                    size={28}
-                    color="#fff"
-                    onPress={() => router.push("/(tabs)/guardados")}
-                />
-                <Ionicons
-                    name="file-tray-outline"
-                    size={28}
-                    color="#fff"
-                    onPress={() => router.push("/(tabs)/aplicaciones")}
-                />
-                <Ionicons
-                    name="notifications-outline"
-                    size={28}
-                    color="#fff"
-                    onPress={() => router.push("/(tabs)/notificaciones")}
-                />
-                <Ionicons
-                    name="person"
-                    size={28}
-                    color="#fff"
-                    onPress={() => router.push("/(tabs)/cuenta")}
-                />
-            </View>
+                            <Ionicons
+                                name="home-outline"
+                                size={28}
+                                color="#fff"
+                                onPress={() => router.push({
+                                    pathname: "/",
+                                    params: {
+                                        carnetUsuario: params.carnetUsuario,
+                                        nombreUsuario: params.nombreUsuario,
+                                        generoUsuario: params.generoUsuario
+                                    }
+                                })}
+                            />
+                            <Ionicons
+                                name="cloud-outline"
+                                size={28}
+                                color="#fff"
+                                onPress={() => router.push({
+                                    pathname: "/(tabs)/guardados",
+                                    params: {
+                                        carnetUsuario: params.carnetUsuario,
+                                        nombreUsuario: params.nombreUsuario,
+                                        generoUsuario: params.generoUsuario
+                                    }
+                                })}
+                            />
+                            <Ionicons
+                                name="file-tray-outline"
+                                size={28}
+                                color="#fff"
+                                onPress={() => router.push({
+                                    pathname: "/(tabs)/aplicaciones",
+                                    params: {
+                                        carnetUsuario: params.carnetUsuario,
+                                        nombreUsuario: params.nombreUsuario,
+                                        generoUsuario: params.generoUsuario
+                                    }
+                                })}
+                            />
+                            <Ionicons
+                                name="notifications-outline"
+                                size={28}
+                                color="#fff"
+                                onPress={() => router.push({
+                                    pathname: "/(tabs)/notificaciones",
+                                    params: {
+                                        carnetUsuario: params.carnetUsuario,
+                                        nombreUsuario: params.nombreUsuario,
+                                        generoUsuario: params.generoUsuario
+                                    }
+                                })}
+                            />
+                            <Ionicons
+                                name="person"
+                                size={28}
+                                color="#fff"
+                                onPress={() => router.push({
+                                    pathname: "/(tabs)/cuenta",
+                                    params: {
+                                        carnetUsuario: params.carnetUsuario,
+                                        nombreUsuario: params.nombreUsuario,
+                                        generoUsuario: params.generoUsuario
+                                    }
+                                })}
+                            />
+                        </View>
+
+            {/* Portal para los diálogos profesionales */}
+            <Portal>
+                {/* Diálogo de Cerrar Sesión */}
+                <Dialog 
+                    visible={logoutVisible} 
+                    onDismiss={() => setLogoutVisible(false)}
+                    style={styles.dialog}
+                >
+                    <Dialog.Title style={styles.dialogTitle}>
+                        Cerrar Sesión
+                    </Dialog.Title>
+                    <Dialog.Content>
+                        <Paragraph style={styles.dialogText}>
+                            ¿Estás seguro de que quieres cerrar sesión?
+                        </Paragraph>
+                    </Dialog.Content>
+                    <Dialog.Actions style={styles.dialogActions}>
+                        <Button 
+                            onPress={() => setLogoutVisible(false)}
+                            textColor="#666"
+                            style={styles.dialogButton}
+                            labelStyle={styles.dialogButtonLabel}
+                        >
+                            Cancelar
+                        </Button>
+                        <Button 
+                            onPress={confirmLogout}
+                            textColor="#E53935"
+                            style={styles.dialogButton}
+                            labelStyle={styles.dialogButtonLabel}
+                        >
+                            Cerrar Sesión
+                        </Button>
+                    </Dialog.Actions>
+                </Dialog>
+
+                {/* Diálogo de Error CV */}
+                <Dialog 
+                    visible={cvErrorVisible} 
+                    onDismiss={() => setCvErrorVisible(false)}
+                    style={styles.dialog}
+                >
+                    <Dialog.Title style={styles.dialogTitle}>
+                        CV no disponible
+                    </Dialog.Title>
+                    <Dialog.Content>
+                        <Paragraph style={styles.dialogText}>
+                            {cvErrorMessage}
+                        </Paragraph>
+                    </Dialog.Content>
+                    <Dialog.Actions style={styles.dialogActions}>
+                        <Button 
+                            onPress={() => setCvErrorVisible(false)}
+                            textColor="#2666DE"
+                            style={styles.dialogButton}
+                            labelStyle={styles.dialogButtonLabel}
+                        >
+                            Aceptar
+                        </Button>
+                    </Dialog.Actions>
+                </Dialog>
+            </Portal>
         </View>
     );
 }
@@ -398,5 +495,43 @@ const styles = StyleSheet.create({
         borderTopRightRadius: 30,
         paddingBottom: 30,
         paddingTop: 20,
+    },
+    dialog: {
+        borderRadius: 16,
+        backgroundColor: '#fff',
+        paddingHorizontal: 10,
+    },
+    dialogTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: '#000',
+        fontFamily: 'MyriadPro-Bold',
+        textAlign: 'center',
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginBottom: 5,
+    },
+    dialogText: {
+        textAlign: 'center',
+        fontSize: 14,
+        color: '#666',
+        fontFamily: 'MyriadPro-Regular',
+        lineHeight: 15,
+        marginTop: 10,
+    },
+    dialogActions: {
+        justifyContent: 'space-around',
+        paddingHorizontal: 10,
+    },
+    dialogButton: {
+        minWidth: 100,
+        borderRadius: 8,
+        paddingHorizontal: 15,
+    },
+    dialogButtonLabel: {
+        fontSize: 14,
+        fontFamily: 'MyriadPro-Bold',
+        fontWeight: 'bold',
     },
 });

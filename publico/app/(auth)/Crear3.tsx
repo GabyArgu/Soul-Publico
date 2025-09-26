@@ -58,34 +58,36 @@ export default function Crear3() {
             showToast("❌ Error al seleccionar archivo");
         }
     };
-// Subir CV al servidor - VERSIÓN MEJORADA PARA DEBUG
-const uploadCv = async () => {
-    if (!cv) throw new Error("No se seleccionó CV");
 
-    console.log("📤 Intentando subir archivo:", cv.name, "URI:", cv.uri);
+    // Subir CV al servidor - VERSIÓN MEJORADA PARA DEBUG
+    const uploadCv = async () => {
+        if (!cv) throw new Error("No se seleccionó CV");
 
-    const formData = new FormData();
-    formData.append("cv", {
-        uri: cv.uri,
-        name: cv.name || "documento.pdf",
-        type: "application/pdf",
-    } as any);
+        console.log("📤 Intentando subir archivo:", cv.name, "URI:", cv.uri);
 
-    try {
-        const res = await axios.post(`${API_URL}/cv`, formData, {
-            headers: { 
-                "Content-Type": "multipart/form-data",
-            },
-            timeout: 30000, // 30 segundos timeout
-        });
+        const formData = new FormData();
+        formData.append("cv", {
+            uri: cv.uri,
+            name: cv.name || "documento.pdf",
+            type: "application/pdf",
+        } as any);
 
-        console.log("✅ Respuesta del servidor:", res.data);
-        return res.data.url;
-    } catch (error: any) {
-        console.error("❌ Error en uploadCv:", error.response?.data || error.message);
-        throw error;
-    }
-};
+        try {
+            const res = await axios.post(`${API_URL}/cv`, formData, {
+                headers: { 
+                    "Content-Type": "multipart/form-data",
+                },
+                timeout: 30000, // 30 segundos timeout
+            });
+
+            console.log("✅ Respuesta del servidor:", res.data);
+            return res.data.url;
+        } catch (error: any) {
+            console.error("❌ Error en uploadCv:", error.response?.data || error.message);
+            throw error;
+        }
+    };
+
     const handleSubmit = async () => {
         if (!cv) return showToast("❌ Debes subir tu CV");
         if (password !== confirmPassword) return showToast("⚠️ Las contraseñas no coinciden");
@@ -128,39 +130,74 @@ const uploadCv = async () => {
 
                         {/* Transportarse */}
                         <View style={[styles.inputContainer, { justifyContent: "space-between" }]}>
-                            <Text style={styles.input}>Puedes transportarte</Text>
-                            <Switch value={transportarse} onValueChange={setTransportarse} trackColor={{ false: "#ccc", true: "#2666DE" }} thumbColor="#fff" />
+                            <Text style={styles.switchText}>Puedes transportarte</Text>
+                            <Switch 
+                                value={transportarse} 
+                                onValueChange={setTransportarse} 
+                                trackColor={{ false: "#ccc", true: "#2666DE" }} 
+                                thumbColor="#fff" 
+                            />
                         </View>
 
-                        {/* Horario */}
+                        {/* ✅ HORARIO - MISMO DISEÑO CONSISTENTE */}
                         <View style={styles.inputContainer}>
-                            <Picker selectedValue={horario} onValueChange={setHorario} style={styles.picker} dropdownIconColor="#213A8E">
+                            <Picker 
+                                selectedValue={horario} 
+                                onValueChange={setHorario} 
+                                style={styles.picker} 
+                                dropdownIconColor="#213A8E"
+                                mode="dropdown"
+                            >
                                 <Picker.Item label="Disponibilidad horaria" value="" />
                                 {opcionesDisponibilidad.map(opcion => (
-                                    <Picker.Item key={opcion.idDisponibilidad} label={opcion.nombre} value={opcion.idDisponibilidad} />
+                                    <Picker.Item 
+                                        key={opcion.idDisponibilidad} 
+                                        label={opcion.nombre} 
+                                        value={opcion.idDisponibilidad} 
+                                    />
                                 ))}
                             </Picker>
                         </View>
 
                         {/* Subir CV */}
                         <TouchableOpacity style={styles.inputContainer} onPress={pickDocument}>
-                            <Text style={[styles.input, { color: cv ? "#000" : "#666" }]}>{cv ? "Archivo seleccionado" : "Sube tu CV"}</Text>
+                            <Text style={[styles.input, { color: cv ? "#000" : "#666" }]}>
+                                {cv ? cv.name : "Sube tu CV"}
+                            </Text>
                             <Ionicons name="cloud-upload-outline" size={22} color="#213A8E" />
                         </TouchableOpacity>
 
                         {/* Contraseña */}
                         <Text style={[styles.title, { marginTop: 10 }]}>Seguridad</Text>
                         <View style={styles.inputContainer}>
-                            <TextInput placeholder="Escribe tu contraseña" placeholderTextColor="#666" style={styles.input} value={password} onChangeText={setPassword} secureTextEntry />
+                            <TextInput 
+                                placeholder="Escribe tu contraseña" 
+                                placeholderTextColor="#666" 
+                                style={styles.input} 
+                                value={password} 
+                                onChangeText={setPassword} 
+                                secureTextEntry 
+                            />
                         </View>
                         <View style={styles.inputContainer}>
-                            <TextInput placeholder="Confirma tu contraseña" placeholderTextColor="#666" style={styles.input} value={confirmPassword} onChangeText={setConfirmPassword} secureTextEntry />
+                            <TextInput 
+                                placeholder="Confirma tu contraseña" 
+                                placeholderTextColor="#666" 
+                                style={styles.input} 
+                                value={confirmPassword} 
+                                onChangeText={setConfirmPassword} 
+                                secureTextEntry 
+                            />
                         </View>
 
                         {/* Botones */}
                         <View style={styles.buttonsRow}>
-                            <TouchableOpacity style={styles.buttonYellow} onPress={() => router.back()}><Ionicons name="arrow-back" size={28} color="#fff" /></TouchableOpacity>
-                            <TouchableOpacity style={styles.buttonBlue} onPress={handleSubmit}><Ionicons name="arrow-forward" size={28} color="#fff" /></TouchableOpacity>
+                            <TouchableOpacity style={styles.buttonYellow} onPress={() => router.back()}>
+                                <Ionicons name="arrow-back" size={28} color="#fff" />
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.buttonBlue} onPress={handleSubmit}>
+                                <Ionicons name="arrow-forward" size={28} color="#fff" />
+                            </TouchableOpacity>
                         </View>
                     </View>
                 </KeyboardAwareScrollView>
@@ -178,8 +215,59 @@ const styles = StyleSheet.create({
     title: { fontSize: 23, fontWeight: "bold", color: "#213A8E", marginBottom: 18, fontFamily: "Inter-Bold" },
     inputContainer: { flexDirection: "row", alignItems: "center", backgroundColor: "#EFF1F8", borderRadius: 12, paddingHorizontal: 10, marginBottom: 15, borderLeftWidth: 15, borderLeftColor: "#2666DE", height: 52 },
     input: { flex: 1, fontSize: 15, fontFamily: "Inter-Medium", color: "#000" },
-    picker: { flex: 1, fontSize: 15, fontFamily: "Inter-Medium", color: "#000", height: 52 },
-    buttonsRow: { flexDirection: "row", justifyContent: "space-between", marginTop: 15 },
-    buttonYellow: { backgroundColor: "#F9DC50", width: 60, height: 60, borderRadius: 30, justifyContent: "center", alignItems: "center", shadowColor: "#000", shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 5 },
-    buttonBlue: { backgroundColor: "#2666DE", width: 60, height: 60, borderRadius: 30, justifyContent: "center", alignItems: "center", shadowColor: "#000", shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 5 },
+    
+    switchText: {
+        fontSize: 15,
+        fontFamily: "Inter-Medium",
+        color: "#000",
+        flex: 1,
+    },
+    
+    // ✅ PICKER CON EL MISMO ESTILO CONSISTENTE
+    picker: { 
+        flex: 1, 
+        fontSize: 15, 
+        fontFamily: "Inter-Medium", 
+        color: "#000", 
+        height: 52,
+        minHeight: 52,
+        includeFontPadding: false,
+        textAlignVertical: 'center',
+        marginVertical: 0,
+        paddingVertical: 0,
+    },
+    
+    buttonsRow: { 
+        flexDirection: "row", 
+        justifyContent: "space-between", 
+        marginTop: 15 
+    },
+    
+    buttonYellow: { 
+        backgroundColor: "#2666DE", 
+        width: 60, 
+        height: 60, 
+        borderRadius: 30, 
+        justifyContent: "center", 
+        alignItems: "center", 
+        shadowColor: "#000", 
+        shadowOffset: { width: 0, height: 3 }, 
+        shadowOpacity: 0.2, 
+        shadowRadius: 4, 
+        elevation: 5 
+    },
+    
+    buttonBlue: { 
+        backgroundColor: "#F9DC50", 
+        width: 60, 
+        height: 60, 
+        borderRadius: 30, 
+        justifyContent: "center", 
+        alignItems: "center", 
+        shadowColor: "#000", 
+        shadowOffset: { width: 0, height: 3 }, 
+        shadowOpacity: 0.2, 
+        shadowRadius: 4, 
+        elevation: 5 
+    },
 });

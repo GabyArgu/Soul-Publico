@@ -114,20 +114,33 @@ export default function Crear() {
                         <Text style={styles.title}>Datos Personales</Text>
 
                         <View style={styles.inputContainer}>
-                            <TextInput style={styles.input} placeholder="Nombre completo" placeholderTextColor="#666" value={nombre} onChangeText={validarNombre} />
+                            <TextInput 
+                                style={styles.input} 
+                                placeholder="Nombre completo" 
+                                placeholderTextColor="#666" 
+                                value={nombre} 
+                                onChangeText={validarNombre} 
+                            />
                         </View>
 
                         <View style={styles.inputContainer}>
-                            <TextInput style={styles.input} placeholder="Carnet" placeholderTextColor="#666" value={carnet} onChangeText={validarCarnet} />
+                            <TextInput 
+                                style={styles.input} 
+                                placeholder="Carnet" 
+                                placeholderTextColor="#666" 
+                                value={carnet} 
+                                onChangeText={validarCarnet} 
+                            />
                         </View>
 
-                        {/* ✅ NUEVO PICKER DE GÉNERO */}
+                        {/* ✅ PICKER DE GÉNERO - MISMO DISEÑO */}
                         <View style={styles.inputContainer}>
                             <Picker 
                                 selectedValue={genero} 
                                 onValueChange={(itemValue) => setGenero(itemValue)} 
                                 style={styles.picker} 
                                 dropdownIconColor="#213A8E"
+                                mode="dropdown"
                             >
                                 <Picker.Item label="Género" value="" />
                                 <Picker.Item label="Masculino" value="M" />
@@ -152,25 +165,57 @@ export default function Crear() {
                         )}
 
                         <View style={styles.inputContainer}>
-                            <TextInput style={styles.input} placeholder="Correo electrónico" placeholderTextColor="#666" value={email} onChangeText={setEmail} keyboardType="email-address" />
+                            <TextInput 
+                                style={styles.input} 
+                                placeholder="Correo electrónico" 
+                                placeholderTextColor="#666" 
+                                value={email} 
+                                onChangeText={setEmail} 
+                                keyboardType="email-address" 
+                            />
                         </View>
 
+                        {/* ✅ PICKER DEPARTAMENTO - MISMO DISEÑO */}
                         <View style={styles.inputContainer}>
-                            <Picker selectedValue={departamento} onValueChange={(itemValue) => setDepartamento(itemValue)} style={styles.picker} dropdownIconColor="#213A8E">
+                            <Picker 
+                                selectedValue={departamento} 
+                                onValueChange={(itemValue) => setDepartamento(itemValue)} 
+                                style={styles.picker} 
+                                dropdownIconColor="#213A8E"
+                                mode="dropdown"
+                            >
                                 <Picker.Item label="Departamento" value="" />
-                                {departamentos.map(dep => (<Picker.Item key={dep.idDepartamento} label={dep.nombre} value={dep.idDepartamento} />))}
+                                {departamentos.map(dep => (
+                                    <Picker.Item key={dep.idDepartamento} label={dep.nombre} value={dep.idDepartamento} />
+                                ))}
                             </Picker>
                         </View>
 
+                        {/* ✅ PICKER MUNICIPIO - MISMO DISEÑO */}
                         <View style={styles.inputContainer}>
-                            <Picker selectedValue={municipio} onValueChange={(itemValue) => setMunicipio(itemValue)} style={styles.picker} dropdownIconColor="#213A8E">
+                            <Picker 
+                                selectedValue={municipio} 
+                                onValueChange={(itemValue) => setMunicipio(itemValue)} 
+                                style={styles.picker} 
+                                dropdownIconColor="#213A8E"
+                                mode="dropdown"
+                            >
                                 <Picker.Item label="Municipio" value="" />
-                                {municipios.map(mun => (<Picker.Item key={mun.idMunicipio} label={mun.nombre} value={mun.idMunicipio} />))}
+                                {municipios.map(mun => (
+                                    <Picker.Item key={mun.idMunicipio} label={mun.nombre} value={mun.idMunicipio} />
+                                ))}
                             </Picker>
                         </View>
 
                         <View style={styles.inputContainer}>
-                            <TextInput style={styles.input} placeholder="Teléfono" placeholderTextColor="#666" value={telefono} onChangeText={validarTelefono} keyboardType="numeric" />
+                            <TextInput 
+                                style={styles.input} 
+                                placeholder="Teléfono" 
+                                placeholderTextColor="#666" 
+                                value={telefono} 
+                                onChangeText={validarTelefono} 
+                                keyboardType="numeric" 
+                            />
                         </View>
 
                         <View style={styles.buttonsRow}>
@@ -194,13 +239,64 @@ const styles = StyleSheet.create({
     mainContainer: { flex: 1, marginTop: 220 },
     scrollContent: { flex: 1 },
     scrollContainer: { alignItems: "center", paddingBottom: 40 },
-    formContainer: { width: "85%", borderRadius: 15, padding: 8, backgroundColor: "transparent" },
+    formContainer: { 
+        width: "85%", 
+        borderRadius: 15, 
+        padding: 8, 
+        backgroundColor: "transparent" 
+    },
     title: { fontSize: 23, fontWeight: "bold", color: "#213A8E", marginBottom: 18, fontFamily: "Inter-Bold" },
-    inputContainer: { flexDirection: "row", alignItems: "center", backgroundColor: "#EFF1F8", borderRadius: 12, paddingHorizontal: 10, marginBottom: 15, borderLeftWidth: 15, borderLeftColor: "#F9DC50", height: 52 },
+    inputContainer: { flexDirection: "row", alignItems: "center", backgroundColor: "#EFF1F8", borderRadius: 12, paddingHorizontal: 10, marginBottom: 15, borderLeftWidth: 15, borderLeftColor: "#2666DE", height: 52 },
     input: { flex: 1, fontSize: 15, fontFamily: "Inter-Medium", color: "#000" },
-    picker: { flex: 1, fontSize: 15, fontFamily: "Inter-Medium", color: "#000", height: 52 },
-    iconCalendar: { marginRight: 10 },
-    buttonsRow: { flexDirection: "row", justifyContent: "space-between", marginTop: 15 },
-    buttonYellow: { backgroundColor: "#F9DC50", width: 60, height: 60, borderRadius: 30, justifyContent: "center", alignItems: "center", shadowColor: "#000", shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 5 },
-    buttonBlue: { backgroundColor: "#2666DE", width: 60, height: 60, borderRadius: 30, justifyContent: "center", alignItems: "center", shadowColor: "#000", shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 5 },
+    
+    picker: { 
+        flex: 1, 
+        fontSize: 15, 
+        fontFamily: "Inter-Medium", 
+        color: "#000", 
+        height: 52,
+        minHeight: 52,
+        includeFontPadding: false,
+        textAlignVertical: 'center',
+        marginVertical: 0,
+        paddingVertical: 0,
+    },
+    
+    iconCalendar: { 
+        marginRight: 10 
+    },
+    
+    buttonsRow: { 
+        flexDirection: "row", 
+        justifyContent: "space-between", 
+        marginTop: 15 
+    },
+    
+    buttonYellow: { 
+        backgroundColor: "#2666DE", 
+        width: 60, 
+        height: 60, 
+        borderRadius: 30, 
+        justifyContent: "center", 
+        alignItems: "center", 
+        shadowColor: "#000", 
+        shadowOffset: { width: 0, height: 3 }, 
+        shadowOpacity: 0.2, 
+        shadowRadius: 4, 
+        elevation: 5 
+    },
+    
+    buttonBlue: { 
+        backgroundColor: "#F9DC50", 
+        width: 60, 
+        height: 60, 
+        borderRadius: 30, 
+        justifyContent: "center", 
+        alignItems: "center", 
+        shadowColor: "#000", 
+        shadowOffset: { width: 0, height: 3 }, 
+        shadowOpacity: 0.2, 
+        shadowRadius: 4, 
+        elevation: 5 
+    },
 });

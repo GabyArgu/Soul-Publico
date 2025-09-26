@@ -3,15 +3,25 @@ import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, FlatList, S
 import { useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams } from "expo-router";
+import { useState, useEffect } from "react";
 
+interface Proyecto {
+  idProyecto: number;
+  titulo: string;
+  descripcion: string;
+  capacidad: number;
+  horas: number;
+  tipoProyecto: string;
+}
 
 export default function Index() {
     const params = useLocalSearchParams();
+    const [proyectos, setProyectos] = useState<Proyecto[]>([]);
+    const [loading, setLoading] = useState(true);
 
     const rawNombreParam = params.nombreUsuario;
     const rawNombre = Array.isArray(rawNombreParam) ? rawNombreParam[0] : rawNombreParam || "Gabriela";
     
-    // ✅ OBTENER GÉNERO DE LOS PARÁMETROS
     const generoParam = params.generoUsuario;
     const genero = Array.isArray(generoParam) ? generoParam[0] : generoParam || "O";
 
@@ -44,20 +54,36 @@ export default function Index() {
     const saludo = obtenerSaludo(genero); 
     const avatar = obtenerAvatar(genero); 
 
-
     const router = useRouter();
 
-    const institucionales = [
-        { id: "1", titulo: "Agenda Cultural (Audiovisual)", descripcion: "Elaboración de una agenda en formato audiovisual para difundir actividades artísticas y comunitarias.", capacidad: 2, horas: 50 },
-        { id: "2", titulo: "Programa de English+", descripcion: "Iniciativa educativa para el aprendizaje del inglés mediante talleres y clases de refuerzo.", capacidad: 5, horas: 45 },
-    ];
+    // Cargar proyectos desde la API
+    useEffect(() => {
+        const cargarProyectos = async () => {
+            try {
+                const response = await fetch('http://192.168.1.11:4000/api/proyectos');
+                const data = await response.json();
+                setProyectos(data);
+            } catch (error) {
+                console.error('Error al cargar proyectos:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
 
-    const externas = [
-        { id: "3", titulo: "Soporte a Registro de Profesionales", descripcion: "Proyecto orientado a la asistencia en la gestión y actualización del registro de profesionales.", capacidad: 3, horas: 100 },
-        { id: "4", titulo: "Jornadas de voluntariado", descripcion: "Actividades de apoyo comunitario y promoción social en el marco de la Feria SSE 2024.", capacidad: 10, horas: 40 },
-    ];
+        cargarProyectos();
+    }, []);
+
+    // Filtrar proyectos por tipo
+    const proyectosInstitucionales = proyectos.filter(proyecto => 
+        proyecto.tipoProyecto === 'Institucional'
+    );
+    
+    const proyectosExternos = proyectos.filter(proyecto => 
+        proyecto.tipoProyecto === 'Externo'
+    );
 
     const truncateText = (text: string, maxLength: number) => {
+        if (!text) return '';
         return text.length > maxLength ? text.substring(0, maxLength) + "..." : text;
     };
 
@@ -78,12 +104,28 @@ export default function Index() {
                     <Text style={styles.cardInfo}><Text style={styles.bold}>Capacidad: </Text><Text style={styles.regular}>{item.capacidad}</Text></Text>
                     <Text style={styles.cardInfo}><Text style={styles.bold}>Horas: </Text><Text style={styles.regular}>{item.horas}</Text></Text>
                 </View>
-                <TouchableOpacity style={[styles.cardButton, { backgroundColor: palette.button }]} onPress={() => router.push("/(tabs)/detalles")}>
+                <TouchableOpacity 
+                    style={[styles.cardButton, { backgroundColor: palette.button }]} 
+                    onPress={() => router.push({
+                        pathname: "/(tabs)/detalles",
+                        params: { 
+                            idProyecto: item.idProyecto.toString()
+                        }
+                    })}
+                >
                     <Text style={[styles.cardButtonText, { color: palette.text }]}>Detalles</Text>
                 </TouchableOpacity>
             </View>
         );
     };
+
+    if (loading) {
+        return (
+            <View style={styles.container}>
+                <Text>Cargando proyectos...</Text>
+            </View>
+        );
+    }
 
     return (
         <View style={styles.container}>
@@ -104,30 +146,42 @@ export default function Index() {
                         <TextInput style={styles.searchInput} placeholder="Buscar" placeholderTextColor="#666" />
                         <Ionicons name="search" size={20} color="#EAC306" style={styles.searchIconInside} />
                     </View>
-                    <TouchableOpacity style={styles.iconButton}><Ionicons name="add" size={22} color="#fff" onPress={() => router.push("/(tabs)/proyecto")} /></TouchableOpacity>
-                    <TouchableOpacity style={styles.iconButton}><Ionicons name="filter" size={22} color="#fff" /></TouchableOpacity>
+                    <TouchableOpacity style={styles.iconButton}>
+                        <Ionicons name="add" size={22} color="#fff" onPress={() => router.push("/(tabs)/proyecto")} />
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.iconButton}>
+                        <Ionicons name="filter" size={22} color="#fff" />
+                    </TouchableOpacity>
                 </View>
 
                 <ScrollView>
                     {/* Institucionales */}
                     <Text style={styles.sectionTitle}>Institucionales</Text>
-                    <FlatList
-                        data={institucionales}
-                        renderItem={({ item, index }) => renderCard({ item, index, type: "institucional" })}
-                        keyExtractor={(item) => item.id}
-                        horizontal
-                        showsHorizontalScrollIndicator={false}
-                    />
+                    {proyectosInstitucionales.length > 0 ? (
+                        <FlatList
+                            data={proyectosInstitucionales}
+                            renderItem={({ item, index }) => renderCard({ item, index, type: "institucional" })}
+                            keyExtractor={(item) => item.idProyecto.toString()}
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                        />
+                    ) : (
+                        <Text style={styles.emptyText}>No hay proyectos institucionales disponibles</Text>
+                    )}
 
                     {/* Externas */}
                     <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Externas</Text>
-                    <FlatList
-                        data={externas}
-                        renderItem={({ item, index }) => renderCard({ item, index, type: "externa" })}
-                        keyExtractor={(item) => item.id}
-                        horizontal
-                        showsHorizontalScrollIndicator={false}
-                    />
+                    {proyectosExternos.length > 0 ? (
+                        <FlatList
+                            data={proyectosExternos}
+                            renderItem={({ item, index }) => renderCard({ item, index, type: "externa" })}
+                            keyExtractor={(item) => item.idProyecto.toString()}
+                            horizontal
+                            showsHorizontalScrollIndicator={false}
+                        />
+                    ) : (
+                        <Text style={styles.emptyText}>No hay proyectos externos disponibles</Text>
+                    )}
                 </ScrollView>
             </View>
 
@@ -137,25 +191,53 @@ export default function Index() {
                     name="home"
                     size={28}
                     color="#fff"
-                    onPress={() => router.push("/")}
+                    onPress={() => router.push({
+                        pathname: "/",
+                        params: {
+                            carnetUsuario: params.carnetUsuario,
+                            nombreUsuario: params.nombreUsuario,
+                            generoUsuario: params.generoUsuario
+                        }
+                    })}
                 />
                 <Ionicons
                     name="cloud-outline"
                     size={28}
                     color="#fff"
-                    onPress={() => router.push("/(tabs)/guardados")}
+                    onPress={() => router.push({
+                        pathname: "/(tabs)/guardados",
+                        params: {
+                            carnetUsuario: params.carnetUsuario,
+                            nombreUsuario: params.nombreUsuario,
+                            generoUsuario: params.generoUsuario
+                        }
+                    })}
                 />
                 <Ionicons
                     name="file-tray-outline"
                     size={28}
                     color="#fff"
-                    onPress={() => router.push("/(tabs)/aplicaciones")}
+                    onPress={() => router.push({
+                        pathname: "/(tabs)/aplicaciones",
+                        params: {
+                            carnetUsuario: params.carnetUsuario,
+                            nombreUsuario: params.nombreUsuario,
+                            generoUsuario: params.generoUsuario
+                        }
+                    })}
                 />
                 <Ionicons
                     name="notifications-outline"
                     size={28}
                     color="#fff"
-                    onPress={() => router.push("/(tabs)/notificaciones")}
+                    onPress={() => router.push({
+                        pathname: "/(tabs)/notificaciones",
+                        params: {
+                            carnetUsuario: params.carnetUsuario,
+                            nombreUsuario: params.nombreUsuario,
+                            generoUsuario: params.generoUsuario
+                        }
+                    })}
                 />
                 <Ionicons
                     name="person-outline"
@@ -164,24 +246,29 @@ export default function Index() {
                     onPress={() => router.push({
                         pathname: "/(tabs)/cuenta",
                         params: {
-                            carnet: params.carnetUsuario
+                            carnetUsuario: params.carnetUsuario,
+                            nombreUsuario: params.nombreUsuario,
+                            generoUsuario: params.generoUsuario
                         }
                     })}
                 />
             </View>
-
         </View>
     );
 }
-
-
 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: "#fff",
     },
-
+    emptyText: {
+        textAlign: 'center',
+        color: '#666',
+        fontStyle: 'italic',
+        marginHorizontal: 20,
+        marginVertical: 10,
+    },
     // Header
     header: {
         flexDirection: "row",
