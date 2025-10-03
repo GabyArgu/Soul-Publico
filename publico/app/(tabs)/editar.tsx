@@ -101,7 +101,7 @@ export default function EditarPerfil() {
     const [sugerenciasBlandas, setSugerenciasBlandas] = useState<Habilidad[]>([]);
 
     // Estados para idiomas (COMO EN PROYECTOS)
-    const [idiomasSeleccionados, setIdiomasSeleccionados] = useState<{idIdioma: number, idINivel: number}[]>([]);
+    const [idiomasSeleccionados, setIdiomasSeleccionados] = useState<{ idIdioma: number, idINivel: number }[]>([]);
     const [modalIdiomasVisible, setModalIdiomasVisible] = useState(false);
 
     // Posición de sugerencias
@@ -113,7 +113,7 @@ export default function EditarPerfil() {
         const cargarDatosIniciales = async () => {
             try {
                 setCargando(true);
-                                
+
                 // Cargar todos los datos necesarios con endpoints CORRECTOS
                 const [
                     carrerasRes,
@@ -163,16 +163,16 @@ export default function EditarPerfil() {
 
     // Precargar datos cuando se carguen los catálogos
     useEffect(() => {
-    if (params.usuario && carreras.length > 0 && departamentos.length > 0 && disponibilidades.length > 0) {
-        precargarDatosUsuario();
-    }
-}, [carreras, departamentos, disponibilidades, params.usuario]);
+        if (params.usuario && carreras.length > 0 && departamentos.length > 0 && disponibilidades.length > 0) {
+            precargarDatosUsuario();
+        }
+    }, [carreras, departamentos, disponibilidades, params.usuario]);
 
     const cargarMunicipios = async (idDepartamento: number) => {
         try {
             const response = await axios.get(`${API_URL}/municipios/${idDepartamento}`);
             setMunicipios(response.data);
-            
+
             // Después de cargar municipios, buscar el municipio del usuario
             if (params.usuario) {
                 const usuarioData = JSON.parse(params.usuario as string);
@@ -212,7 +212,7 @@ export default function EditarPerfil() {
 
         try {
             const res = await axios.post(`${API_URL}/cv`, formData, {
-                headers: { 
+                headers: {
                     "Content-Type": "multipart/form-data",
                 },
                 timeout: 30000, // 30 segundos timeout
@@ -233,7 +233,7 @@ export default function EditarPerfil() {
             if (response.data) {
                 const tecnicas = response.data.filter((h: Habilidad) => h.tipo === "Técnica");
                 const blandas = response.data.filter((h: Habilidad) => h.tipo === "Blanda");
-                
+
                 setHabilidadesTecnicas(tecnicas);
                 setHabilidadesBlandas(blandas);
             }
@@ -246,7 +246,7 @@ export default function EditarPerfil() {
     const cargarIdiomasUsuario = async (carnetUsuario: string) => {
         try {
             const response = await axios.get(`${API_URL}/usuarios/${carnetUsuario}/idiomas`);
-            
+
             if (response.data && response.data.length > 0) {
                 const idiomasConNiveles = response.data.map((item: any) => ({
                     idIdioma: item.idIdioma,
@@ -267,17 +267,17 @@ export default function EditarPerfil() {
     // 3. Función mejorada para buscar municipio
     const buscarMunicipioUsuario = async (usuarioData: Usuario) => {
         if (!usuarioData.municipio || !departamento) return;
-        
+
         try {
             // Primero necesitamos cargar los municipios del departamento seleccionado
             const municipiosResponse = await axios.get(`${API_URL}/municipios/${departamento}`);
             const municipiosCargados = municipiosResponse.data;
-            
+
             // Buscar el municipio por nombre
-            const municipioEncontrado = municipiosCargados.find((m: Municipio) => 
+            const municipioEncontrado = municipiosCargados.find((m: Municipio) =>
                 m.nombre.trim().toLowerCase() === usuarioData.municipio.trim().toLowerCase()
             );
-            
+
             if (municipioEncontrado) {
                 setMunicipio(municipioEncontrado.idMunicipio.toString());
             } else {
@@ -288,45 +288,45 @@ export default function EditarPerfil() {
     };
 
     const precargarDatosUsuario = async () => {
-    if (!params.usuario) return;
-    
-    const usuarioData = JSON.parse(params.usuario as string);
+        if (!params.usuario) return;
 
-    // Carrera
-    if (usuarioData.carrera && carreras.length > 0) {
-        const carreraEncontrada = carreras.find(c => 
-            c.nombre.trim().toLowerCase() === usuarioData.carrera.trim().toLowerCase()
-        );
-        if (carreraEncontrada) {
-            setCarrera(carreraEncontrada.idCarrera.toString());
-        }
-    }
+        const usuarioData = JSON.parse(params.usuario as string);
 
-    // Departamento
-    if (usuarioData.departamento && departamentos.length > 0) {
-        const deptoEncontrado = departamentos.find(d => 
-            d.nombre.trim().toLowerCase() === usuarioData.departamento.trim().toLowerCase()
-        );
-        if (deptoEncontrado) {
-            setDepartamento(deptoEncontrado.idDepartamento.toString());
-            
-            // Esperar a que se carguen los municipios y luego buscar el municipio
-            setTimeout(async () => {
-                await buscarMunicipioUsuario(usuarioData);
-            }, 500);
+        // Carrera
+        if (usuarioData.carrera && carreras.length > 0) {
+            const carreraEncontrada = carreras.find(c =>
+                c.nombre.trim().toLowerCase() === usuarioData.carrera.trim().toLowerCase()
+            );
+            if (carreraEncontrada) {
+                setCarrera(carreraEncontrada.idCarrera.toString());
+            }
         }
-    }
 
-    // Disponibilidad
-    if (usuarioData.disponibilidad && disponibilidades.length > 0) {
-        const dispEncontrada = disponibilidades.find(d => 
-            d.nombre.trim().toLowerCase() === usuarioData.disponibilidad.trim().toLowerCase()
-        );
-        if (dispEncontrada) {
-            setDisponibilidad(dispEncontrada.idDisponibilidad.toString());
+        // Departamento
+        if (usuarioData.departamento && departamentos.length > 0) {
+            const deptoEncontrado = departamentos.find(d =>
+                d.nombre.trim().toLowerCase() === usuarioData.departamento.trim().toLowerCase()
+            );
+            if (deptoEncontrado) {
+                setDepartamento(deptoEncontrado.idDepartamento.toString());
+
+                // Esperar a que se carguen los municipios y luego buscar el municipio
+                setTimeout(async () => {
+                    await buscarMunicipioUsuario(usuarioData);
+                }, 500);
+            }
         }
-    }
-};
+
+        // Disponibilidad
+        if (usuarioData.disponibilidad && disponibilidades.length > 0) {
+            const dispEncontrada = disponibilidades.find(d =>
+                d.nombre.trim().toLowerCase() === usuarioData.disponibilidad.trim().toLowerCase()
+            );
+            if (dispEncontrada) {
+                setDisponibilidad(dispEncontrada.idDisponibilidad.toString());
+            }
+        }
+    };
 
     // Filtrar habilidades mientras se escribe
     useEffect(() => {
@@ -378,59 +378,59 @@ export default function EditarPerfil() {
     };
 
     const llenarFormularioBasico = async (usuarioData: Usuario) => {
-    
-    // Datos básicos
-    setNombre(usuarioData.nombreCompleto || "");
-    setCorreo(usuarioData.email || "");
-    setCarnet(usuarioData.carnet || "");
-    setTelefono(usuarioData.telefono || "");
-    setUnidades(usuarioData.uvs?.toString() || "0");
-    
-    // Cargar CV existente - SIMPLEMENTE GUARDAR LA URL COMO STRING
-    if (usuarioData.urlCv) {
-        setCv(usuarioData.urlCv);
-    }
 
-    // Convertir fecha de nacimiento
-    if (usuarioData.fechaNacimiento) {
-        try {
-            const fecha = new Date(usuarioData.fechaNacimiento);
-            if (!isNaN(fecha.getTime())) {
-                setCumple(fecha);
-            }
-        } catch (error) {
-            console.error("Error parseando fecha:", error);
+        // Datos básicos
+        setNombre(usuarioData.nombreCompleto || "");
+        setCorreo(usuarioData.email || "");
+        setCarnet(usuarioData.carnet || "");
+        setTelefono(usuarioData.telefono || "");
+        setUnidades(usuarioData.uvs?.toString() || "0");
+
+        // Cargar CV existente - SIMPLEMENTE GUARDAR LA URL COMO STRING
+        if (usuarioData.urlCv) {
+            setCv(usuarioData.urlCv);
         }
-    }
 
-    // Cargar datos adicionales
-    await cargarHabilidadesUsuario(usuarioData.carnet);
-    await cargarIdiomasUsuario(usuarioData.carnet);
+        // Convertir fecha de nacimiento
+        if (usuarioData.fechaNacimiento) {
+            try {
+                const fecha = new Date(usuarioData.fechaNacimiento);
+                if (!isNaN(fecha.getTime())) {
+                    setCumple(fecha);
+                }
+            } catch (error) {
+                console.error("Error parseando fecha:", error);
+            }
+        }
 
-};
+        // Cargar datos adicionales
+        await cargarHabilidadesUsuario(usuarioData.carnet);
+        await cargarIdiomasUsuario(usuarioData.carnet);
+
+    };
 
     // Funciones para habilidades
     const agregarHabilidad = (h: Habilidad, tipo: "Técnica" | "Blanda") => {
-        if (tipo === "Técnica") { 
-            setHabilidadesTecnicas([...habilidadesTecnicas, h]); 
-            setInputHabilidadTecnica(""); 
-        } else { 
-            setHabilidadesBlandas([...habilidadesBlandas, h]); 
-            setInputHabilidadBlanda(""); 
+        if (tipo === "Técnica") {
+            setHabilidadesTecnicas([...habilidadesTecnicas, h]);
+            setInputHabilidadTecnica("");
+        } else {
+            setHabilidadesBlandas([...habilidadesBlandas, h]);
+            setInputHabilidadBlanda("");
         }
     };
 
     const eliminarHabilidad = (id: number, tipo: "Técnica" | "Blanda") => {
-        if (tipo === "Técnica") 
+        if (tipo === "Técnica")
             setHabilidadesTecnicas(habilidadesTecnicas.filter(h => h.idHabilidad !== id));
-        else 
+        else
             setHabilidadesBlandas(habilidadesBlandas.filter(h => h.idHabilidad !== id));
     };
 
     // Funciones para idiomas y niveles (COMO EN PROYECTOS)
     const toggleIdiomaNivel = (idIdioma: number, idINivel: number) => {
         const existeIndex = idiomasSeleccionados.findIndex(item => item.idIdioma === idIdioma);
-        
+
         if (existeIndex !== -1) {
             const nuevosIdiomas = [...idiomasSeleccionados];
             nuevosIdiomas.splice(existeIndex, 1);
@@ -441,7 +441,7 @@ export default function EditarPerfil() {
     };
 
     const actualizarNivelIdioma = (idIdioma: number, idINivel: number) => {
-        const nuevosIdiomas = idiomasSeleccionados.map(item => 
+        const nuevosIdiomas = idiomasSeleccionados.map(item =>
             item.idIdioma === idIdioma ? { ...item, idINivel } : item
         );
         setIdiomasSeleccionados(nuevosIdiomas);
@@ -590,10 +590,10 @@ export default function EditarPerfil() {
                     >
                         <Picker.Item label="Selecciona tu carrera" value="" />
                         {carreras.map(c => (
-                            <Picker.Item 
-                                key={c.idCarrera} 
-                                label={c.nombre} 
-                                value={c.idCarrera.toString()} 
+                            <Picker.Item
+                                key={c.idCarrera}
+                                label={c.nombre}
+                                value={c.idCarrera.toString()}
                             />
                         ))}
                     </Picker>
@@ -679,10 +679,10 @@ export default function EditarPerfil() {
                     >
                         <Picker.Item label="Selecciona departamento" value="" />
                         {departamentos.map(d => (
-                            <Picker.Item 
-                                key={d.idDepartamento} 
-                                label={d.nombre} 
-                                value={d.idDepartamento.toString()} 
+                            <Picker.Item
+                                key={d.idDepartamento}
+                                label={d.nombre}
+                                value={d.idDepartamento.toString()}
                             />
                         ))}
                     </Picker>
@@ -697,22 +697,22 @@ export default function EditarPerfil() {
                         dropdownIconColor="#213A8E"
                         enabled={!!departamento && municipios.length > 0}
                     >
-                        <Picker.Item 
-                            label={departamento ? "Selecciona municipio" : "Primero selecciona departamento"} 
-                            value="" 
+                        <Picker.Item
+                            label={departamento ? "Selecciona municipio" : "Primero selecciona departamento"}
+                            value=""
                         />
                         {municipios.map(m => (
-                            <Picker.Item 
-                                key={m.idMunicipio} 
-                                label={m.nombre} 
-                                value={m.idMunicipio.toString()} 
+                            <Picker.Item
+                                key={m.idMunicipio}
+                                label={m.nombre}
+                                value={m.idMunicipio.toString()}
                             />
                         ))}
                     </Picker>
                 </View>
 
                 {/* Idiomas y Niveles - Selección múltiple (COMO EN PROYECTOS) */}
-                <TouchableOpacity 
+                <TouchableOpacity
                     style={styles.inputContainer}
                     onPress={() => setModalIdiomasVisible(true)}
                 >
@@ -802,10 +802,10 @@ export default function EditarPerfil() {
                     >
                         <Picker.Item label="Selecciona disponibilidad" value="" />
                         {disponibilidades.map(d => (
-                            <Picker.Item 
-                                key={d.idDisponibilidad} 
-                                label={d.nombre} 
-                                value={d.idDisponibilidad.toString()} 
+                            <Picker.Item
+                                key={d.idDisponibilidad}
+                                label={d.nombre}
+                                value={d.idDisponibilidad.toString()}
                             />
                         ))}
                     </Picker>
@@ -832,11 +832,11 @@ export default function EditarPerfil() {
 
                 {/* Botón guardar */}
                 <View style={{ alignItems: "flex-end", marginTop: 20 }}>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         style={[
-                            styles.buttonYellow, 
+                            styles.buttonYellow,
                             !formularioValido() && styles.buttonDisabled
-                        ]} 
+                        ]}
                         onPress={handleSubmit}
                         disabled={!formularioValido()}
                     >
@@ -856,7 +856,7 @@ export default function EditarPerfil() {
                     <View style={styles.modalContainer}>
                         <View style={styles.modalHeader}>
                             <Text style={styles.modalTitle}>Idiomas y niveles (opcional)</Text>
-                            <TouchableOpacity 
+                            <TouchableOpacity
                                 style={styles.closeButton}
                                 onPress={() => setModalIdiomasVisible(false)}
                             >
@@ -885,14 +885,14 @@ export default function EditarPerfil() {
                                                 }
                                             }}
                                         >
-                                            <Ionicons 
-                                                name={estaSeleccionado ? "checkbox" : "square-outline"} 
-                                                size={22} 
-                                                color={estaSeleccionado ? "#2666DE" : "#666"} 
+                                            <Ionicons
+                                                name={estaSeleccionado ? "checkbox" : "square-outline"}
+                                                size={22}
+                                                color={estaSeleccionado ? "#2666DE" : "#666"}
                                             />
                                             <Text style={styles.idiomaText}>{idiomaItem.nombre}</Text>
                                         </TouchableOpacity>
-                                        
+
                                         {estaSeleccionado && (
                                             <View style={styles.nivelesContainer}>
                                                 <Text style={styles.nivelesTitle}>Nivel requerido:</Text>
@@ -923,7 +923,7 @@ export default function EditarPerfil() {
                         </ScrollView>
 
                         <View style={styles.modalButtons}>
-                            <TouchableOpacity 
+                            <TouchableOpacity
                                 style={styles.aplicarButton}
                                 onPress={() => setModalIdiomasVisible(false)}
                             >
@@ -936,11 +936,71 @@ export default function EditarPerfil() {
 
             {/* Bottom nav */}
             <View style={styles.bottomNav}>
-                <Ionicons name="home-outline" size={28} color="#fff" onPress={() => router.push("/")} />
-                <Ionicons name="star-outline" size={28} color="#fff" onPress={() => router.push("/(tabs)/guardados")} />
-                <Ionicons name="file-tray-outline" size={28} color="#fff" onPress={() => router.push("/(tabs)/aplicaciones")} />
-                <Ionicons name="notifications-outline" size={28} color="#fff" onPress={() => router.push("/(tabs)/notificaciones")} />
-                <Ionicons name="person-outline" size={28} color="#fff" onPress={() => router.push("/(tabs)/cuenta")} />
+                <Ionicons
+                    name="home-outline"
+                    size={28}
+                    color="#fff"
+                    onPress={() => router.push({
+                        pathname: "/",
+                        params: {
+                            carnetUsuario: params.carnetUsuario,
+                            nombreUsuario: params.nombreUsuario,
+                            generoUsuario: params.generoUsuario
+                        }
+                    })}
+                />
+                <Ionicons
+                    name="star-outline"
+                    size={28}
+                    color="#fff"
+                    onPress={() => router.push({
+                        pathname: "/(tabs)/guardados",
+                        params: {
+                            carnetUsuario: params.carnetUsuario,
+                            nombreUsuario: params.nombreUsuario,
+                            generoUsuario: params.generoUsuario
+                        }
+                    })}
+                />
+                <Ionicons
+                    name="file-tray-outline"
+                    size={28}
+                    color="#fff"
+                    onPress={() => router.push({
+                        pathname: "/(tabs)/aplicaciones",
+                        params: {
+                            carnetUsuario: params.carnetUsuario,
+                            nombreUsuario: params.nombreUsuario,
+                            generoUsuario: params.generoUsuario
+                        }
+                    })}
+                />
+                <Ionicons
+                    name="notifications-outline"
+                    size={28}
+                    color="#fff"
+                    onPress={() => router.push({
+                        pathname: "/(tabs)/notificaciones",
+                        params: {
+                            carnetUsuario: params.carnetUsuario,
+                            nombreUsuario: params.nombreUsuario,
+                            generoUsuario: params.generoUsuario
+                        }
+                    })}
+                />
+                <Ionicons
+                    name="person-outline"
+                    size={28}
+                    color="#fff"
+                    onPress={() => router.push({
+                        pathname: "/(tabs)/cuenta",
+                        params: {
+                            carnetUsuario: params.carnetUsuario,
+                            nombreUsuario: params.nombreUsuario,
+                            generoUsuario: params.generoUsuario
+                        }
+                    })}
+                />
             </View>
         </View>
     );
@@ -948,15 +1008,15 @@ export default function EditarPerfil() {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: "#fff" },
-    loadingContainer: { 
-        flex: 1, 
-        justifyContent: "center", 
-        alignItems: "center" 
+    loadingContainer: {
+        flex: 1,
+        justifyContent: "center",
+        alignItems: "center"
     },
-    loadingText: { 
-        fontSize: 16, 
-        color: "#666", 
-        fontFamily: "Inter-Regular" 
+    loadingText: {
+        fontSize: 16,
+        color: "#666",
+        fontFamily: "Inter-Regular"
     },
     header: {
         flexDirection: "row",
@@ -1060,15 +1120,15 @@ const styles = StyleSheet.create({
         paddingBottom: 30,
         paddingTop: 20,
     },
-    chipsInputContainer: { 
-        backgroundColor: '#fff', 
-        borderRadius: 12, 
-        marginBottom: 15, 
-        borderLeftWidth: 15, 
-        borderLeftColor: '#2666DE', 
-        paddingVertical: 10, 
-        minHeight: 55, 
-        paddingHorizontal: 5, 
+    chipsInputContainer: {
+        backgroundColor: '#fff',
+        borderRadius: 12,
+        marginBottom: 15,
+        borderLeftWidth: 15,
+        borderLeftColor: '#2666DE',
+        paddingVertical: 10,
+        minHeight: 55,
+        paddingHorizontal: 5,
         justifyContent: 'center',
         shadowColor: "#2666DE",
         shadowOffset: { width: 0, height: 0 },
@@ -1076,46 +1136,46 @@ const styles = StyleSheet.create({
         shadowRadius: 6,
         elevation: 8,
     },
-    chipsContainer: { 
-        flexDirection: 'row', 
-        flexWrap: 'wrap', 
-        alignItems: 'center' 
+    chipsContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        alignItems: 'center'
     },
-    chip: { 
-        flexDirection: 'row', 
-        alignItems: 'center', 
-        backgroundColor: '#2666DE', 
-        paddingHorizontal: 10, 
-        paddingVertical: 5, 
-        borderRadius: 20, 
+    chip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#2666DE',
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 20,
         margin: 5,
     },
-    chipText: { 
-        color: '#fff', 
-        fontFamily: 'Inter-Medium', 
-        fontSize: 12 
+    chipText: {
+        color: '#fff',
+        fontFamily: 'Inter-Medium',
+        fontSize: 12
     },
-    chipClose: { 
-        marginLeft: 5 
+    chipClose: {
+        marginLeft: 5
     },
-    chipTextInput: { 
-        flexGrow: 1, 
-        fontSize: 15, 
-        fontFamily: 'Inter-Medium', 
-        color: '#000', 
+    chipTextInput: {
+        flexGrow: 1,
+        fontSize: 15,
+        fontFamily: 'Inter-Medium',
+        color: '#000',
         minWidth: 100,
         includeFontPadding: false,
         textAlignVertical: 'center',
         paddingVertical: 0,
         marginVertical: 0,
     },
-    suggestionsList: { 
-        position: 'absolute', 
-        backgroundColor: '#fff', 
-        borderWidth: 1, 
-        borderColor: '#ddd', 
-        borderRadius: 8, 
-        zIndex: 100, 
+    suggestionsList: {
+        position: 'absolute',
+        backgroundColor: '#fff',
+        borderWidth: 1,
+        borderColor: '#ddd',
+        borderRadius: 8,
+        zIndex: 100,
         elevation: 5,
         maxHeight: 150,
         shadowColor: "#000",
@@ -1123,14 +1183,14 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.25,
         shadowRadius: 3.84,
     },
-    suggestionItem: { 
-        padding: 10, 
-        borderBottomWidth: 1, 
-        borderBottomColor: '#eee' 
+    suggestionItem: {
+        padding: 10,
+        borderBottomWidth: 1,
+        borderBottomColor: '#eee'
     },
-    suggestionText: { 
-        fontSize: 14, 
-        fontFamily: 'Inter-Medium' 
+    suggestionText: {
+        fontSize: 14,
+        fontFamily: 'Inter-Medium'
     },
     modalOverlay: {
         flex: 1,

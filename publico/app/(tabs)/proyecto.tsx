@@ -10,10 +10,10 @@ import axios from "axios";
 import { useLocalSearchParams } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-interface Habilidad { 
-    idHabilidad: number; 
-    nombre: string; 
-    tipo: string; 
+interface Habilidad {
+    idHabilidad: number;
+    nombre: string;
+    tipo: string;
 }
 
 interface Carrera {
@@ -60,8 +60,8 @@ export default function AgregarProyecto() {
     const [idiomas, setIdiomas] = useState<Idioma[]>([]);
     const [niveles, setNiveles] = useState<Nivel[]>([]);
     const [habilidades, setHabilidades] = useState<Habilidad[]>([]);
-    const [departamentos, setDepartamentos] = useState<{idDepartamento: number, nombre: string}[]>([]);
-    const [municipios, setMunicipios] = useState<{idMunicipio: number, nombre: string, idDepartamento: number}[]>([]);
+    const [departamentos, setDepartamentos] = useState<{ idDepartamento: number, nombre: string }[]>([]);
+    const [municipios, setMunicipios] = useState<{ idMunicipio: number, nombre: string, idDepartamento: number }[]>([]);
     const [instituciones, setInstituciones] = useState<Institucion[]>([]);
     const [modalidades, setModalidades] = useState<Modalidad[]>([]);
 
@@ -76,7 +76,7 @@ export default function AgregarProyecto() {
     const [descripcion, setDescripcion] = useState("");
     const [capacidad, setCapacidad] = useState("");
     const [horas, setHoras] = useState("");
-    const [idiomasSeleccionados, setIdiomasSeleccionados] = useState<{idIdioma: number, idINivel: number}[]>([]);
+    const [idiomasSeleccionados, setIdiomasSeleccionados] = useState<{ idIdioma: number, idINivel: number }[]>([]);
     const [modalidad, setModalidad] = useState<string | number>(0); // "" como default
     const [carnetUsuario, setCarnetUsuario] = useState<string | null>(null);
 
@@ -143,11 +143,11 @@ export default function AgregarProyecto() {
         const cargarDatos = async () => {
             try {
                 const [
-                    carrerasRes, 
-                    idiomasRes, 
-                    nivelesRes, 
-                    habilidadesRes, 
-                    departamentosRes, 
+                    carrerasRes,
+                    idiomasRes,
+                    nivelesRes,
+                    habilidadesRes,
+                    departamentosRes,
                     institucionesRes,
                     modalidadesRes
                 ] = await Promise.all([
@@ -159,7 +159,7 @@ export default function AgregarProyecto() {
                     axios.get(`${API_URL}/proyectos/instituciones`),
                     axios.get(`${API_URL}/modalidades`)
                 ]);
-                
+
                 setCarreras(carrerasRes.data);
                 setIdiomas(idiomasRes.data);
                 setNiveles(nivelesRes.data);
@@ -226,26 +226,26 @@ export default function AgregarProyecto() {
 
     // Funciones para habilidades
     const agregarHabilidad = (h: Habilidad, tipo: "Técnica" | "Blanda") => {
-        if (tipo === "Técnica") { 
-            setHabilidadesTecnicas([...habilidadesTecnicas, h]); 
-            setInputHabilidadTecnica(""); 
-        } else { 
-            setHabilidadesBlandas([...habilidadesBlandas, h]); 
-            setInputHabilidadBlanda(""); 
+        if (tipo === "Técnica") {
+            setHabilidadesTecnicas([...habilidadesTecnicas, h]);
+            setInputHabilidadTecnica("");
+        } else {
+            setHabilidadesBlandas([...habilidadesBlandas, h]);
+            setInputHabilidadBlanda("");
         }
     };
 
     const eliminarHabilidad = (id: number, tipo: "Técnica" | "Blanda") => {
-        if (tipo === "Técnica") 
+        if (tipo === "Técnica")
             setHabilidadesTecnicas(habilidadesTecnicas.filter(h => h.idHabilidad !== id));
-        else 
+        else
             setHabilidadesBlandas(habilidadesBlandas.filter(h => h.idHabilidad !== id));
     };
 
     // Funciones para especialidades (selección múltiple)
     const toggleEspecialidad = (idCarrera: number) => {
-        setEspecialidades(prev => 
-            prev.includes(idCarrera) 
+        setEspecialidades(prev =>
+            prev.includes(idCarrera)
                 ? prev.filter(id => id !== idCarrera)
                 : [...prev, idCarrera]
         );
@@ -263,7 +263,7 @@ export default function AgregarProyecto() {
     // Funciones para idiomas y niveles
     const toggleIdiomaNivel = (idIdioma: number, idINivel: number) => {
         const existeIndex = idiomasSeleccionados.findIndex(item => item.idIdioma === idIdioma);
-        
+
         if (existeIndex !== -1) {
             const nuevosIdiomas = [...idiomasSeleccionados];
             nuevosIdiomas.splice(existeIndex, 1);
@@ -274,7 +274,7 @@ export default function AgregarProyecto() {
     };
 
     const actualizarNivelIdioma = (idIdioma: number, idINivel: number) => {
-        const nuevosIdiomas = idiomasSeleccionados.map(item => 
+        const nuevosIdiomas = idiomasSeleccionados.map(item =>
             item.idIdioma === idIdioma ? { ...item, idINivel } : item
         );
         setIdiomasSeleccionados(nuevosIdiomas);
@@ -292,9 +292,9 @@ export default function AgregarProyecto() {
             showToast("❌ Primero deselecciona la institución actual");
             return;
         }
-        
+
         setCrearNuevaInstitucion(!crearNuevaInstitucion);
-        
+
         if (!crearNuevaInstitucion) {
             // Al activar "crear nueva", limpiar los campos
             setNuevaInstitucion({
@@ -320,9 +320,9 @@ export default function AgregarProyecto() {
     const validarTelefono = (text: string) => {
         if (/^\d{0,4}-?\d{0,4}$/.test(text)) {
             if (text.length === 4 && !text.includes("-")) {
-                setNuevaInstitucion({...nuevaInstitucion, telefonoContacto: text + "-"});
+                setNuevaInstitucion({ ...nuevaInstitucion, telefonoContacto: text + "-" });
             } else {
-                setNuevaInstitucion({...nuevaInstitucion, telefonoContacto: text});
+                setNuevaInstitucion({ ...nuevaInstitucion, telefonoContacto: text });
             }
         }
     };
@@ -330,19 +330,19 @@ export default function AgregarProyecto() {
     const validarFechas = () => {
         const hoy = new Date();
         hoy.setHours(0, 0, 0, 0);
-        
+
         if (fechaInicio && fechaInicio < hoy) {
             showToast("❌ La fecha de inicio no puede ser anterior a hoy");
             setFechaInicio(null);
             return false;
         }
-        
+
         if (fechaInicio && fechaFin && fechaFin <= fechaInicio) {
             showToast("❌ La fecha de fin debe ser posterior a la fecha de inicio");
             setFechaFin(null);
             return false;
         }
-        
+
         return true;
     };
 
@@ -351,13 +351,13 @@ export default function AgregarProyecto() {
         hoy.setHours(0, 0, 0, 0);
 
         // Validar institución
-        const institucionValida = crearNuevaInstitucion 
+        const institucionValida = crearNuevaInstitucion
             ? nuevaInstitucion.nombre &&
-              nuevaInstitucion.idDepartamento &&
-              nuevaInstitucion.idMunicipio &&
-              nuevaInstitucion.nombreContacto &&
-              /^\d{4}-\d{4}$/.test(nuevaInstitucion.telefonoContacto) &&
-              /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(nuevaInstitucion.emailContacto)
+            nuevaInstitucion.idDepartamento &&
+            nuevaInstitucion.idMunicipio &&
+            nuevaInstitucion.nombreContacto &&
+            /^\d{4}-\d{4}$/.test(nuevaInstitucion.telefonoContacto) &&
+            /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(nuevaInstitucion.emailContacto)
             : institucion !== ""; // Si no es nueva, solo validar que esté seleccionada
 
         return (
@@ -447,7 +447,7 @@ export default function AgregarProyecto() {
             console.log("Idiomas seleccionados:", idiomasSeleccionados.length);
 
             const response = await axios.post(`${API_URL}/proyectos`, proyectoData);
-            
+
             if (response.status === 201) {
                 showToast("✅ Proyecto creado exitosamente", true);
                 setTimeout(() => router.back(), 1500);
@@ -485,7 +485,7 @@ export default function AgregarProyecto() {
                 </View>
 
                 {/* Especialidad - Modal de selección múltiple */}
-                <TouchableOpacity 
+                <TouchableOpacity
                     style={styles.inputContainer}
                     onPress={() => setModalEspecialidadesVisible(true)}
                 >
@@ -506,10 +506,10 @@ export default function AgregarProyecto() {
                     >
                         <Picker.Item label="Selecciona la institución" value={""} />
                         {instituciones.map(inst => (
-                            <Picker.Item 
-                                key={inst.idInstitucion} 
-                                label={inst.nombre} 
-                                value={inst.idInstitucion} 
+                            <Picker.Item
+                                key={inst.idInstitucion}
+                                label={inst.nombre}
+                                value={inst.idInstitucion}
                             />
                         ))}
                     </Picker>
@@ -518,15 +518,15 @@ export default function AgregarProyecto() {
                 {/* Checkbox para crear nueva institución - LADO DERECHO */}
                 <View style={styles.checkboxRow}>
                     <View style={styles.checkboxContainer}>
-                        <TouchableOpacity 
+                        <TouchableOpacity
                             style={styles.checkbox}
                             onPress={toggleCrearInstitucion}
                             disabled={!!institucion && institucion !== ""}
                         >
-                            <Ionicons 
-                                name={crearNuevaInstitucion ? "checkbox" : "square-outline"} 
-                                size={22} 
-                                color={crearNuevaInstitucion ? "#2666DE" : (institucion ? "#ccc" : "#666")} 
+                            <Ionicons
+                                name={crearNuevaInstitucion ? "checkbox" : "square-outline"}
+                                size={22}
+                                color={crearNuevaInstitucion ? "#2666DE" : (institucion ? "#ccc" : "#666")}
                             />
                             <Text style={[
                                 styles.checkboxText,
@@ -548,7 +548,7 @@ export default function AgregarProyecto() {
                                 placeholder="Nombre de la nueva institución"
                                 placeholderTextColor="#666"
                                 value={nuevaInstitucion.nombre}
-                                onChangeText={(text) => setNuevaInstitucion({...nuevaInstitucion, nombre: text})}
+                                onChangeText={(text) => setNuevaInstitucion({ ...nuevaInstitucion, nombre: text })}
                             />
                         </View>
 
@@ -560,7 +560,7 @@ export default function AgregarProyecto() {
                                     placeholder="Contacto"
                                     placeholderTextColor="#666"
                                     value={nuevaInstitucion.nombreContacto}
-                                    onChangeText={(text) => setNuevaInstitucion({...nuevaInstitucion, nombreContacto: text})}
+                                    onChangeText={(text) => setNuevaInstitucion({ ...nuevaInstitucion, nombreContacto: text })}
                                 />
                             </View>
                             <View style={[styles.inputContainer2, styles.half]}>
@@ -582,7 +582,7 @@ export default function AgregarProyecto() {
                                 placeholder="Correo de contacto"
                                 placeholderTextColor="#666"
                                 value={nuevaInstitucion.emailContacto}
-                                onChangeText={(text) => setNuevaInstitucion({...nuevaInstitucion, emailContacto: text})}
+                                onChangeText={(text) => setNuevaInstitucion({ ...nuevaInstitucion, emailContacto: text })}
                                 keyboardType="email-address"
                             />
                         </View>
@@ -591,16 +591,16 @@ export default function AgregarProyecto() {
                         <View style={styles.inputContainer}>
                             <Picker
                                 selectedValue={nuevaInstitucion.idDepartamento}
-                                onValueChange={(v) => setNuevaInstitucion({...nuevaInstitucion, idDepartamento: Number(v)})}
+                                onValueChange={(v) => setNuevaInstitucion({ ...nuevaInstitucion, idDepartamento: Number(v) })}
                                 style={styles.picker}
                                 dropdownIconColor="#213A8E"
                             >
                                 <Picker.Item label="Departamento" value={0} />
                                 {departamentos.map(d => (
-                                    <Picker.Item 
-                                        key={d.idDepartamento} 
-                                        label={d.nombre} 
-                                        value={d.idDepartamento} 
+                                    <Picker.Item
+                                        key={d.idDepartamento}
+                                        label={d.nombre}
+                                        value={d.idDepartamento}
                                     />
                                 ))}
                             </Picker>
@@ -610,17 +610,17 @@ export default function AgregarProyecto() {
                         <View style={styles.inputContainer}>
                             <Picker
                                 selectedValue={nuevaInstitucion.idMunicipio}
-                                onValueChange={(v) => setNuevaInstitucion({...nuevaInstitucion, idMunicipio: Number(v)})}
+                                onValueChange={(v) => setNuevaInstitucion({ ...nuevaInstitucion, idMunicipio: Number(v) })}
                                 style={styles.picker}
                                 dropdownIconColor="#213A8E"
                                 enabled={!!nuevaInstitucion.idDepartamento}
                             >
                                 <Picker.Item label={nuevaInstitucion.idDepartamento ? "Municipio" : "Primero selecciona departamento"} value={0} />
                                 {municipios.map(m => (
-                                    <Picker.Item 
-                                        key={m.idMunicipio} 
-                                        label={m.nombre} 
-                                        value={m.idMunicipio} 
+                                    <Picker.Item
+                                        key={m.idMunicipio}
+                                        label={m.nombre}
+                                        value={m.idMunicipio}
                                     />
                                 ))}
                             </Picker>
@@ -630,8 +630,8 @@ export default function AgregarProyecto() {
 
                 {/* Fechas con validación */}
                 <View style={styles.row}>
-                    <TouchableOpacity 
-                        style={[styles.inputContainer2, styles.half]} 
+                    <TouchableOpacity
+                        style={[styles.inputContainer2, styles.half]}
                         onPress={() => setShowInicio(true)}
                     >
                         <Text style={[styles.input, { color: fechaInicio ? "#000" : "#666" }]}>
@@ -717,7 +717,7 @@ export default function AgregarProyecto() {
                 </View>
 
                 {/* Idiomas y Niveles - Selección múltiple */}
-                <TouchableOpacity 
+                <TouchableOpacity
                     style={styles.inputContainer}
                     onPress={() => setModalIdiomasVisible(true)}
                 >
@@ -807,10 +807,10 @@ export default function AgregarProyecto() {
                     >
                         <Picker.Item label="Selecciona la modalidad" value={""} />
                         {modalidades.map(mod => (
-                            <Picker.Item 
-                                key={mod.idModalidad} 
-                                label={mod.nombre} 
-                                value={mod.idModalidad} 
+                            <Picker.Item
+                                key={mod.idModalidad}
+                                label={mod.nombre}
+                                value={mod.idModalidad}
                             />
                         ))}
                     </Picker>
@@ -818,11 +818,11 @@ export default function AgregarProyecto() {
 
                 {/* Botón guardar */}
                 <View style={{ alignItems: "flex-end", marginTop: 20 }}>
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         style={[
-                            styles.buttonYellow, 
+                            styles.buttonYellow,
                             !formularioValido() && styles.buttonDisabled
-                        ]} 
+                        ]}
                         onPress={handleSubmit}
                         disabled={!formularioValido()}
                     >
@@ -842,7 +842,7 @@ export default function AgregarProyecto() {
                     <View style={styles.modalContainer}>
                         <View style={styles.modalHeader}>
                             <Text style={styles.modalTitle}>Seleccionar Especialidades</Text>
-                            <TouchableOpacity 
+                            <TouchableOpacity
                                 style={styles.closeButton}
                                 onPress={() => setModalEspecialidadesVisible(false)}
                             >
@@ -860,10 +860,10 @@ export default function AgregarProyecto() {
                                     ]}
                                     onPress={() => toggleEspecialidad(carrera.idCarrera)}
                                 >
-                                    <Ionicons 
-                                        name={especialidades.includes(carrera.idCarrera) ? "checkbox" : "square-outline"} 
-                                        size={22} 
-                                        color={especialidades.includes(carrera.idCarrera) ? "#2666DE" : "#666"} 
+                                    <Ionicons
+                                        name={especialidades.includes(carrera.idCarrera) ? "checkbox" : "square-outline"}
+                                        size={22}
+                                        color={especialidades.includes(carrera.idCarrera) ? "#2666DE" : "#666"}
                                     />
                                     <Text style={styles.especialidadText}>
                                         {carrera.nombre}
@@ -873,7 +873,7 @@ export default function AgregarProyecto() {
                         </ScrollView>
 
                         <View style={styles.modalButtons}>
-                            <TouchableOpacity 
+                            <TouchableOpacity
                                 style={styles.aplicarButton}
                                 onPress={() => setModalEspecialidadesVisible(false)}
                             >
@@ -894,7 +894,7 @@ export default function AgregarProyecto() {
                     <View style={styles.modalContainer}>
                         <View style={styles.modalHeader}>
                             <Text style={styles.modalTitle}>Idiomas y niveles (opcional)</Text>
-                            <TouchableOpacity 
+                            <TouchableOpacity
                                 style={styles.closeButton}
                                 onPress={() => setModalIdiomasVisible(false)}
                             >
@@ -923,14 +923,14 @@ export default function AgregarProyecto() {
                                                 }
                                             }}
                                         >
-                                            <Ionicons 
-                                                name={estaSeleccionado ? "checkbox" : "square-outline"} 
-                                                size={22} 
-                                                color={estaSeleccionado ? "#2666DE" : "#666"} 
+                                            <Ionicons
+                                                name={estaSeleccionado ? "checkbox" : "square-outline"}
+                                                size={22}
+                                                color={estaSeleccionado ? "#2666DE" : "#666"}
                                             />
                                             <Text style={styles.idiomaText}>{idiomaItem.nombre}</Text>
                                         </TouchableOpacity>
-                                        
+
                                         {estaSeleccionado && (
                                             <View style={styles.nivelesContainer}>
                                                 <Text style={styles.nivelesTitle}>Nivel requerido:</Text>
@@ -961,7 +961,7 @@ export default function AgregarProyecto() {
                         </ScrollView>
 
                         <View style={styles.modalButtons}>
-                            <TouchableOpacity 
+                            <TouchableOpacity
                                 style={styles.aplicarButton}
                                 onPress={() => setModalIdiomasVisible(false)}
                             >
@@ -974,72 +974,72 @@ export default function AgregarProyecto() {
 
             {/* Bottom nav */}
             <View style={styles.bottomNav}>
-                            <Ionicons
-                                name="home"
-                                size={28}
-                                color="#fff"
-                                onPress={() => router.push({
-                                    pathname: "/",
-                                    params: {
-                                        carnetUsuario: params.carnetUsuario,
-                                        nombreUsuario: params.nombreUsuario,
-                                        generoUsuario: params.generoUsuario
-                                    }
-                                })}
-                            />
-                            <Ionicons
-                                name="star-outline"
-                                size={28}
-                                color="#fff"
-                                onPress={() => router.push({
-                                    pathname: "/(tabs)/guardados",
-                                    params: {
-                                        carnetUsuario: params.carnetUsuario,
-                                        nombreUsuario: params.nombreUsuario,
-                                        generoUsuario: params.generoUsuario
-                                    }
-                                })}
-                            />
-                            <Ionicons
-                                name="file-tray-outline"
-                                size={28}
-                                color="#fff"
-                                onPress={() => router.push({
-                                    pathname: "/(tabs)/aplicaciones",
-                                    params: {
-                                        carnetUsuario: params.carnetUsuario,
-                                        nombreUsuario: params.nombreUsuario,
-                                        generoUsuario: params.generoUsuario
-                                    }
-                                })}
-                            />
-                            <Ionicons
-                                name="notifications-outline"
-                                size={28}
-                                color="#fff"
-                                onPress={() => router.push({
-                                    pathname: "/(tabs)/notificaciones",
-                                    params: {
-                                        carnetUsuario: params.carnetUsuario,
-                                        nombreUsuario: params.nombreUsuario,
-                                        generoUsuario: params.generoUsuario
-                                    }
-                                })}
-                            />
-                            <Ionicons
-                                name="person-outline"
-                                size={28}
-                                color="#fff"
-                                onPress={() => router.push({
-                                    pathname: "/(tabs)/cuenta",
-                                    params: {
-                                        carnetUsuario: params.carnetUsuario,
-                                        nombreUsuario: params.nombreUsuario,
-                                        generoUsuario: params.generoUsuario
-                                    }
-                                })}
-                            />
-                        </View>
+                <Ionicons
+                    name="home"
+                    size={28}
+                    color="#fff"
+                    onPress={() => router.push({
+                        pathname: "/",
+                        params: {
+                            carnetUsuario: params.carnetUsuario,
+                            nombreUsuario: params.nombreUsuario,
+                            generoUsuario: params.generoUsuario
+                        }
+                    })}
+                />
+                <Ionicons
+                    name="star-outline"
+                    size={28}
+                    color="#fff"
+                    onPress={() => router.push({
+                        pathname: "/(tabs)/guardados",
+                        params: {
+                            carnetUsuario: params.carnetUsuario,
+                            nombreUsuario: params.nombreUsuario,
+                            generoUsuario: params.generoUsuario
+                        }
+                    })}
+                />
+                <Ionicons
+                    name="file-tray-outline"
+                    size={28}
+                    color="#fff"
+                    onPress={() => router.push({
+                        pathname: "/(tabs)/aplicaciones",
+                        params: {
+                            carnetUsuario: params.carnetUsuario,
+                            nombreUsuario: params.nombreUsuario,
+                            generoUsuario: params.generoUsuario
+                        }
+                    })}
+                />
+                <Ionicons
+                    name="notifications-outline"
+                    size={28}
+                    color="#fff"
+                    onPress={() => router.push({
+                        pathname: "/(tabs)/notificaciones",
+                        params: {
+                            carnetUsuario: params.carnetUsuario,
+                            nombreUsuario: params.nombreUsuario,
+                            generoUsuario: params.generoUsuario
+                        }
+                    })}
+                />
+                <Ionicons
+                    name="person-outline"
+                    size={28}
+                    color="#fff"
+                    onPress={() => router.push({
+                        pathname: "/(tabs)/cuenta",
+                        params: {
+                            carnetUsuario: params.carnetUsuario,
+                            nombreUsuario: params.nombreUsuario,
+                            generoUsuario: params.generoUsuario
+                        }
+                    })}
+                />
+            </View>
         </View>
     );
 }
@@ -1164,15 +1164,15 @@ const styles = StyleSheet.create({
         paddingBottom: 30,
         paddingTop: 20,
     },
-    chipsInputContainer: { 
-        backgroundColor: '#fff', 
-        borderRadius: 12, 
-        marginBottom: 15, 
-        borderLeftWidth: 15, 
-        borderLeftColor: '#2666DE', 
-        paddingVertical: 10, 
-        minHeight: 55, 
-        paddingHorizontal: 5, 
+    chipsInputContainer: {
+        backgroundColor: '#fff',
+        borderRadius: 12,
+        marginBottom: 15,
+        borderLeftWidth: 15,
+        borderLeftColor: '#2666DE',
+        paddingVertical: 10,
+        minHeight: 55,
+        paddingHorizontal: 5,
         justifyContent: 'center',
         shadowColor: "#2666DE",
         shadowOffset: { width: 0, height: 0 },
@@ -1180,46 +1180,46 @@ const styles = StyleSheet.create({
         shadowRadius: 6,
         elevation: 8,
     },
-    chipsContainer: { 
-        flexDirection: 'row', 
-        flexWrap: 'wrap', 
-        alignItems: 'center' 
+    chipsContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        alignItems: 'center'
     },
-    chip: { 
-        flexDirection: 'row', 
-        alignItems: 'center', 
-        backgroundColor: '#2666DE', 
-        paddingHorizontal: 10, 
-        paddingVertical: 5, 
-        borderRadius: 20, 
+    chip: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#2666DE',
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+        borderRadius: 20,
         margin: 5,
     },
-    chipText: { 
-        color: '#fff', 
-        fontFamily: 'Inter-Medium', 
-        fontSize: 12 
+    chipText: {
+        color: '#fff',
+        fontFamily: 'Inter-Medium',
+        fontSize: 12
     },
-    chipClose: { 
-        marginLeft: 5 
+    chipClose: {
+        marginLeft: 5
     },
-    chipTextInput: { 
-        flexGrow: 1, 
-        fontSize: 15, 
-        fontFamily: 'Inter-Medium', 
-        color: '#000', 
+    chipTextInput: {
+        flexGrow: 1,
+        fontSize: 15,
+        fontFamily: 'Inter-Medium',
+        color: '#000',
         minWidth: 100,
         includeFontPadding: false,
         textAlignVertical: 'center',
         paddingVertical: 0,
         marginVertical: 0,
     },
-    suggestionsList: { 
-        position: 'absolute', 
-        backgroundColor: '#fff', 
-        borderWidth: 1, 
-        borderColor: '#ddd', 
-        borderRadius: 8, 
-        zIndex: 100, 
+    suggestionsList: {
+        position: 'absolute',
+        backgroundColor: '#fff',
+        borderWidth: 1,
+        borderColor: '#ddd',
+        borderRadius: 8,
+        zIndex: 100,
         elevation: 5,
         maxHeight: 150,
         shadowColor: "#000",
@@ -1227,14 +1227,14 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.25,
         shadowRadius: 3.84,
     },
-    suggestionItem: { 
-        padding: 10, 
-        borderBottomWidth: 1, 
-        borderBottomColor: '#eee' 
+    suggestionItem: {
+        padding: 10,
+        borderBottomWidth: 1,
+        borderBottomColor: '#eee'
     },
-    suggestionText: { 
-        fontSize: 14, 
-        fontFamily: 'Inter-Medium' 
+    suggestionText: {
+        fontSize: 14,
+        fontFamily: 'Inter-Medium'
     },
     modalOverlay: {
         flex: 1,
