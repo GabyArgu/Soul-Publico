@@ -14,6 +14,8 @@ import usuariosRoutes from "./routes/usuarios";
 import uploadRoutes from "./routes/upload"; 
 import proyectosRoutes from "./routes/proyectos";
 import institucionesRoutes from "./routes/instituciones";
+import modalidadesRoutes from "./routes/modalidades";
+import proyectosGuardadosRoutes from "./routes/proyectosGuardados";
 
 dotenv.config();
 
@@ -39,6 +41,9 @@ app.use("/api/usuarios", usuariosRoutes);
 app.use("/api", uploadRoutes); 
 app.use("/api/proyectos", proyectosRoutes);
 app.use("/api/instituciones", institucionesRoutes);
+app.use("/api/modalidades", modalidadesRoutes);
+app.use("/api/proyectos-guardados", proyectosGuardadosRoutes);
+
 
 app.listen(4000, "0.0.0.0", () => {
     console.log("Servidor corriendo en http://0.0.0.0:4000");

@@ -40,13 +40,8 @@ export default function Login() {
             return;
         }
 
-        console.log("=== LOGIN REQUEST FROM APP ===");
-        console.log("Carnet:", carnet);
-        console.log("Password:", password);
-
         try {
             const res = await axios.post(`${API_URL}/login`, { carnet, password });
-            console.log("Response login:", res.data);
             showToast("¡Login exitoso!", true);
 
             const fullName = res.data.user.nombreCompleto;

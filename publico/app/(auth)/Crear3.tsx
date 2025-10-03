@@ -45,6 +45,8 @@ export default function Crear3() {
         });
     };
 
+    
+
     // Seleccionar archivo
     const pickDocument = async () => {
         try {

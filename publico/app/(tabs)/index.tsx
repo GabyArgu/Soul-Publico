@@ -1,9 +1,9 @@
 // app/(main)/Index.tsx
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, FlatList, ScrollView } from "react-native";
-import { useRouter } from "expo-router";
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, FlatList, ScrollView, Modal, ActivityIndicator, Dimensions } from "react-native";
+import { useRouter, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams } from "expo-router";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 interface Proyecto {
   idProyecto: number;
@@ -12,12 +12,32 @@ interface Proyecto {
   capacidad: number;
   horas: number;
   tipoProyecto: string;
+  carrerasRelacionadas: string;
+  habilidadesRelacionadas: string;
+  idiomasRelacionados: string;
 }
+
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 export default function Index() {
     const params = useLocalSearchParams();
     const [proyectos, setProyectos] = useState<Proyecto[]>([]);
     const [loading, setLoading] = useState(true);
+
+    const [searchQuery, setSearchQuery] = useState("");
+    const [filterModalVisible, setFilterModalVisible] = useState(false);
+    const [searchTimeout, setSearchTimeout] = useState<any>(); 
+
+    
+
+    const [idiomasDisponibles, setIdiomasDisponibles] = useState<string[]>([]);
+    const [carrerasDisponibles, setCarrerasDisponibles] = useState<string[]>([]);
+    const [habilidadesDisponibles, setHabilidadesDisponibles] = useState<{blandas: string[], tecnicas: string[]}>({blandas: [], tecnicas: []});
+
+    const [selectedIdiomas, setSelectedIdiomas] = useState<string[]>([]);
+    const [selectedCarreras, setSelectedCarreras] = useState<string[]>([]);
+    const [selectedHabilidades, setSelectedHabilidades] = useState<string[]>([]);
+    const [selectedHorasRange, setSelectedHorasRange] = useState<[number, number]>([0, 1000]);
 
     const rawNombreParam = params.nombreUsuario;
     const rawNombre = Array.isArray(rawNombreParam) ? rawNombreParam[0] : rawNombreParam || "Gabriela";
@@ -56,31 +76,97 @@ export default function Index() {
 
     const router = useRouter();
 
-    // Cargar proyectos desde la API
+    // Cargar proyectos con filtros
+    const cargarProyectos = async () => {
+        setLoading(true);
+        try {
+            const params = new URLSearchParams();
+            if (searchQuery) params.append("search", searchQuery);
+            selectedIdiomas.forEach(i => params.append("idioma", i));
+            selectedCarreras.forEach(c => params.append("carrera", c));
+            selectedHabilidades.forEach(h => params.append("habilidad", h));
+            params.append("minHoras", selectedHorasRange[0].toString());
+            params.append("maxHoras", selectedHorasRange[1].toString());
+            
+            const response = await fetch(`http://192.168.1.11:4000/api/proyectos?${params.toString()}`);
+            const data = await response.json();
+            
+            setProyectos(data);
+        } catch (err) {
+            console.error('Error al cargar proyectos:', err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Cargar opciones de filtros
+    const cargarFiltrosDisponibles = async () => {
+        try {
+            const [idiomasRes, carrerasRes, habilidadesRes] = await Promise.all([
+                fetch("http://192.168.1.11:4000/api/proyectos/idiomas").then(r => r.json()),
+                fetch("http://192.168.1.11:4000/api/proyectos/carreras").then(r => r.json()),
+                fetch("http://192.168.1.11:4000/api/proyectos/habilidades").then(r => r.json())
+            ]);
+            
+            // VERIFICACIÓN CLAVE: Asegurar que la respuesta es un array (o usar [])
+            setIdiomasDisponibles(Array.isArray(idiomasRes) ? idiomasRes : []);
+            setCarrerasDisponibles(Array.isArray(carrerasRes) ? carrerasRes : []);
+            
+            // Asegurar que las habilidades tienen la estructura correcta
+            setHabilidadesDisponibles({
+                blandas: Array.isArray(habilidadesRes?.blandas) ? habilidadesRes.blandas : [],
+                tecnicas: Array.isArray(habilidadesRes?.tecnicas) ? habilidadesRes.tecnicas : []
+            });
+            
+        } catch (err) {
+            console.error('Error al cargar filtros:', err);
+            // Opcional: Establecer todos los estados a vacíos en caso de fallo total
+            setIdiomasDisponibles([]);
+            setCarrerasDisponibles([]);
+            setHabilidadesDisponibles({blandas: [], tecnicas: []});
+        }
+    };
+
+    // Recargar datos cuando la pantalla recibe foco
+    useFocusEffect(
+        useCallback(() => {
+            cargarProyectos();
+            cargarFiltrosDisponibles();
+        }, [])
+    );
+
+    // Limpiar timeout al desmontar
     useEffect(() => {
-        const cargarProyectos = async () => {
-            try {
-                const response = await fetch('http://192.168.1.11:4000/api/proyectos');
-                const data = await response.json();
-                setProyectos(data);
-            } catch (error) {
-                console.error('Error al cargar proyectos:', error);
-            } finally {
-                setLoading(false);
+        return () => {
+            if (searchTimeout) {
+                clearTimeout(searchTimeout);
             }
         };
-
-        cargarProyectos();
-    }, []);
+    }, [searchTimeout]);
 
     // Filtrar proyectos por tipo
-    const proyectosInstitucionales = proyectos.filter(proyecto => 
-        proyecto.tipoProyecto === 'Institucional'
-    );
-    
-    const proyectosExternos = proyectos.filter(proyecto => 
-        proyecto.tipoProyecto === 'Externo'
-    );
+    const proyectosInstitucionales = proyectos.filter(p => p.tipoProyecto === "Institucional");
+    const proyectosExternos = proyectos.filter(p => p.tipoProyecto === "Externo");
+
+    const toggleSelection = (item: string, selected: string[], setSelected: (arr: string[]) => void) => {
+        if (selected.includes(item)) {
+            setSelected(selected.filter(i => i !== item));
+        } else {
+            setSelected([...selected, item]);
+        }
+    };
+
+    const aplicarFiltros = () => {
+        setFilterModalVisible(false);
+        cargarProyectos();
+    };
+
+    const limpiarFiltros = () => {
+        setSelectedIdiomas([]);
+        setSelectedCarreras([]);
+        setSelectedHabilidades([]);
+        setSelectedHorasRange([0, 200]);
+    };
 
     const truncateText = (text: string, maxLength: number) => {
         if (!text) return '';
@@ -104,12 +190,15 @@ export default function Index() {
                     <Text style={styles.cardInfo}><Text style={styles.bold}>Capacidad: </Text><Text style={styles.regular}>{item.capacidad}</Text></Text>
                     <Text style={styles.cardInfo}><Text style={styles.bold}>Horas: </Text><Text style={styles.regular}>{item.horas}</Text></Text>
                 </View>
-                <TouchableOpacity 
-                    style={[styles.cardButton, { backgroundColor: palette.button }]} 
+                <TouchableOpacity
+                    style={[styles.cardButton, { backgroundColor: palette.button }]}
                     onPress={() => router.push({
                         pathname: "/(tabs)/detalles",
-                        params: { 
-                            idProyecto: item.idProyecto.toString()
+                        params: {
+                            idProyecto: item.idProyecto.toString(),
+                            carnetUsuario: params.carnetUsuario,
+                            nombreUsuario: params.nombreUsuario,
+                            generoUsuario: params.generoUsuario
                         }
                     })}
                 >
@@ -122,7 +211,7 @@ export default function Index() {
     if (loading) {
         return (
             <View style={styles.container}>
-                <Text>Cargando proyectos...</Text>
+                <ActivityIndicator size="large" color="#2666DE" />
             </View>
         );
     }
@@ -143,13 +232,33 @@ export default function Index() {
                 {/* Buscador + Botones */}
                 <View style={styles.searchRow}>
                     <View style={styles.searchBox}>
-                        <TextInput style={styles.searchInput} placeholder="Buscar" placeholderTextColor="#666" />
+                        <TextInput 
+                            style={styles.searchInput} 
+                            placeholder="Buscar" 
+                            placeholderTextColor="#666" 
+                            value={searchQuery}
+                            onChangeText={(text) => {
+                                setSearchQuery(text);
+                                clearTimeout(searchTimeout);
+                                const timeout = setTimeout(() => {
+                                    cargarProyectos();
+                                }, 500);
+                                setSearchTimeout(timeout); // Ahora acepta el 'number' sin error
+                            }}
+                        />
                         <Ionicons name="search" size={20} color="#EAC306" style={styles.searchIconInside} />
                     </View>
                     <TouchableOpacity style={styles.iconButton}>
-                        <Ionicons name="add" size={22} color="#fff" onPress={() => router.push("/(tabs)/proyecto")} />
+                        <Ionicons name="add" size={22} color="#fff"  onPress={() => router.push({
+                        pathname: "/(tabs)/proyecto",
+                        params: {
+                            carnetUsuario: params.carnetUsuario,
+                            nombreUsuario: params.nombreUsuario,
+                            generoUsuario: params.generoUsuario
+                        }
+                    })} />
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.iconButton}>
+                    <TouchableOpacity style={styles.iconButton} onPress={() => setFilterModalVisible(true)}>
                         <Ionicons name="filter" size={22} color="#fff" />
                     </TouchableOpacity>
                 </View>
@@ -158,13 +267,16 @@ export default function Index() {
                     {/* Institucionales */}
                     <Text style={styles.sectionTitle}>Institucionales</Text>
                     {proyectosInstitucionales.length > 0 ? (
-                        <FlatList
-                            data={proyectosInstitucionales}
-                            renderItem={({ item, index }) => renderCard({ item, index, type: "institucional" })}
-                            keyExtractor={(item) => item.idProyecto.toString()}
-                            horizontal
-                            showsHorizontalScrollIndicator={false}
-                        />
+                        <View style={styles.carouselContainer}>
+                            <FlatList
+                                data={proyectosInstitucionales}
+                                renderItem={({ item, index }) => renderCard({ item, index, type: "institucional" })}
+                                keyExtractor={(item) => item.idProyecto.toString()}
+                                horizontal
+                                showsHorizontalScrollIndicator={false}
+                                contentContainerStyle={styles.carouselContent}
+                            />
+                        </View>
                     ) : (
                         <Text style={styles.emptyText}>No hay proyectos institucionales disponibles</Text>
                     )}
@@ -172,18 +284,189 @@ export default function Index() {
                     {/* Externas */}
                     <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Externas</Text>
                     {proyectosExternos.length > 0 ? (
-                        <FlatList
-                            data={proyectosExternos}
-                            renderItem={({ item, index }) => renderCard({ item, index, type: "externa" })}
-                            keyExtractor={(item) => item.idProyecto.toString()}
-                            horizontal
-                            showsHorizontalScrollIndicator={false}
-                        />
+                        <View style={styles.carouselContainer}>
+                            <FlatList
+                                data={proyectosExternos}
+                                renderItem={({ item, index }) => renderCard({ item, index, type: "externa" })}
+                                keyExtractor={(item) => item.idProyecto.toString()}
+                                horizontal
+                                showsHorizontalScrollIndicator={false}
+                                contentContainerStyle={styles.carouselContent}
+                            />
+                        </View>
                     ) : (
                         <Text style={styles.emptyText}>No hay proyectos externos disponibles</Text>
                     )}
                 </ScrollView>
             </View>
+
+            {/* Modal de Filtros Mejorado */}
+            <Modal
+                visible={filterModalVisible}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={() => setFilterModalVisible(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContainer}>
+                        {/* Header del Modal */}
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Filtros</Text>
+                            <TouchableOpacity 
+                                style={styles.closeButton}
+                                onPress={() => setFilterModalVisible(false)}
+                            >
+                                <Ionicons name="close" size={24} color="#213A8E" />
+                            </TouchableOpacity>
+                        </View>
+
+                        <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
+                            {/* Idiomas */}
+                            <Text style={styles.filterSectionTitle}>Idiomas</Text>
+                            <View style={styles.filterOptionsContainer}>
+                                {idiomasDisponibles.map(idioma => (
+                                    <TouchableOpacity 
+                                        key={idioma} 
+                                        style={[
+                                            styles.filterOption,
+                                            selectedIdiomas.includes(idioma) && styles.filterOptionSelected
+                                        ]}
+                                        onPress={() => toggleSelection(idioma, selectedIdiomas, setSelectedIdiomas)}
+                                    >
+                                        <Ionicons 
+                                            name={selectedIdiomas.includes(idioma) ? "checkbox" : "square-outline"} 
+                                            size={20} 
+                                            color={selectedIdiomas.includes(idioma) ? "#2666DE" : "#666"} 
+                                        />
+                                        <Text style={[
+                                            styles.filterOptionText,
+                                            selectedIdiomas.includes(idioma) && styles.filterOptionTextSelected
+                                        ]}>{idioma}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+
+                            {/* Carreras */}
+                            <Text style={styles.filterSectionTitle}>Carreras</Text>
+                            <View style={styles.filterOptionsContainer}>
+                                {carrerasDisponibles.map(carrera => (
+                                    <TouchableOpacity 
+                                        key={carrera} 
+                                        style={[
+                                            styles.filterOption,
+                                            selectedCarreras.includes(carrera) && styles.filterOptionSelected
+                                        ]}
+                                        onPress={() => toggleSelection(carrera, selectedCarreras, setSelectedCarreras)}
+                                    >
+                                        <Ionicons 
+                                            name={selectedCarreras.includes(carrera) ? "checkbox" : "square-outline"} 
+                                            size={20} 
+                                            color={selectedCarreras.includes(carrera) ? "#2666DE" : "#666"} 
+                                        />
+                                        <Text style={[
+                                            styles.filterOptionText,
+                                            selectedCarreras.includes(carrera) && styles.filterOptionTextSelected
+                                        ]}>{carrera}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+
+                            {/* Habilidades Blandas */}
+                            <Text style={styles.filterSectionTitle}>Habilidades Blandas</Text>
+                            <View style={styles.filterOptionsContainer}>
+                                {habilidadesDisponibles.blandas?.map(habilidad => (
+                                    <TouchableOpacity 
+                                        key={habilidad} 
+                                        style={[
+                                            styles.filterOption,
+                                            selectedHabilidades.includes(habilidad) && styles.filterOptionSelected
+                                        ]}
+                                        onPress={() => toggleSelection(habilidad, selectedHabilidades, setSelectedHabilidades)}
+                                    >
+                                        <Ionicons 
+                                            name={selectedHabilidades.includes(habilidad) ? "checkbox" : "square-outline"} 
+                                            size={20} 
+                                            color={selectedHabilidades.includes(habilidad) ? "#2666DE" : "#666"} 
+                                        />
+                                        <Text style={[
+                                            styles.filterOptionText,
+                                            selectedHabilidades.includes(habilidad) && styles.filterOptionTextSelected
+                                        ]}>{habilidad}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+
+                            {/* Habilidades Técnicas */}
+                            <Text style={styles.filterSectionTitle}>Habilidades Técnicas</Text>
+                            <View style={styles.filterOptionsContainer}>
+                                {habilidadesDisponibles.tecnicas?.map(habilidad => (
+                                    <TouchableOpacity 
+                                        key={habilidad} 
+                                        style={[
+                                            styles.filterOption,
+                                            selectedHabilidades.includes(habilidad) && styles.filterOptionSelected
+                                        ]}
+                                        onPress={() => toggleSelection(habilidad, selectedHabilidades, setSelectedHabilidades)}
+                                    >
+                                        <Ionicons 
+                                            name={selectedHabilidades.includes(habilidad) ? "checkbox" : "square-outline"} 
+                                            size={20} 
+                                            color={selectedHabilidades.includes(habilidad) ? "#2666DE" : "#666"} 
+                                        />
+                                        <Text style={[
+                                            styles.filterOptionText,
+                                            selectedHabilidades.includes(habilidad) && styles.filterOptionTextSelected
+                                        ]}>{habilidad}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+
+                            {/* Rango de Horas */}
+                            <Text style={styles.filterSectionTitle}>Horas Mínimas</Text>
+                            <View style={styles.horasContainer}>
+                                {[0, 25, 50, 75, 100].map(horas => (
+                                    <TouchableOpacity 
+                                        key={horas}
+                                        style={[
+                                            styles.horasOption,
+                                            { 
+                                                backgroundColor: selectedHorasRange[0] === horas ? '#2666DE' : '#F2F6FC',
+                                                borderColor: selectedHorasRange[0] === horas ? '#2666DE' : '#D1D5DB'
+                                            }
+                                        ]}
+                                        onPress={() => setSelectedHorasRange([horas, 200])}
+                                    >
+                                        <Text style={{ 
+                                            color: selectedHorasRange[0] === horas ? '#fff' : '#213A8E',
+                                            fontWeight: selectedHorasRange[0] === horas ? 'bold' : '600',
+                                            fontSize: 13
+                                        }}>
+                                            {horas}+
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </ScrollView>
+
+                        {/* Botones del Modal */}
+                        <View style={styles.modalButtons}>
+                            <TouchableOpacity 
+                                style={styles.limpiarButton}
+                                onPress={limpiarFiltros}
+                            >
+                                <Text style={styles.limpiarButtonText}>Limpiar</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity 
+                                style={styles.aplicarButton}
+                                onPress={aplicarFiltros}
+                            >
+                                <Text style={styles.aplicarButtonText}>Aplicar</Text>
+                                <Ionicons name="checkmark" size={18} color="#fff" style={{ marginLeft: 5 }} />
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
 
             {/* Bottom nav */}
             <View style={styles.bottomNav}>
@@ -201,7 +484,7 @@ export default function Index() {
                     })}
                 />
                 <Ionicons
-                    name="cloud-outline"
+                    name="star-outline"
                     size={28}
                     color="#fff"
                     onPress={() => router.push({
@@ -363,6 +646,16 @@ const styles = StyleSheet.create({
         marginVertical: 10,
     },
 
+    // Carruseles
+    carouselContainer: {
+        height: 250,
+        marginBottom: 10,
+    },
+    carouselContent: {
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+    },
+
     // Cards
     card: {
         width: 260,
@@ -435,5 +728,157 @@ const styles = StyleSheet.create({
         borderTopRightRadius: 30,
         paddingBottom: 30,
         paddingTop: 20,
+    },
+
+    // Modal Styles Mejorados
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'flex-end',
+    },
+    modalContainer: {
+        backgroundColor: '#fff',
+        borderTopLeftRadius: 25,
+        borderTopRightRadius: 25,
+        maxHeight: screenHeight * 0.85,
+        paddingBottom: 20,
+        shadowColor: "#000",
+        shadowOffset: {
+            width: 0,
+            height: -2,
+        },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        elevation: 5,
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 20,
+        paddingVertical: 15,
+        borderBottomWidth: 1,
+        borderBottomColor: '#E5E7EB',
+    },
+    modalTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: '#213A8E',
+        fontFamily: 'MyriadPro-Bold',
+    },
+    closeButton: {
+        padding: 4,
+    },
+    modalContent: {
+        paddingHorizontal: 20,
+        maxHeight: screenHeight * 0.6,
+    },
+    filterSectionTitle: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#213A8E',
+        marginTop: 20,
+        marginBottom: 12,
+        fontFamily: 'MyriadPro-Bold',
+    },
+    filterOptionsContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        marginBottom: 10,
+    },
+    filterOption: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#F8FAFC',
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 8,
+        marginRight: 8,
+        marginBottom: 8,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+    },
+    filterOptionSelected: {
+        backgroundColor: '#E5EDFB',
+        borderColor: '#2666DE',
+    },
+    filterOptionText: {
+        marginLeft: 6,
+        fontSize: 14,
+        fontFamily: 'MyriadPro-Regular',
+        color: '#666',
+    },
+    filterOptionTextSelected: {
+        color: '#213A8E',
+        fontWeight: '600',
+    },
+    horasContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginVertical: 10,
+        marginBottom: 20,
+    },
+    horasOption: {
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        borderRadius: 8,
+        borderWidth: 2,
+        minWidth: 55,
+        alignItems: 'center',
+        shadowColor: "#000",
+        shadowOffset: {
+            width: 0,
+            height: 1,
+        },
+        shadowOpacity: 0.1,
+        shadowRadius: 1,
+        elevation: 1,
+    },
+    modalButtons: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        paddingHorizontal: 20,
+        marginTop: 10,
+        gap: 12,
+    },
+    limpiarButton: {
+        backgroundColor: '#F2F6FC',
+        paddingHorizontal: 20,
+        paddingVertical: 14,
+        borderRadius: 12,
+        flex: 1,
+        alignItems: 'center',
+        borderWidth: 2,
+        borderColor: '#2666DE',
+    },
+    limpiarButtonText: {
+        color: '#2666DE',
+        fontWeight: 'bold',
+        fontSize: 15,
+        fontFamily: 'MyriadPro-Bold',
+    },
+    aplicarButton: {
+        backgroundColor: '#2666DE',
+        paddingHorizontal: 20,
+        paddingVertical: 14,
+        borderRadius: 12,
+        flex: 2,
+        alignItems: 'center',
+        flexDirection: 'row',
+        justifyContent: 'center',
+        shadowColor: "#2666DE",
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.3,
+        shadowRadius: 3,
+        elevation: 4,
+    },
+    aplicarButtonText: {
+        color: '#fff',
+        fontWeight: 'bold',
+        fontSize: 15,
+        fontFamily: 'MyriadPro-Bold',
     },
 });

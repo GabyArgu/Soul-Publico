@@ -282,7 +282,12 @@ export default function Perfil() {
                 onPress={() =>
                     router.push({
                         pathname: "/(tabs)/editar",
-                        params: { carnet: usuario.carnet },
+                        params: {
+                            usuario: JSON.stringify(usuario),
+                            carnetUsuario: params.carnetUsuario,
+                            nombreUsuario: params.nombreUsuario,
+                            generoUsuario: params.generoUsuario
+                        }
                     })
                 }
             >

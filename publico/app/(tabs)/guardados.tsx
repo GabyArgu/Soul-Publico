@@ -1,22 +1,161 @@
 // app/(main)/Guardados.tsx
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, FlatList, ScrollView } from "react-native";
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, FlatList, ScrollView, Modal, ActivityIndicator, Dimensions } from "react-native";
+import { useRouter, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
+import { useState, useEffect, useCallback } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+interface Proyecto {
+  idProyecto: number;
+  titulo: string;
+  descripcion: string;
+  capacidad: number;
+  horas: number;
+  tipoProyecto: string;
+  carrerasRelacionadas: string;
+  habilidadesRelacionadas: string;
+  idiomasRelacionados: string;
+}
+
+const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 export default function Guardados() {
+    const params = useLocalSearchParams();
+    const [proyectos, setProyectos] = useState<Proyecto[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    const [searchQuery, setSearchQuery] = useState("");
+    const [filterModalVisible, setFilterModalVisible] = useState(false);
+    const [searchTimeout, setSearchTimeout] = useState<any>(); 
+
+    const [idiomasDisponibles, setIdiomasDisponibles] = useState<string[]>([]);
+    const [carrerasDisponibles, setCarrerasDisponibles] = useState<string[]>([]);
+    const [habilidadesDisponibles, setHabilidadesDisponibles] = useState<{blandas: string[], tecnicas: string[]}>({blandas: [], tecnicas: []});
+
+    const [selectedIdiomas, setSelectedIdiomas] = useState<string[]>([]);
+    const [selectedCarreras, setSelectedCarreras] = useState<string[]>([]);
+    const [selectedHabilidades, setSelectedHabilidades] = useState<string[]>([]);
+    const [selectedHorasRange, setSelectedHorasRange] = useState<[number, number]>([0, 1000]);
+
     const router = useRouter();
+    const obtenerCarnetUsuario = async (): Promise<string | null> => {
+        try {
+            const userData = await AsyncStorage.getItem("userData");
+            if (userData) {
+                const parsedData = JSON.parse(userData);
+                return parsedData.carnet || null;
+            }
+            if (params.carnet) {
+                return params.carnet as string;
+            }
+            return null;
+        } catch (error) {
+            console.error("Error obteniendo carnet:", error);
+            return null;
+        }
+    };
 
-    const institucionales = [
-        { id: "1", titulo: "Agenda Cultural (Audiovisual)", descripcion: "Elaboración de una agenda en formato audiovisual para difundir actividades artísticas y comunitarias.", capacidad: 2, horas: 50 },
-        { id: "2", titulo: "Programa de English+", descripcion: "Iniciativa educativa para el aprendizaje del inglés mediante talleres y clases de refuerzo.", capacidad: 5, horas: 45 },
-    ];
 
-    const externas = [
-        { id: "3", titulo: "Soporte a Registro de Profesionales", descripcion: "Proyecto orientado a la asistencia en la gestión y actualización del registro de profesionales.", capacidad: 3, horas: 100 },
-        { id: "4", titulo: "Jornadas de voluntariado", descripcion: "Actividades de apoyo comunitario y promoción social en el marco de la Feria SSE 2024.", capacidad: 10, horas: 40 },
-    ];
+    // Cargar proyectos guardados con filtros
+    const cargarProyectosGuardados = async () => {
+    setLoading(true);
+    try {
+        const carnet = await obtenerCarnetUsuario(); // ✅ recuperás el carnet real
+
+        const queryParams = new URLSearchParams();
+        if (searchQuery) queryParams.append("search", searchQuery);
+        selectedIdiomas.forEach(i => queryParams.append("idioma", i));
+        selectedCarreras.forEach(c => queryParams.append("carrera", c));
+        selectedHabilidades.forEach(h => queryParams.append("habilidad", h));
+        queryParams.append("minHoras", selectedHorasRange[0].toString());
+        queryParams.append("maxHoras", selectedHorasRange[1].toString());
+
+        if (carnet) {  // ⚠️ Solo agregalo si no es null
+            queryParams.append("carnet", carnet);
+        } else {
+            console.warn("⚠️ No se encontró carnet del usuario");
+        }
+
+        const response = await fetch(`http://192.168.1.11:4000/api/proyectos-guardados/?${queryParams.toString()}`);
+        const data = await response.json();
+
+        setProyectos(data);
+    } catch (err) {
+        console.error('Error al cargar proyectos guardados:', err);
+    } finally {
+        setLoading(false);
+    }
+};
+
+    // Cargar opciones de filtros (misma función que en Index)
+    const cargarFiltrosDisponibles = async () => {
+        try {
+            const [idiomasRes, carrerasRes, habilidadesRes] = await Promise.all([
+                fetch("http://192.168.1.11:4000/api/proyectos/idiomas").then(r => r.json()),
+                fetch("http://192.168.1.11:4000/api/proyectos/carreras").then(r => r.json()),
+                fetch("http://192.168.1.11:4000/api/proyectos/habilidades").then(r => r.json())
+            ]);
+            
+            setIdiomasDisponibles(Array.isArray(idiomasRes) ? idiomasRes : []);
+            setCarrerasDisponibles(Array.isArray(carrerasRes) ? carrerasRes : []);
+            
+            setHabilidadesDisponibles({
+                blandas: Array.isArray(habilidadesRes?.blandas) ? habilidadesRes.blandas : [],
+                tecnicas: Array.isArray(habilidadesRes?.tecnicas) ? habilidadesRes.tecnicas : []
+            });
+            
+        } catch (err) {
+            console.error('Error al cargar filtros:', err);
+            setIdiomasDisponibles([]);
+            setCarrerasDisponibles([]);
+            setHabilidadesDisponibles({blandas: [], tecnicas: []});
+        }
+    };
+
+    // Recargar datos cuando la pantalla recibe foco
+    useFocusEffect(
+        useCallback(() => {
+            cargarProyectosGuardados();
+            cargarFiltrosDisponibles();
+        }, [])
+    );
+
+    // Limpiar timeout al desmontar
+    useEffect(() => {
+        return () => {
+            if (searchTimeout) {
+                clearTimeout(searchTimeout);
+            }
+        };
+    }, [searchTimeout]);
+
+    // Filtrar proyectos por tipo
+    const proyectosInstitucionales = proyectos.filter(p => p.tipoProyecto === "Institucional");
+    const proyectosExternos = proyectos.filter(p => p.tipoProyecto === "Externo");
+
+    const toggleSelection = (item: string, selected: string[], setSelected: (arr: string[]) => void) => {
+        if (selected.includes(item)) {
+            setSelected(selected.filter(i => i !== item));
+        } else {
+            setSelected([...selected, item]);
+        }
+    };
+
+    const aplicarFiltros = () => {
+        setFilterModalVisible(false);
+        cargarProyectosGuardados();
+    };
+
+    const limpiarFiltros = () => {
+        setSelectedIdiomas([]);
+        setSelectedCarreras([]);
+        setSelectedHabilidades([]);
+        setSelectedHorasRange([0, 1000]);
+    };
 
     const truncateText = (text: string, maxLength: number) => {
+        if (!text) return '';
         return text.length > maxLength ? text.substring(0, maxLength) + "..." : text;
     };
 
@@ -37,19 +176,37 @@ export default function Guardados() {
                     <Text style={styles.cardInfo}><Text style={styles.bold}>Capacidad: </Text><Text style={styles.regular}>{item.capacidad}</Text></Text>
                     <Text style={styles.cardInfo}><Text style={styles.bold}>Horas: </Text><Text style={styles.regular}>{item.horas}</Text></Text>
                 </View>
-                <TouchableOpacity style={[styles.cardButton, { backgroundColor: palette.button }]}>
+                <TouchableOpacity
+                    style={[styles.cardButton, { backgroundColor: palette.button }]}
+                    onPress={() => router.push({
+                        pathname: "/(tabs)/detalles",
+                        params: {
+                            idProyecto: item.idProyecto.toString(),
+                            carnetUsuario: params.carnetUsuario,
+                            nombreUsuario: params.nombreUsuario,
+                            generoUsuario: params.generoUsuario
+                        }
+                    })}
+                >
                     <Text style={[styles.cardButtonText, { color: palette.text }]}>Detalles</Text>
                 </TouchableOpacity>
             </View>
         );
     };
 
+    if (loading) {
+        return (
+            <View style={styles.container}>
+                <ActivityIndicator size="large" color="#2666DE" />
+            </View>
+        );
+    }
 
     return (
         <View style={styles.container}>
             {/* Header */}
             <View style={styles.header}>
-                <Text style={styles.headerTitle}>Proyecto Guardados</Text>
+                <Text style={styles.headerTitle}>Proyectos Guardados</Text>
                 <Ionicons
                     name="arrow-back"
                     size={28}
@@ -63,34 +220,231 @@ export default function Guardados() {
                 {/* Buscador + Botones */}
                 <View style={styles.searchRow}>
                     <View style={styles.searchBox}>
-                        <TextInput style={styles.searchInput} placeholder="Buscar" placeholderTextColor="#666" />
+                        <TextInput 
+                            style={styles.searchInput} 
+                            placeholder="Buscar" 
+                            placeholderTextColor="#666" 
+                            value={searchQuery}
+                            onChangeText={(text) => {
+                                setSearchQuery(text);
+                                clearTimeout(searchTimeout);
+                                const timeout = setTimeout(() => {
+                                    cargarProyectosGuardados();
+                                }, 500);
+                                setSearchTimeout(timeout);
+                            }}
+                        />
                         <Ionicons name="search" size={20} color="#EAC306" style={styles.searchIconInside} />
                     </View>
-                    <TouchableOpacity style={styles.iconButton}><Ionicons name="filter" size={22} color="#fff" /></TouchableOpacity>
+                    <TouchableOpacity style={styles.iconButton} onPress={() => setFilterModalVisible(true)}>
+                        <Ionicons name="filter" size={22} color="#fff" />
+                    </TouchableOpacity>
                 </View>
 
                 <ScrollView>
                     {/* Institucionales */}
                     <Text style={styles.sectionTitle}>Institucionales</Text>
-                    <FlatList
-                        data={institucionales}
-                        renderItem={({ item, index }) => renderCard({ item, index, type: "institucional" })}
-                        keyExtractor={(item) => item.id}
-                        horizontal
-                        showsHorizontalScrollIndicator={false}
-                    />
+                    {proyectosInstitucionales.length > 0 ? (
+                        <View style={styles.carouselContainer}>
+                            <FlatList
+                                data={proyectosInstitucionales}
+                                renderItem={({ item, index }) => renderCard({ item, index, type: "institucional" })}
+                                keyExtractor={(item) => item.idProyecto.toString()}
+                                horizontal
+                                showsHorizontalScrollIndicator={false}
+                                contentContainerStyle={styles.carouselContent}
+                            />
+                        </View>
+                    ) : (
+                        <Text style={styles.emptyText}>No hay proyectos institucionales guardados</Text>
+                    )}
 
                     {/* Externas */}
                     <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Externas</Text>
-                    <FlatList
-                        data={externas}
-                        renderItem={({ item, index }) => renderCard({ item, index, type: "externa" })}
-                        keyExtractor={(item) => item.id}
-                        horizontal
-                        showsHorizontalScrollIndicator={false}
-                    />
+                    {proyectosExternos.length > 0 ? (
+                        <View style={styles.carouselContainer}>
+                            <FlatList
+                                data={proyectosExternos}
+                                renderItem={({ item, index }) => renderCard({ item, index, type: "externa" })}
+                                keyExtractor={(item) => item.idProyecto.toString()}
+                                horizontal
+                                showsHorizontalScrollIndicator={false}
+                                contentContainerStyle={styles.carouselContent}
+                            />
+                        </View>
+                    ) : (
+                        <Text style={styles.emptyText}>No hay proyectos externos guardados</Text>
+                    )}
                 </ScrollView>
             </View>
+
+            {/* Modal de Filtros Mejorado */}
+            <Modal
+                visible={filterModalVisible}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={() => setFilterModalVisible(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContainer}>
+                        {/* Header del Modal */}
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Filtros</Text>
+                            <TouchableOpacity 
+                                style={styles.closeButton}
+                                onPress={() => setFilterModalVisible(false)}
+                            >
+                                <Ionicons name="close" size={24} color="#213A8E" />
+                            </TouchableOpacity>
+                        </View>
+
+                        <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
+                            {/* Idiomas */}
+                            <Text style={styles.filterSectionTitle}>Idiomas</Text>
+                            <View style={styles.filterOptionsContainer}>
+                                {idiomasDisponibles.map(idioma => (
+                                    <TouchableOpacity 
+                                        key={idioma} 
+                                        style={[
+                                            styles.filterOption,
+                                            selectedIdiomas.includes(idioma) && styles.filterOptionSelected
+                                        ]}
+                                        onPress={() => toggleSelection(idioma, selectedIdiomas, setSelectedIdiomas)}
+                                    >
+                                        <Ionicons 
+                                            name={selectedIdiomas.includes(idioma) ? "checkbox" : "square-outline"} 
+                                            size={20} 
+                                            color={selectedIdiomas.includes(idioma) ? "#2666DE" : "#666"} 
+                                        />
+                                        <Text style={[
+                                            styles.filterOptionText,
+                                            selectedIdiomas.includes(idioma) && styles.filterOptionTextSelected
+                                        ]}>{idioma}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+
+                            {/* Carreras */}
+                            <Text style={styles.filterSectionTitle}>Carreras</Text>
+                            <View style={styles.filterOptionsContainer}>
+                                {carrerasDisponibles.map(carrera => (
+                                    <TouchableOpacity 
+                                        key={carrera} 
+                                        style={[
+                                            styles.filterOption,
+                                            selectedCarreras.includes(carrera) && styles.filterOptionSelected
+                                        ]}
+                                        onPress={() => toggleSelection(carrera, selectedCarreras, setSelectedCarreras)}
+                                    >
+                                        <Ionicons 
+                                            name={selectedCarreras.includes(carrera) ? "checkbox" : "square-outline"} 
+                                            size={20} 
+                                            color={selectedCarreras.includes(carrera) ? "#2666DE" : "#666"} 
+                                        />
+                                        <Text style={[
+                                            styles.filterOptionText,
+                                            selectedCarreras.includes(carrera) && styles.filterOptionTextSelected
+                                        ]}>{carrera}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+
+                            {/* Habilidades Blandas */}
+                            <Text style={styles.filterSectionTitle}>Habilidades Blandas</Text>
+                            <View style={styles.filterOptionsContainer}>
+                                {habilidadesDisponibles.blandas?.map(habilidad => (
+                                    <TouchableOpacity 
+                                        key={habilidad} 
+                                        style={[
+                                            styles.filterOption,
+                                            selectedHabilidades.includes(habilidad) && styles.filterOptionSelected
+                                        ]}
+                                        onPress={() => toggleSelection(habilidad, selectedHabilidades, setSelectedHabilidades)}
+                                    >
+                                        <Ionicons 
+                                            name={selectedHabilidades.includes(habilidad) ? "checkbox" : "square-outline"} 
+                                            size={20} 
+                                            color={selectedHabilidades.includes(habilidad) ? "#2666DE" : "#666"} 
+                                        />
+                                        <Text style={[
+                                            styles.filterOptionText,
+                                            selectedHabilidades.includes(habilidad) && styles.filterOptionTextSelected
+                                        ]}>{habilidad}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+
+                            {/* Habilidades Técnicas */}
+                            <Text style={styles.filterSectionTitle}>Habilidades Técnicas</Text>
+                            <View style={styles.filterOptionsContainer}>
+                                {habilidadesDisponibles.tecnicas?.map(habilidad => (
+                                    <TouchableOpacity 
+                                        key={habilidad} 
+                                        style={[
+                                            styles.filterOption,
+                                            selectedHabilidades.includes(habilidad) && styles.filterOptionSelected
+                                        ]}
+                                        onPress={() => toggleSelection(habilidad, selectedHabilidades, setSelectedHabilidades)}
+                                    >
+                                        <Ionicons 
+                                            name={selectedHabilidades.includes(habilidad) ? "checkbox" : "square-outline"} 
+                                            size={20} 
+                                            color={selectedHabilidades.includes(habilidad) ? "#2666DE" : "#666"} 
+                                        />
+                                        <Text style={[
+                                            styles.filterOptionText,
+                                            selectedHabilidades.includes(habilidad) && styles.filterOptionTextSelected
+                                        ]}>{habilidad}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+
+                            {/* Rango de Horas */}
+                            <Text style={styles.filterSectionTitle}>Horas Mínimas</Text>
+                            <View style={styles.horasContainer}>
+                                {[0, 25, 50, 75, 100].map(horas => (
+                                    <TouchableOpacity 
+                                        key={horas}
+                                        style={[
+                                            styles.horasOption,
+                                            { 
+                                                backgroundColor: selectedHorasRange[0] === horas ? '#2666DE' : '#F2F6FC',
+                                                borderColor: selectedHorasRange[0] === horas ? '#2666DE' : '#D1D5DB'
+                                            }
+                                        ]}
+                                        onPress={() => setSelectedHorasRange([horas, 1000])}
+                                    >
+                                        <Text style={{ 
+                                            color: selectedHorasRange[0] === horas ? '#fff' : '#213A8E',
+                                            fontWeight: selectedHorasRange[0] === horas ? 'bold' : '600',
+                                            fontSize: 13
+                                        }}>
+                                            {horas}+
+                                        </Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </ScrollView>
+
+                        {/* Botones del Modal */}
+                        <View style={styles.modalButtons}>
+                            <TouchableOpacity 
+                                style={styles.limpiarButton}
+                                onPress={limpiarFiltros}
+                            >
+                                <Text style={styles.limpiarButtonText}>Limpiar</Text>
+                            </TouchableOpacity>
+                            <TouchableOpacity 
+                                style={styles.aplicarButton}
+                                onPress={aplicarFiltros}
+                            >
+                                <Text style={styles.aplicarButtonText}>Aplicar</Text>
+                                <Ionicons name="checkmark" size={18} color="#fff" style={{ marginLeft: 5 }} />
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
 
             {/* Bottom nav */}
             <View style={styles.bottomNav}>
@@ -98,34 +452,68 @@ export default function Guardados() {
                     name="home-outline"
                     size={28}
                     color="#fff"
-                    onPress={() => router.push("/")}
+                    onPress={() => router.push({
+                        pathname: "/",
+                        params: {
+                            carnetUsuario: params.carnetUsuario,
+                            nombreUsuario: params.nombreUsuario,
+                            generoUsuario: params.generoUsuario
+                        }
+                    })}
                 />
                 <Ionicons
                     name="star"
                     size={28}
                     color="#fff"
-                    onPress={() => router.push("/(tabs)/guardados")}
+                    onPress={() => router.push({
+                        pathname: "/(tabs)/guardados",
+                        params: {
+                            carnetUsuario: params.carnetUsuario,
+                            nombreUsuario: params.nombreUsuario,
+                            generoUsuario: params.generoUsuario
+                        }
+                    })}
                 />
                 <Ionicons
                     name="file-tray-outline"
                     size={28}
                     color="#fff"
-                    onPress={() => router.push("/(tabs)/aplicaciones")}
+                    onPress={() => router.push({
+                        pathname: "/(tabs)/aplicaciones",
+                        params: {
+                            carnetUsuario: params.carnetUsuario,
+                            nombreUsuario: params.nombreUsuario,
+                            generoUsuario: params.generoUsuario
+                        }
+                    })}
                 />
                 <Ionicons
                     name="notifications-outline"
                     size={28}
                     color="#fff"
-                    onPress={() => router.push("/(tabs)/notificaciones")}
+                    onPress={() => router.push({
+                        pathname: "/(tabs)/notificaciones",
+                        params: {
+                            carnetUsuario: params.carnetUsuario,
+                            nombreUsuario: params.nombreUsuario,
+                            generoUsuario: params.generoUsuario
+                        }
+                    })}
                 />
                 <Ionicons
                     name="person-outline"
                     size={28}
                     color="#fff"
-                    onPress={() => router.push("/(tabs)/cuenta")}
+                    onPress={() => router.push({
+                        pathname: "/(tabs)/cuenta",
+                        params: {
+                            carnetUsuario: params.carnetUsuario,
+                            nombreUsuario: params.nombreUsuario,
+                            generoUsuario: params.generoUsuario
+                        }
+                    })}
                 />
             </View>
-
         </View>
     );
 }
@@ -133,14 +521,22 @@ export default function Guardados() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: "#fff"
+        backgroundColor: "#fff",
     },
+    emptyText: {
+        textAlign: 'center',
+        color: '#666',
+        fontStyle: 'italic',
+        marginHorizontal: 20,
+        marginVertical: 10,
+    },
+    // Header
     header: {
         flexDirection: "row",
         alignItems: "center",
         justifyContent: "space-between",
         paddingHorizontal: 20,
-        paddingTop: 91,
+        paddingTop: 65,
         marginBottom: 20,
         backgroundColor: "#fff"
     },
@@ -150,17 +546,21 @@ const styles = StyleSheet.create({
         color: "#000",
         fontFamily: "MyriadPro-Bold"
     },
+
+    // Fondo de contenido
     contentBackground: {
         flex: 1,
         backgroundColor: "#F2F6FC",
-        paddingBottom: 20
+        paddingBottom: 20,
     },
+
+    // Buscador + botones
     searchRow: {
         flexDirection: "row",
         alignItems: "center",
         marginHorizontal: 20,
         marginTop: 20,
-        marginBottom: 15
+        marginBottom: 15,
     },
     searchBox: {
         flex: 1,
@@ -174,10 +574,7 @@ const styles = StyleSheet.create({
         height: 45,
         position: "relative",
         shadowColor: "#2666DE",
-        shadowOffset: {
-            width: 0,
-            height: 0
-        },
+        shadowOffset: { width: 0, height: 0 },
         shadowOpacity: 0.6,
         shadowRadius: 8,
         elevation: 6,
@@ -186,11 +583,11 @@ const styles = StyleSheet.create({
         flex: 1,
         fontFamily: "Inter-Medium",
         fontSize: 14,
-        color: "#000"
+        color: "#000",
     },
     searchIconInside: {
         position: "absolute",
-        right: 10
+        right: 10,
     },
     iconButton: {
         backgroundColor: "#F9DC50",
@@ -201,14 +598,13 @@ const styles = StyleSheet.create({
         justifyContent: "center",
         alignItems: "center",
         shadowColor: "#EAC306",
-        shadowOffset: {
-            width: 0,
-            height: 0
-        },
+        shadowOffset: { width: 0, height: 0 },
         shadowOpacity: 0.6,
         shadowRadius: 8,
         elevation: 6,
     },
+
+    // Secciones
     sectionTitle: {
         fontSize: 19,
         fontFamily: "MyriadPro-Bold",
@@ -217,6 +613,18 @@ const styles = StyleSheet.create({
         marginHorizontal: 20,
         marginVertical: 10,
     },
+
+    // Carruseles
+    carouselContainer: {
+        height: 250,
+        marginBottom: 10,
+    },
+    carouselContent: {
+        paddingHorizontal: 10,
+        paddingVertical: 5,
+    },
+
+    // Cards
     card: {
         width: 260,
         minHeight: 210,
@@ -229,7 +637,7 @@ const styles = StyleSheet.create({
     cardIcon: {
         position: "absolute",
         top: 19,
-        right: 13
+        right: 13,
     },
     cardTitle: {
         fontSize: 15,
@@ -253,14 +661,14 @@ const styles = StyleSheet.create({
     },
     cardInfo: {
         fontSize: 13,
-        color: "#444"
+        color: "#444",
     },
     bold: {
         fontFamily: "MyriadPro-Bold",
-        fontWeight: "bold"
+        fontWeight: "bold",
     },
     regular: {
-        fontFamily: "MyriadPro-Regular"
+        fontFamily: "MyriadPro-Regular",
     },
     cardButton: {
         position: "absolute",
@@ -276,6 +684,8 @@ const styles = StyleSheet.create({
         fontFamily: "MyriadPro-Bold",
         fontWeight: "bold",
     },
+
+    // Bottom nav
     bottomNav: {
         flexDirection: "row",
         justifyContent: "space-around",
@@ -286,5 +696,157 @@ const styles = StyleSheet.create({
         borderTopRightRadius: 30,
         paddingBottom: 30,
         paddingTop: 20,
+    },
+
+    // Modal Styles Mejorados
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'flex-end',
+    },
+    modalContainer: {
+        backgroundColor: '#fff',
+        borderTopLeftRadius: 25,
+        borderTopRightRadius: 25,
+        maxHeight: screenHeight * 0.85,
+        paddingBottom: 20,
+        shadowColor: "#000",
+        shadowOffset: {
+            width: 0,
+            height: -2,
+        },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        elevation: 5,
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 20,
+        paddingVertical: 15,
+        borderBottomWidth: 1,
+        borderBottomColor: '#E5E7EB',
+    },
+    modalTitle: {
+        fontSize: 20,
+        fontWeight: 'bold',
+        color: '#213A8E',
+        fontFamily: 'MyriadPro-Bold',
+    },
+    closeButton: {
+        padding: 4,
+    },
+    modalContent: {
+        paddingHorizontal: 20,
+        maxHeight: screenHeight * 0.6,
+    },
+    filterSectionTitle: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#213A8E',
+        marginTop: 20,
+        marginBottom: 12,
+        fontFamily: 'MyriadPro-Bold',
+    },
+    filterOptionsContainer: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        marginBottom: 10,
+    },
+    filterOption: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#F8FAFC',
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 8,
+        marginRight: 8,
+        marginBottom: 8,
+        borderWidth: 1,
+        borderColor: '#E5E7EB',
+    },
+    filterOptionSelected: {
+        backgroundColor: '#E5EDFB',
+        borderColor: '#2666DE',
+    },
+    filterOptionText: {
+        marginLeft: 6,
+        fontSize: 14,
+        fontFamily: 'MyriadPro-Regular',
+        color: '#666',
+    },
+    filterOptionTextSelected: {
+        color: '#213A8E',
+        fontWeight: '600',
+    },
+    horasContainer: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        marginVertical: 10,
+        marginBottom: 20,
+    },
+    horasOption: {
+        paddingHorizontal: 12,
+        paddingVertical: 10,
+        borderRadius: 8,
+        borderWidth: 2,
+        minWidth: 55,
+        alignItems: 'center',
+        shadowColor: "#000",
+        shadowOffset: {
+            width: 0,
+            height: 1,
+        },
+        shadowOpacity: 0.1,
+        shadowRadius: 1,
+        elevation: 1,
+    },
+    modalButtons: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        paddingHorizontal: 20,
+        marginTop: 10,
+        gap: 12,
+    },
+    limpiarButton: {
+        backgroundColor: '#F2F6FC',
+        paddingHorizontal: 20,
+        paddingVertical: 14,
+        borderRadius: 12,
+        flex: 1,
+        alignItems: 'center',
+        borderWidth: 2,
+        borderColor: '#2666DE',
+    },
+    limpiarButtonText: {
+        color: '#2666DE',
+        fontWeight: 'bold',
+        fontSize: 15,
+        fontFamily: 'MyriadPro-Bold',
+    },
+    aplicarButton: {
+        backgroundColor: '#2666DE',
+        paddingHorizontal: 20,
+        paddingVertical: 14,
+        borderRadius: 12,
+        flex: 2,
+        alignItems: 'center',
+        flexDirection: 'row',
+        justifyContent: 'center',
+        shadowColor: "#2666DE",
+        shadowOffset: {
+            width: 0,
+            height: 2,
+        },
+        shadowOpacity: 0.3,
+        shadowRadius: 3,
+        elevation: 4,
+    },
+    aplicarButtonText: {
+        color: '#fff',
+        fontWeight: 'bold',
+        fontSize: 15,
+        fontFamily: 'MyriadPro-Bold',
     },
 });

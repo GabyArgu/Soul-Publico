@@ -1,3 +1,4 @@
+// routes/opcionesDisponibilidad.ts
 import { Router } from "express";
 import { getConnection } from "../db";
 
