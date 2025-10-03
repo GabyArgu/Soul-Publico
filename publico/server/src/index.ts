@@ -17,6 +17,7 @@ import institucionesRoutes from "./routes/instituciones";
 import modalidadesRoutes from "./routes/modalidades";
 import proyectosGuardadosRoutes from "./routes/proyectosGuardados";
 import notificacionesRoutes from "./routes/notificaciones";
+import aplicacionesRoutes from "./routes/aplicaciones";
 
 dotenv.config();
 
@@ -45,6 +46,7 @@ app.use("/api/instituciones", institucionesRoutes);
 app.use("/api/modalidades", modalidadesRoutes);
 app.use("/api/proyectos-guardados", proyectosGuardadosRoutes);
 app.use("/api/notificaciones", notificacionesRoutes);
+app.use("/api/aplicaciones", aplicacionesRoutes);
 
 app.listen(4000, "0.0.0.0", () => {
     console.log("Servidor corriendo en http://0.0.0.0:4000");

@@ -38,133 +38,148 @@ export default function DetalleProyecto() {
     const [isGuardado, setIsGuardado] = useState(false);
     const [idUsuario, setIdUsuario] = useState<number | null>(null);
     const [cargandoGuardado, setCargandoGuardado] = useState(false);
+    const [userDataState, setUserDataState] = useState<any>(null);
 
     const idProyecto = params.idProyecto;
 
     const obtenerIdUsuario = async (): Promise<number | null> => {
     try {
         const userData = await AsyncStorage.getItem("userData");
-        
-        if (!userData) {
-            return null;
-        }
+        if (!userData) return null;
 
         const parsedData = JSON.parse(userData);
         const carnet = parsedData.carnet;
-        
-        if (!carnet) {
-            return null;
-        }
+        if (!carnet) return null;
 
-        // Usar el endpoint existente de usuarios que devuelve todos los datos
         const response = await fetch(`http://192.168.1.11:4000/api/usuarios/${carnet}`);
-        
-        if (!response.ok) {
-            throw new Error(`Error HTTP: ${response.status}`);
-        }
-        
+        if (!response.ok) throw new Error(`Error HTTP: ${response.status}`);
+
         const usuario = await response.json();
         console.log("Datos completos del usuario:", usuario);
-        
-        // Asumiendo que el endpoint devuelve un objeto con idUsuario
+
+        setUserDataState(usuario); // 👈 guardamos todo el usuario en el state
         return usuario.idUsuario || null;
-        
     } catch (error) {
         console.error("Error obteniendo ID de usuario:", error);
         return null;
     }
 };
 
+
     // Verificar si el proyecto está guardado
     // Verificar si el proyecto está guardado
-const verificarProyectoGuardado = async () => {
-    try {
-        if (!idUsuario || !idProyecto) {
-            console.log("No hay usuario o proyecto para verificar");
-            return;
-        }
-
-        console.log("Verificando guardado - Usuario:", idUsuario, "Proyecto:", idProyecto);
-        
-        const response = await fetch(`http://192.168.1.11:4000/api/proyectos-guardados/verificar?userId=${idUsuario}&proyectoId=${idProyecto}`);
-        
-        if (!response.ok) {
-            throw new Error(`Error HTTP: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        console.log("Resultado verificación:", data);
-        setIsGuardado(data.estaGuardado);
-        
-    } catch (error) {
-        console.error('Error al verificar proyecto guardado:', error);
-        setIsGuardado(false);
-    }
-};
-
-   // 1️⃣ Cargar detalles + obtener ID de usuario
-useEffect(() => {
-    const cargarDetallesProyecto = async () => {
+    const verificarProyectoGuardado = async () => {
         try {
-            setLoading(true);
-            const userId = await obtenerIdUsuario();
-            if (!userId) {
-                console.log("No se pudo obtener el ID del usuario");
-                showToast("Debes iniciar sesión para usar esta función", false);
+            if (!idUsuario || !idProyecto) {
+                console.log("No hay usuario o proyecto para verificar");
                 return;
             }
 
-            setIdUsuario(userId); // 👈 acá solo seteás, no verificás todavía
+            console.log("Verificando guardado - Usuario:", idUsuario, "Proyecto:", idProyecto);
 
-            // Cargar detalles del proyecto
-            const response = await fetch(`http://192.168.1.11:4000/api/proyectos/${idProyecto}`);
-            if (!response.ok) throw new Error("Error al cargar detalles del proyecto");
+            const response = await fetch(`http://192.168.1.11:4000/api/proyectos-guardados/verificar?userId=${idUsuario}&proyectoId=${idProyecto}`);
+
+            if (!response.ok) {
+                throw new Error(`Error HTTP: ${response.status}`);
+            }
+
             const data = await response.json();
-            setProyecto(data);
+            console.log("Resultado verificación:", data);
+            setIsGuardado(data.estaGuardado);
+
         } catch (error) {
-            console.error("Error al cargar detalles del proyecto:", error);
-            showToast("Error al cargar los detalles del proyecto", false);
-        } finally {
-            setLoading(false);
+            console.error('Error al verificar proyecto guardado:', error);
+            setIsGuardado(false);
         }
     };
 
-    if (idProyecto) {
-        cargarDetallesProyecto();
-    }
-}, [idProyecto]);
+    // 1️⃣ Cargar detalles + obtener ID de usuario
+    useEffect(() => {
+        const cargarDetallesProyecto = async () => {
+            try {
+                setLoading(true);
+                const userId = await obtenerIdUsuario();
+                if (!userId) {
+                    console.log("No se pudo obtener el ID del usuario");
+                    showToast("Debes iniciar sesión para usar esta función", false);
+                    return;
+                }
 
-// 2️⃣ Verificar guardado solo cuando idUsuario y idProyecto estén listos
+                setIdUsuario(userId); // 👈 acá solo seteás, no verificás todavía
+
+                // Cargar detalles del proyecto
+                const response = await fetch(`http://192.168.1.11:4000/api/proyectos/${idProyecto}`);
+                if (!response.ok) throw new Error("Error al cargar detalles del proyecto");
+                const data = await response.json();
+                setProyecto(data);
+            } catch (error) {
+                console.error("Error al cargar detalles del proyecto:", error);
+                showToast("Error al cargar los detalles del proyecto", false);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        if (idProyecto) {
+            cargarDetallesProyecto();
+        }
+    }, [idProyecto]);
+
+    // 2️⃣ Verificar guardado solo cuando idUsuario y idProyecto estén listos
+    // 3️⃣ Verificar aplicación después de tener idUsuario e idProyecto
 useEffect(() => {
     if (idUsuario && idProyecto) {
-        verificarProyectoGuardado();
+        const checkAplicacion = async () => {
+            try {
+                const pool = await fetch(
+                    `http://192.168.1.11:4000/api/aplicaciones/verificar?userId=${idUsuario}&proyectoId=${idProyecto}`
+                );
+                const data = await pool.json();
+                setYaAplico(data.yaAplico);
+
+                // Mostrar toast si ya aplicó
+                if (data.yaAplico) {
+                    showToast("⚠️ Ya aplicaste a este proyecto", false, "warning");
+                }
+            } catch (error) {
+                console.error("Error verificando aplicación:", error);
+            }
+        };
+
+        checkAplicacion();
     }
 }, [idUsuario, idProyecto]);
 
 
-    const showToast = (message: string, success: boolean = false) => {
-        Toast.show(message, {
-            duration: 2000,
-            position: Toast.positions.TOP,
-            shadow: true,
-            animation: true,
-            hideOnPress: true,
-            backgroundColor: success ? "#4CAF50" : "#E53935",
-            textColor: "#fff",
-            opacity: 0.95,
-            containerStyle: {
-                borderRadius: 10,
-                paddingHorizontal: 15,
-                paddingVertical: 10,
-                marginTop: 60,
-                alignSelf: "center",
-            },
-            textStyle: {
-                fontFamily: "MyriadPro-Bold",
-                fontSize: 14,
-            },
-        });
-    };
+
+    const showToast = (message: string, success: boolean = false, type: "success" | "error" | "warning" = "error") => {
+    let backgroundColor = "#E53935"; // rojo por defecto
+    if (type === "success") backgroundColor = "#4CAF50";
+    if (type === "warning") backgroundColor = "#F0C02A"; // amarillo
+
+    Toast.show(message, {
+        duration: 2000,
+        position: Toast.positions.TOP,
+        shadow: true,
+        animation: true,
+        hideOnPress: true,
+        backgroundColor,
+        textColor: "#fff",
+        opacity: 0.95,
+        containerStyle: {
+            borderRadius: 10,
+            paddingHorizontal: 15,
+            paddingVertical: 10,
+            marginTop: 60,
+            alignSelf: "center",
+        },
+        textStyle: {
+            fontFamily: "MyriadPro-Bold",
+            fontSize: 14,
+        },
+    });
+};
+
 
     // Guardar proyecto
     const guardarProyecto = async () => {
@@ -237,6 +252,71 @@ useEffect(() => {
             guardarProyecto();
         }
     };
+
+    const [yaAplico, setYaAplico] = useState(false);
+
+const verificarAplicacion = async () => {
+  if (!idUsuario || !idProyecto) return;
+
+  try {
+    const response = await fetch(
+      `http://192.168.1.11:4000/api/aplicaciones/verificar?userId=${idUsuario}&proyectoId=${idProyecto}`
+    );
+
+    if (!response.ok) throw new Error(`Error HTTP: ${response.status}`);
+    const data = await response.json();
+    setYaAplico(data.yaAplico); // asumimos que la API devuelve { yaAplico: true/false }
+  } catch (error) {
+    console.error("Error verificando aplicación:", error);
+    setYaAplico(false);
+  }
+};
+
+// 3️⃣ Verificar aplicación después de tener idUsuario e idProyecto
+useEffect(() => {
+  if (idUsuario && idProyecto) {
+    verificarAplicacion();
+  }
+}, [idUsuario, idProyecto]);
+
+const handleAplicarClick = async () => {
+  if (yaAplico) {
+    showToast("❌ Ya aplicaste a este proyecto", false);
+    return;
+  }
+
+  // Tu lógica actual de aplicar
+  if (!idUsuario || !proyecto || !userDataState?.urlCv) {
+    showToast("Error: Usuario o CV no disponible", false);
+    return;
+  }
+
+  try {
+    const usuario = {
+      idUsuario,
+      nombreCompleto: userDataState.nombreCompleto || "Sin nombre",
+      email: userDataState.email || "Sin email",
+      urlCv: userDataState.urlCv,
+    };
+
+    const response = await fetch("http://192.168.1.11:4000/api/aplicaciones/aplicar", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ idProyecto: proyecto.idProyecto, usuario }),
+    });
+
+    if (!response.ok) throw new Error("Error al enviar aplicación");
+
+    setYaAplico(true); // bloqueamos después de aplicar
+    showToast("✅ Aplicación enviada correctamente", true, "success");
+  } catch (error) {
+    console.error(error);
+    showToast("Error al enviar la aplicación", false);
+  }
+};
+
+
+
 
     const formatearFecha = (fecha: string) => {
         if (!fecha) return 'No especificada';
@@ -404,30 +484,95 @@ useEffect(() => {
                         {cargandoGuardado ? (
                             <ActivityIndicator size="small" color="#fff" />
                         ) : (
-                            <Ionicons 
-                                name={isGuardado ? "star" : "star-outline"} 
-                                size={26} 
-                                color="#fff" 
+                            <Ionicons
+                                name={isGuardado ? "star" : "star-outline"}
+                                size={26}
+                                color="#fff"
                             />
                         )}
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                        style={styles.buttonRight}
-                        onPress={() => showToast("📤 Aplicación enviada", true)}
+                        style={[styles.buttonRight, yaAplico && { opacity: 0.9 }]}
+                        onPress={handleAplicarClick}
+                        disabled={yaAplico} 
                     >
-                        <Ionicons name="send-outline" size={26} color="#fff" />
+                        <Ionicons
+                            name={yaAplico ? "send" : "send-outline"}
+                            size={26}
+                            color="#fff"
+                        />
                     </TouchableOpacity>
                 </View>
             </ScrollView>
 
             {/* Bottom nav */}
             <View style={styles.bottomNav}>
-                <Ionicons name="home-outline" size={28} color="#fff" onPress={() => router.push("/")} />
-                <Ionicons name="star-outline" size={28} color="#fff" onPress={() => router.push("/(tabs)/guardados")} />
-                <Ionicons name="file-tray-outline" size={28} color="#fff" onPress={() => router.push("/(tabs)/aplicaciones")} />
-                <Ionicons name="notifications-outline" size={28} color="#fff" onPress={() => router.push("/(tabs)/notificaciones")} />
-                <Ionicons name="person-outline" size={28} color="#fff" onPress={() => router.push("/(tabs)/cuenta")} />
+                <Ionicons
+                    name="home-outline"
+                    size={28}
+                    color="#fff"
+                    onPress={() => router.push({
+                        pathname: "/",
+                        params: {
+                            carnetUsuario: params.carnetUsuario,
+                            nombreUsuario: params.nombreUsuario,
+                            generoUsuario: params.generoUsuario
+                        }
+                    })}
+                />
+                <Ionicons
+                    name="star-outline"
+                    size={28}
+                    color="#fff"
+                    onPress={() => router.push({
+                        pathname: "/(tabs)/guardados",
+                        params: {
+                            carnetUsuario: params.carnetUsuario,
+                            nombreUsuario: params.nombreUsuario,
+                            generoUsuario: params.generoUsuario
+                        }
+                    })}
+                />
+                <Ionicons
+                    name="file-tray-outline"
+                    size={28}
+                    color="#fff"
+                    onPress={() => router.push({
+                        pathname: "/(tabs)/aplicaciones",
+                        params: {
+                            carnetUsuario: params.carnetUsuario,
+                            nombreUsuario: params.nombreUsuario,
+                            generoUsuario: params.generoUsuario
+                        }
+                    })}
+                />
+                <Ionicons
+                    name="notifications-outline"
+                    size={28}
+                    color="#fff"
+                    onPress={() => router.push({
+                        pathname: "/(tabs)/notificaciones",
+                        params: {
+                            carnetUsuario: params.carnetUsuario,
+                            nombreUsuario: params.nombreUsuario,
+                            generoUsuario: params.generoUsuario
+                        }
+                    })}
+                />
+                <Ionicons
+                    name="person-outline"
+                    size={28}
+                    color="#fff"
+                    onPress={() => router.push({
+                        pathname: "/(tabs)/cuenta",
+                        params: {
+                            carnetUsuario: params.carnetUsuario,
+                            nombreUsuario: params.nombreUsuario,
+                            generoUsuario: params.generoUsuario
+                        }
+                    })}
+                />
             </View>
         </View>
     );

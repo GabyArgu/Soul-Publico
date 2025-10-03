@@ -73,6 +73,7 @@ export default function Guardados() {
 
         if (carnet) {  // ⚠️ Solo agregalo si no es null
             queryParams.append("carnet", carnet);
+
         } else {
             console.warn("⚠️ No se encontró carnet del usuario");
         }
