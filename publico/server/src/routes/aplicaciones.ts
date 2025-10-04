@@ -58,6 +58,73 @@ router.get("/", async (req, res) => {
     }
 });
 
+// Agregar esta ruta al archivo aplicaciones.ts (después de las rutas existentes)
+
+// GET /api/aplicaciones/detalle/:idAplicacion
+router.get("/detalle/:idAplicacion", async (req, res) => {
+    const { idAplicacion } = req.params;
+
+    try {
+        const pool = await getConnection();
+        
+        const query = `
+            SELECT 
+                idAplicacion,
+                idProyecto,
+                nombreProyecto AS titulo,
+                descripcion,
+                capacidad,
+                horasServicio AS horas,
+                fechaInicio,
+                fechaFin,
+                nombreInstitucion AS institucion,
+                nombreContacto,
+                emailContacto,
+                telefonoContacto,
+                carrerasRelacionadas,
+                habilidadesRelacionadas,
+                idiomasRelacionados,
+                nombreEstadoAplicacion AS estado
+            FROM vAplicacionesUsuarioResumen
+            WHERE idAplicacion = @idAplicacion
+        `;
+
+        const result = await pool.request()
+            .input("idAplicacion", sql.Int, idAplicacion)
+            .query(query);
+
+        if (result.recordset.length === 0) {
+            return res.status(404).json({ error: "Aplicación no encontrada" });
+        }
+
+        // Necesitamos obtener las fechas específicas de cada estado desde la tabla aplicaciones
+        const aplicacionDetalle = await pool.request()
+            .input("idAplicacion", sql.Int, idAplicacion)
+            .query(`
+                SELECT 
+                    enviadoEn,
+                    revisadoEn,
+                    aceptadoEn,
+                    rechazadoEn,
+                    finalizadoEn,
+                    urlCartaAceptacion
+                FROM aplicaciones 
+                WHERE idAplicacion = @idAplicacion
+            `);
+
+        const aplicacion = {
+            ...result.recordset[0],
+            ...aplicacionDetalle.recordset[0]
+        };
+
+        res.json(aplicacion);
+
+    } catch (error) {
+        console.error("Error obteniendo detalles de aplicación:", error);
+        res.status(500).json({ error: "Error obteniendo detalles de aplicación", detalles: error });
+    }
+});
+
 // GET /api/aplicaciones/verificar?userId=1&proyectoId=2
 router.get("/verificar", async (req, res) => {
     const { userId, proyectoId } = req.query;

@@ -39,7 +39,7 @@ export default function Aplicaciones() {
     // Opciones de filtros - TODOS LOS MISMOS QUE GUARDADOS
     const [idiomasDisponibles, setIdiomasDisponibles] = useState<string[]>([]);
     const [carrerasDisponibles, setCarrerasDisponibles] = useState<string[]>([]);
-    const [habilidadesDisponibles, setHabilidadesDisponibles] = useState<{blandas: string[], tecnicas: string[]}>({blandas: [], tecnicas: []});
+    const [habilidadesDisponibles, setHabilidadesDisponibles] = useState<{ blandas: string[], tecnicas: string[] }>({ blandas: [], tecnicas: [] });
     const [institucionesDisponibles, setInstitucionesDisponibles] = useState<string[]>([]);
 
     // Obtener carnet - MISMA LÓGICA QUE GUARDADOS
@@ -70,7 +70,7 @@ export default function Aplicaciones() {
             }
 
             const queryParams = new URLSearchParams();
-            
+
             // MISMA LÓGICA QUE EN GUARDADOS: append múltiple para arrays
             if (searchQuery) queryParams.append("search", searchQuery);
             selectedIdiomas.forEach(i => queryParams.append("idioma", i));
@@ -104,10 +104,10 @@ export default function Aplicaciones() {
                 fetch("http://192.168.1.11:4000/api/proyectos/habilidades").then(r => r.json()),
                 fetch("http://192.168.1.11:4000/api/proyectos/instituciones").then(r => r.json())
             ]);
-            
+
             setIdiomasDisponibles(Array.isArray(idiomasRes) ? idiomasRes : []);
             setCarrerasDisponibles(Array.isArray(carrerasRes) ? carrerasRes : []);
-            
+
             setHabilidadesDisponibles({
                 blandas: Array.isArray(habilidadesRes?.blandas) ? habilidadesRes.blandas : [],
                 tecnicas: Array.isArray(habilidadesRes?.tecnicas) ? habilidadesRes.tecnicas : []
@@ -115,19 +115,19 @@ export default function Aplicaciones() {
 
             // CORRECCIÓN: Extraer solo los nombres de las instituciones
             if (Array.isArray(institucionesRes)) {
-                const nombresInstituciones = institucionesRes.map(item => 
+                const nombresInstituciones = institucionesRes.map(item =>
                     typeof item === 'string' ? item : item.nombre
                 ).filter(nombre => nombre);
                 setInstitucionesDisponibles(nombresInstituciones);
             } else {
                 setInstitucionesDisponibles([]);
             }
-            
+
         } catch (err) {
             console.error('Error al cargar filtros:', err);
             setIdiomasDisponibles([]);
             setCarrerasDisponibles([]);
-            setHabilidadesDisponibles({blandas: [], tecnicas: []});
+            setHabilidadesDisponibles({ blandas: [], tecnicas: [] });
             setInstitucionesDisponibles([]);
         }
     };
@@ -182,7 +182,18 @@ export default function Aplicaciones() {
 
         return (
             <View style={[styles.card, { backgroundColor: palette.color, borderColor: palette.borderColor }]}>
-                <TouchableOpacity style={styles.cardIcon}>
+                <TouchableOpacity
+                    style={styles.cardIcon}
+                    onPress={() => router.push({
+                        pathname: "/(tabs)/detallesA",
+                        params: {
+                            idAplicacion: item.idAplicacion.toString(),
+                            carnetUsuario: params.carnetUsuario,
+                            nombreUsuario: params.nombreUsuario,
+                            generoUsuario: params.generoUsuario
+                        }
+                    })}
+                >
                     <Ionicons name="ellipsis-vertical" size={20} color="#333" />
                 </TouchableOpacity>
 
@@ -324,18 +335,18 @@ export default function Aplicaciones() {
                             <Text style={styles.filterSectionTitle}>Idiomas</Text>
                             <View style={styles.filterOptionsContainer}>
                                 {idiomasDisponibles.map(idioma => (
-                                    <TouchableOpacity 
-                                        key={idioma} 
+                                    <TouchableOpacity
+                                        key={idioma}
                                         style={[
                                             styles.filterOption,
                                             selectedIdiomas.includes(idioma) && styles.filterOptionSelected
                                         ]}
                                         onPress={() => toggleSelection(idioma, selectedIdiomas, setSelectedIdiomas)}
                                     >
-                                        <Ionicons 
-                                            name={selectedIdiomas.includes(idioma) ? "checkbox" : "square-outline"} 
-                                            size={20} 
-                                            color={selectedIdiomas.includes(idioma) ? "#2666DE" : "#666"} 
+                                        <Ionicons
+                                            name={selectedIdiomas.includes(idioma) ? "checkbox" : "square-outline"}
+                                            size={20}
+                                            color={selectedIdiomas.includes(idioma) ? "#2666DE" : "#666"}
                                         />
                                         <Text style={[
                                             styles.filterOptionText,
@@ -349,18 +360,18 @@ export default function Aplicaciones() {
                             <Text style={styles.filterSectionTitle}>Carreras</Text>
                             <View style={styles.filterOptionsContainer}>
                                 {carrerasDisponibles.map(carrera => (
-                                    <TouchableOpacity 
-                                        key={carrera} 
+                                    <TouchableOpacity
+                                        key={carrera}
                                         style={[
                                             styles.filterOption,
                                             selectedCarreras.includes(carrera) && styles.filterOptionSelected
                                         ]}
                                         onPress={() => toggleSelection(carrera, selectedCarreras, setSelectedCarreras)}
                                     >
-                                        <Ionicons 
-                                            name={selectedCarreras.includes(carrera) ? "checkbox" : "square-outline"} 
-                                            size={20} 
-                                            color={selectedCarreras.includes(carrera) ? "#2666DE" : "#666"} 
+                                        <Ionicons
+                                            name={selectedCarreras.includes(carrera) ? "checkbox" : "square-outline"}
+                                            size={20}
+                                            color={selectedCarreras.includes(carrera) ? "#2666DE" : "#666"}
                                         />
                                         <Text style={[
                                             styles.filterOptionText,
@@ -374,18 +385,18 @@ export default function Aplicaciones() {
                             <Text style={styles.filterSectionTitle}>Habilidades Blandas</Text>
                             <View style={styles.filterOptionsContainer}>
                                 {habilidadesDisponibles.blandas?.map(habilidad => (
-                                    <TouchableOpacity 
-                                        key={habilidad} 
+                                    <TouchableOpacity
+                                        key={habilidad}
                                         style={[
                                             styles.filterOption,
                                             selectedHabilidades.includes(habilidad) && styles.filterOptionSelected
                                         ]}
                                         onPress={() => toggleSelection(habilidad, selectedHabilidades, setSelectedHabilidades)}
                                     >
-                                        <Ionicons 
-                                            name={selectedHabilidades.includes(habilidad) ? "checkbox" : "square-outline"} 
-                                            size={20} 
-                                            color={selectedHabilidades.includes(habilidad) ? "#2666DE" : "#666"} 
+                                        <Ionicons
+                                            name={selectedHabilidades.includes(habilidad) ? "checkbox" : "square-outline"}
+                                            size={20}
+                                            color={selectedHabilidades.includes(habilidad) ? "#2666DE" : "#666"}
                                         />
                                         <Text style={[
                                             styles.filterOptionText,
@@ -399,18 +410,18 @@ export default function Aplicaciones() {
                             <Text style={styles.filterSectionTitle}>Habilidades Técnicas</Text>
                             <View style={styles.filterOptionsContainer}>
                                 {habilidadesDisponibles.tecnicas?.map(habilidad => (
-                                    <TouchableOpacity 
-                                        key={habilidad} 
+                                    <TouchableOpacity
+                                        key={habilidad}
                                         style={[
                                             styles.filterOption,
                                             selectedHabilidades.includes(habilidad) && styles.filterOptionSelected
                                         ]}
                                         onPress={() => toggleSelection(habilidad, selectedHabilidades, setSelectedHabilidades)}
                                     >
-                                        <Ionicons 
-                                            name={selectedHabilidades.includes(habilidad) ? "checkbox" : "square-outline"} 
-                                            size={20} 
-                                            color={selectedHabilidades.includes(habilidad) ? "#2666DE" : "#666"} 
+                                        <Ionicons
+                                            name={selectedHabilidades.includes(habilidad) ? "checkbox" : "square-outline"}
+                                            size={20}
+                                            color={selectedHabilidades.includes(habilidad) ? "#2666DE" : "#666"}
                                         />
                                         <Text style={[
                                             styles.filterOptionText,
