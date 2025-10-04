@@ -1,4 +1,5 @@
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ImageBackground, Dimensions } from "react-native";
+// app/(auth)/Crear2.tsx
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, ImageBackground, Dimensions, Modal, ScrollView } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useState, useEffect } from "react";
 import { Picker } from "@react-native-picker/picker";
@@ -9,6 +10,8 @@ import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 interface Habilidad { idHabilidad: number; nombre: string; tipo: string; }
+interface Idioma { idIdioma: number; nombre: string; }
+interface Nivel { idINivel: number; nombre: string; }
 
 export default function Crear2() {
     const router = useRouter();
@@ -18,13 +21,15 @@ export default function Crear2() {
 
     // Estados de selects
     const [carreras, setCarreras] = useState<{ idCarrera: number; nombre: string }[]>([]);
-    const [idiomas, setIdiomas] = useState<{ idIdioma: number; nombre: string }[]>([]);
-    const [niveles, setNiveles] = useState<{ idINivel: number; nombre: string }[]>([]);
+    const [idiomas, setIdiomas] = useState<Idioma[]>([]);
+    const [niveles, setNiveles] = useState<Nivel[]>([]);
     const [unidades, setUnidades] = useState("");
     const [carrera, setCarrera] = useState<number | "">("");
-    const [idioma, setIdioma] = useState<number | "">("");
-    const [nivel, setNivel] = useState<number | "">("");
     const [carreraSeleccionada, setCarreraSeleccionada] = useState("");
+
+    // Estados para idiomas (COMO EN EDITAR)
+    const [idiomasSeleccionados, setIdiomasSeleccionados] = useState<{ idIdioma: number, idINivel: number }[]>([]);
+    const [modalIdiomasVisible, setModalIdiomasVisible] = useState(false);
 
     // Habilidades
     const [habilidades, setHabilidades] = useState<Habilidad[]>([]);
@@ -107,6 +112,31 @@ export default function Crear2() {
         else setHabilidadesBlandas(habilidadesBlandas.filter(h => h.idHabilidad !== id));
     };
 
+    // FUNCIONES PARA IDIOMAS (COPIADAS DE EDITAR)
+    const toggleIdiomaNivel = (idIdioma: number, idINivel: number) => {
+        const existeIndex = idiomasSeleccionados.findIndex(item => item.idIdioma === idIdioma);
+
+        if (existeIndex !== -1) {
+            const nuevosIdiomas = [...idiomasSeleccionados];
+            nuevosIdiomas.splice(existeIndex, 1);
+            setIdiomasSeleccionados(nuevosIdiomas);
+        } else {
+            setIdiomasSeleccionados([...idiomasSeleccionados, { idIdioma, idINivel }]);
+        }
+    };
+
+    const actualizarNivelIdioma = (idIdioma: number, idINivel: number) => {
+        const nuevosIdiomas = idiomasSeleccionados.map(item =>
+            item.idIdioma === idIdioma ? { ...item, idINivel } : item
+        );
+        setIdiomasSeleccionados(nuevosIdiomas);
+    };
+
+    const getIdiomasTexto = () => {
+        if (idiomasSeleccionados.length === 0) return "Idiomas y niveles (opcional)";
+        return `${idiomasSeleccionados.length} idioma(s) seleccionado(s)`;
+    };
+
     const validarUnidades = (text: string) => { if (/^\d{0,2}$/.test(text)) setUnidades(text); };
 
     const showToast = (message: string, success: boolean = false) => {
@@ -123,21 +153,22 @@ export default function Crear2() {
             const paso1DataString = await AsyncStorage.getItem("crearPaso1");
             const paso1Data = paso1DataString ? JSON.parse(paso1DataString) : {};
 
-            // Validación de selects obligatorios
+            // Validación de selects obligatorios (quitamos idioma y nivel individual)
             if (!carrera) return showToast("❌ Debes seleccionar tu carrera");
             if (!unidades) return showToast("❌ Debes ingresar UV's ganadas");
-            if (!idioma) return showToast("❌ Debes seleccionar un idioma");
-            if (!nivel) return showToast("❌ Debes seleccionar nivel de idioma");
 
             if (habilidadesTecnicas.length === 0) return showToast("❌ Debes agregar al menos una habilidad técnica");
             if (habilidadesBlandas.length === 0) return showToast("❌ Debes agregar al menos una habilidad blanda");
+
+            // Tomamos solo el primer idioma seleccionado para compatibilidad con el backend
+            const primerIdioma = idiomasSeleccionados.length > 0 ? idiomasSeleccionados[0] : null;
 
             const combinedData = {
                 ...paso1Data,
                 idCarrera: Number(carrera),
                 uvs: parseInt(unidades),
-                idIdioma: Number(idioma),
-                idNivel: Number(nivel),
+                idIdioma: primerIdioma ? primerIdioma.idIdioma : null,
+                idNivel: primerIdioma ? primerIdioma.idINivel : null,
                 habilidadesTecnicas: habilidadesTecnicas.map(h => h.idHabilidad).join(","),
                 habilidadesBlandas: habilidadesBlandas.map(h => h.idHabilidad).join(","),
             };
@@ -199,45 +230,16 @@ export default function Crear2() {
                             />
                         </View>
 
-                        {/* Idioma - Mismo diseño que carrera */}
-                        <View style={styles.inputContainer}>
-                            <Picker 
-                                selectedValue={idioma} 
-                                onValueChange={setIdioma} 
-                                style={styles.picker} 
-                                dropdownIconColor="#213A8E"
-                                mode="dropdown"
-                            >
-                                <Picker.Item label="Idioma que dominas" value="" />
-                                {idiomas.map(i => (
-                                    <Picker.Item 
-                                        key={i.idIdioma} 
-                                        label={i.nombre} 
-                                        value={i.idIdioma} 
-                                    />
-                                ))}
-                            </Picker>
-                        </View>
-
-                        {/* Nivel - Mismo diseño que carrera */}
-                        <View style={styles.inputContainer}>
-                            <Picker 
-                                selectedValue={nivel} 
-                                onValueChange={setNivel} 
-                                style={styles.picker} 
-                                dropdownIconColor="#213A8E"
-                                mode="dropdown"
-                            >
-                                <Picker.Item label="Nivel de dominio" value="" />
-                                {niveles.map(n => (
-                                    <Picker.Item 
-                                        key={n.idINivel} 
-                                        label={n.nombre} 
-                                        value={n.idINivel} 
-                                    />
-                                ))}
-                            </Picker>
-                        </View>
+                        {/* Idiomas y Niveles - Selección múltiple (COMO EN EDITAR) */}
+                        <TouchableOpacity
+                            style={styles.inputContainer}
+                            onPress={() => setModalIdiomasVisible(true)}
+                        >
+                            <Text style={[styles.input, { color: idiomasSeleccionados.length > 0 ? "#000" : "#666" }]}>
+                                {getIdiomasTexto()}
+                            </Text>
+                            <Ionicons name="chevron-down" size={20} color="#213A8E" />
+                        </TouchableOpacity>
 
                         {/* Habilidades técnicas */}
                         <View style={{ zIndex: 20 }}>
@@ -317,10 +319,100 @@ export default function Crear2() {
                     </View>
                 </KeyboardAwareScrollView>
             </View>
+
+            {/* Modal de Idiomas (COPIADO DE EDITAR) */}
+            <Modal
+                visible={modalIdiomasVisible}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={() => setModalIdiomasVisible(false)}
+            >
+                <View style={styles.modalOverlay}>
+                    <View style={styles.modalContainer}>
+                        <View style={styles.modalHeader}>
+                            <Text style={styles.modalTitle}>Idiomas y niveles (opcional)</Text>
+                            <TouchableOpacity
+                                style={styles.closeButton}
+                                onPress={() => setModalIdiomasVisible(false)}
+                            >
+                                <Ionicons name="close" size={24} color="#213A8E" />
+                            </TouchableOpacity>
+                        </View>
+
+                        <ScrollView style={styles.modalContent}>
+                            {idiomas.map(idiomaItem => {
+                                const estaSeleccionado = idiomasSeleccionados.some(item => item.idIdioma === idiomaItem.idIdioma);
+                                const nivelSeleccionado = idiomasSeleccionados.find(item => item.idIdioma === idiomaItem.idIdioma)?.idINivel;
+
+                                return (
+                                    <View key={idiomaItem.idIdioma} style={styles.idiomaContainer}>
+                                        <TouchableOpacity
+                                            style={[
+                                                styles.idiomaOption,
+                                                estaSeleccionado && styles.idiomaSelected
+                                            ]}
+                                            onPress={() => {
+                                                if (niveles.length > 0) {
+                                                    const primerNivel = niveles[0].idINivel;
+                                                    toggleIdiomaNivel(idiomaItem.idIdioma, primerNivel);
+                                                } else {
+                                                    showToast("⚠️ Aún no se han cargado los niveles");
+                                                }
+                                            }}
+                                        >
+                                            <Ionicons
+                                                name={estaSeleccionado ? "checkbox" : "square-outline"}
+                                                size={22}
+                                                color={estaSeleccionado ? "#2666DE" : "#666"}
+                                            />
+                                            <Text style={styles.idiomaText}>{idiomaItem.nombre}</Text>
+                                        </TouchableOpacity>
+
+                                        {estaSeleccionado && (
+                                            <View style={styles.nivelesContainer}>
+                                                <Text style={styles.nivelesTitle}>Nivel requerido:</Text>
+                                                <View style={styles.nivelesOptions}>
+                                                    {niveles.map(nivelItem => (
+                                                        <TouchableOpacity
+                                                            key={nivelItem.idINivel}
+                                                            style={[
+                                                                styles.nivelOption,
+                                                                nivelSeleccionado === nivelItem.idINivel && styles.nivelSelected
+                                                            ]}
+                                                            onPress={() => actualizarNivelIdioma(idiomaItem.idIdioma, nivelItem.idINivel)}
+                                                        >
+                                                            <Text style={[
+                                                                styles.nivelText,
+                                                                nivelSeleccionado === nivelItem.idINivel && styles.nivelTextSelected
+                                                            ]}>
+                                                                {nivelItem.nombre}
+                                                            </Text>
+                                                        </TouchableOpacity>
+                                                    ))}
+                                                </View>
+                                            </View>
+                                        )}
+                                    </View>
+                                );
+                            })}
+                        </ScrollView>
+
+                        <View style={styles.modalButtons}>
+                            <TouchableOpacity
+                                style={styles.aplicarButton}
+                                onPress={() => setModalIdiomasVisible(false)}
+                            >
+                                <Text style={styles.aplicarButtonText}>Aceptar</Text>
+                            </TouchableOpacity>
+                        </View>
+                    </View>
+                </View>
+            </Modal>
         </ImageBackground>
     );
 }
 
+// AÑADIR ESTOS ESTILOS AL FINAL DEL STYLESHEET EXISTENTE
 const styles = StyleSheet.create({
     background: { flex: 1, width: "100%", height: "100%" },
     mainContainer: { flex: 1, marginTop: 220 },
@@ -342,29 +434,6 @@ const styles = StyleSheet.create({
         textAlignVertical: 'center',
         marginVertical: 0,
         paddingVertical: 0,
-    },
-
-    // Estilo para mostrar la carrera completa
-    carreraCompletaContainer: {
-        backgroundColor: '#F8F9FA',
-        borderRadius: 8,
-        padding: 10,
-        marginBottom: 15,
-        borderLeftWidth: 3,
-        borderLeftColor: '#2666DE',
-        shadowColor: "#2666DE",
-        shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
-        shadowRadius: 1,
-        elevation: 1,
-    },
-    
-    carreraCompletaText: {
-        fontSize: 12,
-        fontFamily: 'Inter-Regular',
-        color: '#666',
-        fontStyle: 'italic',
-        textAlign: 'center',
     },
 
     chipsInputContainer: { 
@@ -475,5 +544,117 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.2, 
         shadowRadius: 4, 
         elevation: 5 
+    },
+
+    // ESTILOS DEL MODAL (COPIADOS DE EDITAR)
+    modalOverlay: {
+        flex: 1,
+        backgroundColor: 'rgba(0, 0, 0, 0.5)',
+        justifyContent: 'flex-end',
+    },
+    modalContainer: {
+        backgroundColor: '#fff',
+        borderTopLeftRadius: 25,
+        borderTopRightRadius: 25,
+        maxHeight: '80%',
+        paddingBottom: 20,
+    },
+    modalHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        paddingHorizontal: 20,
+        paddingVertical: 15,
+        borderBottomWidth: 1,
+        borderBottomColor: '#E5E7EB',
+    },
+    modalTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#213A8E',
+        fontFamily: 'MyriadPro-Bold',
+    },
+    closeButton: {
+        padding: 4,
+    },
+    modalContent: {
+        paddingHorizontal: 20,
+        maxHeight: '70%',
+    },
+    modalButtons: {
+        paddingHorizontal: 20,
+        marginTop: 10,
+    },
+    idiomaContainer: {
+        marginBottom: 10,
+        borderBottomWidth: 1,
+        borderBottomColor: '#f0f0f0',
+        paddingBottom: 10,
+    },
+    idiomaOption: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 10,
+    },
+    idiomaSelected: {
+        backgroundColor: '#F2F6FC',
+        borderRadius: 8,
+        paddingHorizontal: 10,
+    },
+    idiomaText: {
+        marginLeft: 10,
+        fontSize: 15,
+        fontFamily: 'Inter-Medium',
+        color: '#333',
+        flex: 1,
+    },
+    nivelesContainer: {
+        marginLeft: 32,
+        marginTop: 5,
+    },
+    nivelesTitle: {
+        fontSize: 12,
+        fontFamily: 'Inter-Medium',
+        color: '#666',
+        marginBottom: 5,
+    },
+    nivelesOptions: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+    },
+    nivelOption: {
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 15,
+        backgroundColor: '#f0f0f0',
+        borderWidth: 1,
+        borderColor: '#ddd',
+    },
+    nivelSelected: {
+        backgroundColor: '#2666DE',
+        borderColor: '#2666DE',
+    },
+    nivelText: {
+        fontSize: 12,
+        fontFamily: 'Inter-Medium',
+        color: '#666',
+    },
+    nivelTextSelected: {
+        color: '#fff',
+        fontWeight: 'bold',
+    },
+    aplicarButton: {
+        backgroundColor: '#2666DE',
+        paddingHorizontal: 20,
+        paddingVertical: 14,
+        borderRadius: 12,
+        alignItems: 'center',
+    },
+    aplicarButtonText: {
+        color: '#fff',
+        fontWeight: 'bold',
+        fontSize: 16,
+        fontFamily: 'MyriadPro-Bold',
     },
 });

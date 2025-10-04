@@ -188,7 +188,7 @@ export default function DetalleAplicacion() {
 
     const getEstadoIcon = (estado: string, completado: boolean) => {
         if (completado) return "checkmark";
-        
+
         switch (estado) {
             case 'Enviado': return "send";
             case 'Revisado': return "eye";
@@ -263,7 +263,7 @@ export default function DetalleAplicacion() {
                         <Ionicons name="time" size={24} color="#2666DE" />
                         <Text style={styles.trackingTitle}>Progreso de tu aplicación</Text>
                     </View>
-                    
+
                     {/* Estado Actual */}
                     <View style={styles.estadoActualContainer}>
                         <Text style={styles.estadoActualLabel}>Estado actual:</Text>
@@ -283,27 +283,27 @@ export default function DetalleAplicacion() {
                                 {index > 0 && (
                                     <View style={[
                                         styles.stepConnector,
-                                        { 
-                                            backgroundColor: trackingEstados[index - 1].completado ? 
+                                        {
+                                            backgroundColor: trackingEstados[index - 1].completado ?
                                                 getEstadoColor(trackingEstados[index - 1].nombre) : '#E5E7EB'
                                         }
                                     ]} />
                                 )}
-                                
+
                                 {/* Ícono del paso */}
                                 <View style={[
                                     styles.stepIconContainer,
-                                    { 
-                                        backgroundColor: estado.activo ? getEstadoColor(estado.nombre) : 
-                                        estado.completado ? getEstadoColor(estado.nombre) : '#F2F6FC',
-                                        borderColor: estado.activo ? getEstadoColor(estado.nombre) : 
-                                        estado.completado ? getEstadoColor(estado.nombre) : '#D1D5DB'
+                                    {
+                                        backgroundColor: estado.activo ? getEstadoColor(estado.nombre) :
+                                            estado.completado ? getEstadoColor(estado.nombre) : '#F2F6FC',
+                                        borderColor: estado.activo ? getEstadoColor(estado.nombre) :
+                                            estado.completado ? getEstadoColor(estado.nombre) : '#D1D5DB'
                                     }
                                 ]}>
-                                    <Ionicons 
-                                        name={getEstadoIcon(estado.nombre, estado.completado)} 
-                                        size={18} 
-                                        color={estado.completado || estado.activo ? "#fff" : "#666"} 
+                                    <Ionicons
+                                        name={getEstadoIcon(estado.nombre, estado.completado)}
+                                        size={18}
+                                        color={estado.completado || estado.activo ? "#fff" : "#666"}
                                     />
                                 </View>
 
@@ -312,9 +312,9 @@ export default function DetalleAplicacion() {
                                     <View style={styles.stepHeader}>
                                         <Text style={[
                                             styles.stepName,
-                                            { 
-                                                color: estado.activo ? getEstadoColor(estado.nombre) : 
-                                                estado.completado ? getEstadoColor(estado.nombre) : '#666'
+                                            {
+                                                color: estado.activo ? getEstadoColor(estado.nombre) :
+                                                    estado.completado ? getEstadoColor(estado.nombre) : '#666'
                                             }
                                         ]}>
                                             {estado.nombre}
@@ -441,31 +441,66 @@ export default function DetalleAplicacion() {
                     name="home-outline"
                     size={28}
                     color="#fff"
-                    onPress={() => router.push("/")}
+                    onPress={() => router.push({
+                        pathname: "/",
+                        params: {
+                            carnetUsuario: params.carnetUsuario,
+                            nombreUsuario: params.nombreUsuario,
+                            generoUsuario: params.generoUsuario
+                        }
+                    })}
                 />
                 <Ionicons
                     name="star-outline"
                     size={28}
                     color="#fff"
-                    onPress={() => router.push("/(tabs)/guardados")}
+                    onPress={() => router.push({
+                        pathname: "/(tabs)/guardados",
+                        params: {
+                            carnetUsuario: params.carnetUsuario,
+                            nombreUsuario: params.nombreUsuario,
+                            generoUsuario: params.generoUsuario
+                        }
+                    })}
                 />
                 <Ionicons
-                    name="file-tray"
+                    name="file-tray-outline"
                     size={28}
                     color="#fff"
-                    onPress={() => router.push("/(tabs)/aplicaciones")}
+                    onPress={() => router.push({
+                        pathname: "/(tabs)/aplicaciones",
+                        params: {
+                            carnetUsuario: params.carnetUsuario,
+                            nombreUsuario: params.nombreUsuario,
+                            generoUsuario: params.generoUsuario
+                        }
+                    })}
                 />
                 <Ionicons
                     name="notifications-outline"
                     size={28}
                     color="#fff"
-                    onPress={() => router.push("/(tabs)/notificaciones")}
+                    onPress={() => router.push({
+                        pathname: "/(tabs)/notificaciones",
+                        params: {
+                            carnetUsuario: params.carnetUsuario,
+                            nombreUsuario: params.nombreUsuario,
+                            generoUsuario: params.generoUsuario
+                        }
+                    })}
                 />
                 <Ionicons
                     name="person-outline"
                     size={28}
                     color="#fff"
-                    onPress={() => router.push("/(tabs)/cuenta")}
+                    onPress={() => router.push({
+                        pathname: "/(tabs)/cuenta",
+                        params: {
+                            carnetUsuario: params.carnetUsuario,
+                            nombreUsuario: params.nombreUsuario,
+                            generoUsuario: params.generoUsuario
+                        }
+                    })}
                 />
             </View>
         </View>
@@ -474,32 +509,32 @@ export default function DetalleAplicacion() {
 
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: "#fff" },
-    header: { 
-        flexDirection: "row", 
-        alignItems: "center", 
-        justifyContent: "space-between", 
-        paddingHorizontal: 20, 
-        paddingTop: 91, 
-        marginBottom: 10, 
-        backgroundColor: "#fff" 
+    header: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "space-between",
+        paddingHorizontal: 20,
+        paddingTop: 91,
+        marginBottom: 10,
+        backgroundColor: "#fff"
     },
-    headerTitle: { 
-        fontSize: 20, 
-        fontWeight: "bold", 
-        color: "#000", 
-        fontFamily: "MyriadPro-Bold" 
+    headerTitle: {
+        fontSize: 20,
+        fontWeight: "bold",
+        color: "#000",
+        fontFamily: "MyriadPro-Bold"
     },
-    contentBackground: { 
-        flex: 1, 
-        backgroundColor: "#F2F6FC", 
-        paddingHorizontal: 20 
+    contentBackground: {
+        flex: 1,
+        backgroundColor: "#F2F6FC",
+        paddingHorizontal: 20
     },
-    
+
     // Tracking Styles - NUEVO DISEÑO MEJORADO
-    trackingContainer: { 
-        backgroundColor: '#fff', 
-        borderRadius: 15, 
-        padding: 20, 
+    trackingContainer: {
+        backgroundColor: '#fff',
+        borderRadius: 15,
+        padding: 20,
         marginTop: 16,
         borderWidth: 2,
         borderColor: '#E5EDFB',
@@ -517,39 +552,39 @@ const styles = StyleSheet.create({
         borderBottomWidth: 1,
         borderBottomColor: '#F2F6FC'
     },
-    trackingTitle: { 
-        fontSize: 18, 
-        fontWeight: 'bold', 
-        color: '#213A8E', 
-        fontFamily: 'MyriadPro-Bold', 
+    trackingTitle: {
+        fontSize: 18,
+        fontWeight: 'bold',
+        color: '#213A8E',
+        fontFamily: 'MyriadPro-Bold',
         marginLeft: 10
     },
-    estadoActualContainer: { 
-        flexDirection: 'row', 
-        alignItems: 'center', 
-        justifyContent: 'space-between', 
-        backgroundColor: '#F8FAFC', 
-        padding: 15, 
-        borderRadius: 12, 
+    estadoActualContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: '#F8FAFC',
+        padding: 15,
+        borderRadius: 12,
         marginBottom: 20,
         borderWidth: 1,
         borderColor: '#E5EDFB'
     },
-    estadoActualLabel: { 
-        fontSize: 16, 
-        color: '#213A8E', 
+    estadoActualLabel: {
+        fontSize: 16,
+        color: '#213A8E',
         fontFamily: 'MyriadPro-Bold'
     },
-    estadoActualBadge: { 
-        paddingHorizontal: 16, 
-        paddingVertical: 8, 
-        borderRadius: 20 
+    estadoActualBadge: {
+        paddingHorizontal: 16,
+        paddingVertical: 8,
+        borderRadius: 20
     },
-    estadoActualText: { 
-        color: '#fff', 
-        fontWeight: 'bold', 
-        fontSize: 14, 
-        fontFamily: 'MyriadPro-Bold' 
+    estadoActualText: {
+        color: '#fff',
+        fontWeight: 'bold',
+        fontSize: 14,
+        fontFamily: 'MyriadPro-Bold'
     },
     trackingSteps: {
         position: 'relative',
@@ -595,34 +630,34 @@ const styles = StyleSheet.create({
         alignItems: 'flex-start',
         marginBottom: 6,
     },
-    stepName: { 
-        fontSize: 16, 
-        fontWeight: '600', 
-        fontFamily: 'MyriadPro-Bold', 
-        flex: 1 
+    stepName: {
+        fontSize: 16,
+        fontWeight: '600',
+        fontFamily: 'MyriadPro-Bold',
+        flex: 1
     },
-    stepDate: { 
-        fontSize: 12, 
-        color: '#4CAF50', 
+    stepDate: {
+        fontSize: 12,
+        color: '#4CAF50',
         fontFamily: 'MyriadPro-Bold',
         backgroundColor: '#E8F5E8',
         paddingHorizontal: 8,
         paddingVertical: 4,
         borderRadius: 8,
     },
-    stepPending: { 
-        fontSize: 12, 
-        color: '#999', 
-        fontFamily: 'MyriadPro-Regular', 
-        fontStyle: 'italic' 
+    stepPending: {
+        fontSize: 12,
+        color: '#999',
+        fontFamily: 'MyriadPro-Regular',
+        fontStyle: 'italic'
     },
-    stepDescription: { 
-        fontSize: 14, 
-        color: '#666', 
-        fontFamily: 'MyriadPro-Regular', 
-        lineHeight: 20 
+    stepDescription: {
+        fontSize: 14,
+        color: '#666',
+        fontFamily: 'MyriadPro-Regular',
+        lineHeight: 20
     },
-    
+
     // Proyecto Container
     proyectoContainer: {
         backgroundColor: '#fff',
@@ -632,19 +667,19 @@ const styles = StyleSheet.create({
         borderWidth: 2,
         borderColor: '#E5EDFB',
     },
-    titulo: { 
-        fontSize: 18, 
-        fontWeight: "bold", 
-        fontFamily: "MyriadPro-Bold", 
-        marginBottom: 10, 
-        color: "#000" 
+    titulo: {
+        fontSize: 18,
+        fontWeight: "bold",
+        fontFamily: "MyriadPro-Bold",
+        marginBottom: 10,
+        color: "#000"
     },
-    descripcion: { 
-        fontSize: 14, 
-        fontFamily: "MyriadPro-Regular", 
-        color: "#333", 
-        marginVertical: 10, 
-        lineHeight: 20 
+    descripcion: {
+        fontSize: 14,
+        fontFamily: "MyriadPro-Regular",
+        color: "#333",
+        marginVertical: 10,
+        lineHeight: 20
     },
     sectionTitle: {
         fontSize: 16,
@@ -653,87 +688,87 @@ const styles = StyleSheet.create({
         color: '#213A8E',
         marginBottom: 8,
     },
-    infoRow: { 
-        flexDirection: "row", 
-        justifyContent: "flex-start", 
-        marginBottom: 8 
+    infoRow: {
+        flexDirection: "row",
+        justifyContent: "flex-start",
+        marginBottom: 8
     },
-    col: { 
-        flex: 1, 
-        alignItems: "flex-start" 
+    col: {
+        flex: 1,
+        alignItems: "flex-start"
     },
-    info: { 
-        fontSize: 14, 
-        color: "#000", 
-        fontFamily: "MyriadPro-Regular", 
-        marginBottom: 4 
+    info: {
+        fontSize: 14,
+        color: "#000",
+        fontFamily: "MyriadPro-Regular",
+        marginBottom: 4
     },
-    bold: { 
-        fontFamily: "MyriadPro-Bold", 
-        fontWeight: "bold" 
+    bold: {
+        fontFamily: "MyriadPro-Bold",
+        fontWeight: "bold"
     },
-    habilidadesContainer: { 
-        flexDirection: "row", 
-        flexWrap: "wrap", 
-        marginTop: 10, 
-        gap: 8 
+    habilidadesContainer: {
+        flexDirection: "row",
+        flexWrap: "wrap",
+        marginTop: 10,
+        gap: 8
     },
-    habilidad: { 
-        backgroundColor: "#c9d9f694", 
-        paddingHorizontal: 12, 
-        paddingVertical: 8, 
-        borderRadius: 8, 
-        marginRight: 8, 
-        marginBottom: 8 
+    habilidad: {
+        backgroundColor: "#c9d9f694",
+        paddingHorizontal: 12,
+        paddingVertical: 8,
+        borderRadius: 8,
+        marginRight: 8,
+        marginBottom: 8
     },
-    habilidadText: { 
-        fontSize: 13, 
-        color: "#213A8E", 
-        fontFamily: "MyriadPro-Regular", 
-        fontWeight: "bold" 
+    habilidadText: {
+        fontSize: 13,
+        color: "#213A8E",
+        fontFamily: "MyriadPro-Regular",
+        fontWeight: "bold"
     },
-    
+
     // Carta Button
-    cartaButton: { 
-        flexDirection: 'row', 
-        alignItems: 'center', 
-        backgroundColor: '#E5EDFB', 
-        padding: 16, 
-        borderRadius: 12, 
-        marginTop: 20, 
-        borderWidth: 2, 
-        borderColor: '#2666DE', 
-        justifyContent: 'center' 
+    cartaButton: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        backgroundColor: '#E5EDFB',
+        padding: 16,
+        borderRadius: 12,
+        marginTop: 20,
+        borderWidth: 2,
+        borderColor: '#2666DE',
+        justifyContent: 'center'
     },
-    cartaButtonText: { 
-        marginLeft: 8, 
-        color: '#2666DE', 
-        fontWeight: 'bold', 
-        fontSize: 16, 
-        fontFamily: 'MyriadPro-Bold' 
+    cartaButtonText: {
+        marginLeft: 8,
+        color: '#2666DE',
+        fontWeight: 'bold',
+        fontSize: 16,
+        fontFamily: 'MyriadPro-Bold'
     },
-    
-    bottomNav: { 
-        flexDirection: "row", 
-        justifyContent: "space-around", 
-        alignItems: "center", 
-        paddingVertical: 12, 
-        backgroundColor: "#2666DE", 
-        borderTopLeftRadius: 30, 
-        borderTopRightRadius: 30, 
-        paddingBottom: 30, 
-        paddingTop: 20 
+
+    bottomNav: {
+        flexDirection: "row",
+        justifyContent: "space-around",
+        alignItems: "center",
+        paddingVertical: 12,
+        backgroundColor: "#2666DE",
+        borderTopLeftRadius: 30,
+        borderTopRightRadius: 30,
+        paddingBottom: 30,
+        paddingTop: 20
     },
-    retryButton: { 
-        backgroundColor: '#2666DE', 
-        paddingHorizontal: 20, 
-        paddingVertical: 10, 
-        borderRadius: 8, 
-        marginTop: 15 
+    retryButton: {
+        backgroundColor: '#2666DE',
+        paddingHorizontal: 20,
+        paddingVertical: 10,
+        borderRadius: 8,
+        marginTop: 15
     },
-    retryButtonText: { 
-        color: '#fff', 
-        fontWeight: 'bold', 
-        fontSize: 14 
+    retryButtonText: {
+        color: '#fff',
+        fontWeight: 'bold',
+        fontSize: 14
     },
 });

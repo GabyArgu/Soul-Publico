@@ -65,8 +65,6 @@ export default function DetalleProyecto() {
     }
 };
 
-
-    // Verificar si el proyecto está guardado
     // Verificar si el proyecto está guardado
     const verificarProyectoGuardado = async () => {
         try {
@@ -126,6 +124,7 @@ export default function DetalleProyecto() {
     }, [idProyecto]);
 
     // 2️⃣ Verificar guardado solo cuando idUsuario y idProyecto estén listos
+
     // 3️⃣ Verificar aplicación después de tener idUsuario e idProyecto
 useEffect(() => {
     if (idUsuario && idProyecto) {
@@ -147,6 +146,7 @@ useEffect(() => {
         };
 
         checkAplicacion();
+        verificarProyectoGuardado();
     }
 }, [idUsuario, idProyecto]);
 
@@ -206,7 +206,7 @@ useEffect(() => {
 
             if (response.ok) {
                 setIsGuardado(true);
-                showToast("✅ Proyecto guardado", true);
+                showToast("✅ Proyecto guardado", true, "success");
             } else {
                 throw new Error('Error al guardar proyecto');
             }

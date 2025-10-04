@@ -975,7 +975,7 @@ export default function AgregarProyecto() {
             {/* Bottom nav */}
             <View style={styles.bottomNav}>
                 <Ionicons
-                    name="home"
+                    name="home-outline"
                     size={28}
                     color="#fff"
                     onPress={() => router.push({
