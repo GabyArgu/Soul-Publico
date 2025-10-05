@@ -1,45 +1,36 @@
 {
   "expo": {
-    "name": "publico",
-    "slug": "publico",
+    "name": "SOUL",
+    "slug": "soul",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
-    "scheme": "publico",
+    "scheme": "soul",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
-    "ios": {
-      "supportsTablet": true
-    },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/icon.png",
         "backgroundColor": "#E6F4FE"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.gabmendez4869.soul"
+    },
+    "ios": {
+      "supportsTablet": true
     },
     "web": {
       "output": "static",
       "favicon": "./assets/images/icon.png"
     },
     "plugins": [
-      "expo-router",
-      [
-        "expo-splash-screen",
-        {
-          "image": "./assets/images/splash1.png", // Splash 1 completo
-          "resizeMode": "cover",
-          "backgroundColor": "#E6F4FE",
-          "dark": {
-            "backgroundColor": "#000000"
-          }
-        }
-      ]
+      "expo-router"
     ],
-    "experiments": {
-      "typedRoutes": true,
-      "reactCompiler": true
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "2828ab11-e65e-41cd-be60-946ff905e949"
+      }
     }
   }
 }

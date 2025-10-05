@@ -245,14 +245,15 @@ const styles = StyleSheet.create({
         padding: 8, 
         backgroundColor: "transparent" 
     },
-    title: { fontSize: 23, fontWeight: "bold", color: "#213A8E", marginBottom: 18, fontFamily: "Inter-Bold" },
+    title: { fontSize: 23, fontWeight: "bold", color: "#213A8E", marginBottom: 18, fontFamily: "Inter-Bold"},
     inputContainer: { flexDirection: "row", alignItems: "center", backgroundColor: "#EFF1F8", borderRadius: 12, paddingHorizontal: 10, marginBottom: 15, borderLeftWidth: 15, borderLeftColor: "#2666DE", height: 52 },
-    input: { flex: 1, fontSize: 15, fontFamily: "Inter-Medium", color: "#000" },
+    input: { flex: 1, fontSize: 15, fontFamily: "Inter-Medium", color: "#000" ,fontWeight: "medium" },
     
     picker: { 
         flex: 1, 
         fontSize: 15, 
-        fontFamily: "Inter-Medium", 
+        fontFamily: "Inter-Medium",
+        fontWeight: "medium", 
         color: "#000", 
         height: 52,
         minHeight: 52,

@@ -122,7 +122,7 @@ export default function DetalleProyecto() {
                 `${API_URL}/aplicaciones/verificar?userId=${idUsuario}&proyectoId=${idProyecto}`
             );
             if (!response.ok) throw new Error(`Error HTTP: ${response.status}`);
-            
+
             const data = await response.json();
             setYaAplico(data.yaAplico);
 
@@ -293,11 +293,11 @@ export default function DetalleProyecto() {
     // Verificar si el proyecto aún está disponible para aplicar
     const estaDisponibleParaAplicar = () => {
         if (!proyecto?.fechaAplicacion) return true; // Sin fecha límite, siempre disponible
-        
+
         const fechaAplicacion = new Date(proyecto.fechaAplicacion);
         const hoy = new Date();
         hoy.setHours(0, 0, 0, 0);
-        
+
         return fechaAplicacion >= hoy;
     };
 
@@ -379,21 +379,6 @@ export default function DetalleProyecto() {
                     </View>
                 </View>
 
-                {/* Fecha límite para aplicar - NUEVO CAMPO */}
-                {proyecto.fechaAplicacion && (
-                    <View style={styles.infoRow}>
-                        <View style={styles.col}>
-                            <Text style={[
-                                styles.info, 
-                                !disponibleParaAplicar && { color: '#E53935', fontWeight: 'bold' }
-                            ]}>
-                                <Text style={styles.bold}>Límite para aplicar: </Text>
-                                {formatearFecha(proyecto.fechaAplicacion)}
-                                {!disponibleParaAplicar && " (Vencida)"}
-                            </Text>
-                        </View>
-                    </View>
-                )}
 
                 {/* Contacto y Teléfono en la misma fila */}
                 {(proyecto.nombreContacto || proyecto.telefono || proyecto.emailContacto) && (
@@ -460,6 +445,27 @@ export default function DetalleProyecto() {
                     </>
                 )}
 
+                {/* Fecha de Aplicación */}
+                {proyecto.fechaAplicacion && (
+                    <View style={styles.fechaContainer}>
+                        <Ionicons
+                            name="calendar-outline"
+                            size={18}
+                            color={disponibleParaAplicar ? "#2666DE" : "#E53935"}
+                            style={{ marginRight: 6 }}
+                        />
+                        <Text
+                            style={[
+                                styles.fechaTexto,
+                                !disponibleParaAplicar && { color: "#E53935" },
+                            ]}
+                        >
+                            Se puede aplicar hasta: {formatearFecha(proyecto.fechaAplicacion)}
+                            {!disponibleParaAplicar && " (Vencida)"}
+                        </Text>
+                    </View>
+                )}
+
                 {/* Botones abajo */}
                 <View style={styles.buttonContainer}>
                     <TouchableOpacity
@@ -480,8 +486,8 @@ export default function DetalleProyecto() {
 
                     <TouchableOpacity
                         style={[
-                            styles.buttonRight, 
-                            (yaAplico || !disponibleParaAplicar) && { 
+                            styles.buttonRight,
+                            (yaAplico || !disponibleParaAplicar) && {
                                 backgroundColor: '#ccc',
                                 shadowColor: '#999'
                             }
@@ -562,4 +568,29 @@ const styles = StyleSheet.create({
     bottomNav: { flexDirection: "row", justifyContent: "space-around", alignItems: "center", paddingVertical: 12, backgroundColor: "#2666DE", borderTopLeftRadius: 30, borderTopRightRadius: 30, paddingBottom: 30, paddingTop: 20 },
     retryButton: { backgroundColor: '#2666DE', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 8, marginTop: 15 },
     retryButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 14 },
+    fechaContainer: {
+        flexDirection: "row",
+        alignItems: "center",
+        justifyContent: "flex-start",
+        backgroundColor: "#EAF1FF",
+        borderRadius: 10,
+        paddingVertical: 8,
+        paddingHorizontal: 12,
+        marginTop: 18,
+        marginBottom: 10,
+        shadowColor: "#6BA4FF",
+        shadowOpacity: 0.6,
+        shadowRadius: 10,
+        elevation: 4,
+    },
+    fechaTexto: {
+        fontSize: 14,
+        color: "#213A8E",
+        fontFamily: "MyriadPro-Bold",
+        textShadowColor: "rgba(102, 163, 255, 0.4)",
+        textShadowOffset: { width: 0, height: 0 },
+        textShadowRadius: 6,
+    },
+
+
 });

@@ -1,3 +1,4 @@
+// app/SplashH.tsx
 import { useEffect, useRef } from "react";
 import { View, StyleSheet, Animated, ImageBackground } from "react-native";
 import { useRouter } from "expo-router";

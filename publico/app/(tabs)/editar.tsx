@@ -24,6 +24,7 @@ interface Usuario {
     disponibilidad: string;
     urlCv: string;
     genero: string;
+    tieneTransporte: boolean;
 }
 
 interface Carrera {
@@ -107,6 +108,9 @@ export default function EditarPerfil() {
     const [idiomasSeleccionados, setIdiomasSeleccionados] = useState<{ idIdioma: number, idINivel: number }[]>([]);
     const [modalIdiomasVisible, setModalIdiomasVisible] = useState(false);
 
+    // Estado para errores
+    const [errores, setErrores] = useState<string[]>([]);
+
     // Posición de sugerencias
     const [layoutTecnicas, setLayoutTecnicas] = useState({ y: 0, width: 0 });
     const [layoutBlandas, setLayoutBlandas] = useState({ y: 0, width: 0 });
@@ -136,7 +140,7 @@ export default function EditarPerfil() {
         try {
             setCargando(true);
 
-            // Cargar todos los datos necesarios con endpoints CORRECTOS
+            // Cargar todos los datos necesarios
             const [
                 carrerasRes,
                 departamentosRes,
@@ -162,6 +166,15 @@ export default function EditarPerfil() {
             setHabilidades(habilidadesRes.data || []);
             setDisponibilidades(disponibilidadesRes.data || []);
 
+            console.log("✅ Catálogos cargados:", {
+                carreras: carrerasRes.data?.length,
+                departamentos: departamentosRes.data?.length,
+                idiomas: idiomasRes.data?.length,
+                niveles: nivelesRes.data?.length,
+                habilidades: habilidadesRes.data?.length,
+                disponibilidades: disponibilidadesRes.data?.length
+            });
+
             // Cargar datos del usuario DESPUÉS de tener todos los catálogos
             await cargarDatosUsuario();
 
@@ -177,27 +190,117 @@ export default function EditarPerfil() {
     useEffect(() => {
         if (departamento) {
             cargarMunicipios(Number(departamento));
+        } else {
+            setMunicipios([]);
+            setMunicipio("");
         }
     }, [departamento]);
 
     // Precargar datos cuando se carguen los catálogos
     useEffect(() => {
         if (userData?.carnet && carreras.length > 0 && departamentos.length > 0 && disponibilidades.length > 0) {
+            console.log("🚀 Iniciando precarga de datos del usuario...");
             precargarDatosUsuario();
         }
     }, [carreras, departamentos, disponibilidades, userData]);
 
+    // Debuggear cambios
+    useEffect(() => {
+        console.log("🔄 Municipios actualizados:", municipios.length);
+        console.log("📍 Municipio seleccionado:", municipio);
+    }, [municipios, municipio]);
+
+    useEffect(() => {
+        console.log("🔄 Departamento seleccionado:", departamento);
+    }, [departamento]);
+
+
+
+    // Función para eliminar acentos
+    const eliminarAcentos = (texto: string) => {
+        return texto.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    };
+
+    // Función mejorada para cargar municipios
     const cargarMunicipios = async (idDepartamento: number) => {
         try {
+            console.log(`📍 Cargando municipios para departamento: ${idDepartamento}`);
             const response = await axios.get(`${API_URL}/municipios/${idDepartamento}`);
-            setMunicipios(response.data);
+            const municipiosCargados = response.data || [];
+            setMunicipios(municipiosCargados);
+            console.log(`✅ Municipios cargados: ${municipiosCargados.length}`);
 
-            // Después de cargar municipios, buscar el municipio del usuario
-            if (userData?.carnet) {
-                await buscarMunicipioUsuario();
-            }
+            return municipiosCargados;
         } catch (error) {
-            console.error("Error cargando municipios:", error);
+            console.error("❌ Error cargando municipios:", error);
+            setMunicipios([]);
+            return [];
+        }
+    };
+
+    // Función mejorada para buscar municipio
+    const buscarMunicipioUsuario = async (nombreMunicipio?: string) => {
+        if (!nombreMunicipio) {
+            // Si no tenemos nombre, cargar datos del usuario
+            try {
+                const usuarioResponse = await axios.get(`${API_URL}/usuarios/${userData?.carnet}`);
+                nombreMunicipio = usuarioResponse.data.municipio;
+
+            } catch (error) {
+                console.error("Error obteniendo datos del usuario:", error);
+                return;
+            }
+        }
+
+        if (!nombreMunicipio || municipios.length === 0) {
+            console.log("❌ No hay municipios cargados o nombre vacío");
+            return;
+        }
+
+        console.log(`🔍 Buscando municipio: "${nombreMunicipio}" entre ${municipios.length} municipios`);
+        console.log("Municipios disponibles:", municipios.map(m => m.nombre));
+
+        // Búsqueda más flexible
+        const municipioEncontrado = municipios.find((m: Municipio) => {
+            const municipioNombre = m.nombre.trim().toLowerCase();
+            const buscado = nombreMunicipio.trim().toLowerCase();
+
+            return municipioNombre === buscado ||
+                municipioNombre.includes(buscado) ||
+                buscado.includes(municipioNombre) ||
+                eliminarAcentos(municipioNombre) === eliminarAcentos(buscado);
+        });
+
+        if (municipioEncontrado) {
+            setMunicipio(municipioEncontrado.idMunicipio.toString());
+            console.log("✅ Municipio encontrado y seleccionado:", municipioEncontrado.nombre);
+        } else {
+            console.log("❌ Municipio no encontrado:", nombreMunicipio);
+            // Intentar una segunda búsqueda más agresiva después de un delay
+            setTimeout(() => {
+                buscarMunicipioAgresiva(nombreMunicipio);
+            }, 1000);
+        }
+    };
+
+    // Función auxiliar para búsqueda agresiva
+    const buscarMunicipioAgresiva = (nombreMunicipio: string) => {
+        if (municipios.length === 0) return;
+
+        const municipioEncontrado = municipios.find((m: Municipio) => {
+            const municipioNombre = eliminarAcentos(m.nombre.trim().toLowerCase());
+            const buscado = eliminarAcentos(nombreMunicipio.trim().toLowerCase());
+
+            // Búsqueda más permisiva
+            return municipioNombre === buscado ||
+                municipioNombre.replace(/\s/g, '') === buscado.replace(/\s/g, '') ||
+                municipioNombre.startsWith(buscado) ||
+                buscado.startsWith(municipioNombre);
+        });
+
+        if (municipioEncontrado) {
+            setMunicipio(municipioEncontrado.idMunicipio.toString());
+            console.log("✅ Municipio encontrado (búsqueda agresiva):", municipioEncontrado.nombre);
         }
     };
 
@@ -205,7 +308,7 @@ export default function EditarPerfil() {
         try {
             const result = await DocumentPicker.getDocumentAsync({ type: "application/pdf" });
             if (!result.canceled) {
-                setCv(result.assets[0]); // guardamos todo el objeto
+                setCv(result.assets[0]);
                 showToast("📄 Archivo seleccionado: " + result.assets[0].name, true);
             }
         } catch (error) {
@@ -231,7 +334,7 @@ export default function EditarPerfil() {
                 headers: {
                     "Content-Type": "multipart/form-data",
                 },
-                timeout: 30000, // 30 segundos timeout
+                timeout: 30000,
             });
 
             console.log("✅ Respuesta del servidor:", res.data);
@@ -252,6 +355,8 @@ export default function EditarPerfil() {
 
                 setHabilidadesTecnicas(tecnicas);
                 setHabilidadesBlandas(blandas);
+
+                console.log(`✅ Habilidades cargadas: ${tecnicas.length} técnicas, ${blandas.length} blandas`);
             }
         } catch (error) {
             console.error("Error cargando habilidades:", error);
@@ -269,47 +374,27 @@ export default function EditarPerfil() {
                     idINivel: item.idINivel
                 }));
                 setIdiomasSeleccionados(idiomasConNiveles);
+                console.log(`✅ ${idiomasConNiveles.length} idioma(s) cargado(s)`);
             } else {
                 setIdiomasSeleccionados([]);
+                console.log("ℹ️ No se encontraron idiomas para el usuario");
             }
         } catch (error) {
             console.error("❌ Error cargando idiomas:", error);
-            // Si hay error, dejar el array vacío en lugar de fallar completamente
             setIdiomasSeleccionados([]);
             showToast("⚠️ No se pudieron cargar los idiomas, pero puedes continuar");
         }
     };
 
-    // Función mejorada para buscar municipio
-    const buscarMunicipioUsuario = async () => {
-        if (!userData?.carnet || !departamento) return;
-
-        try {
-            // Cargar datos del usuario para obtener el municipio
-            const usuarioResponse = await axios.get(`${API_URL}/usuarios/${userData.carnet}`);
-            const usuarioData = usuarioResponse.data;
-
-            if (!usuarioData.municipio) return;
-
-            // Buscar el municipio por nombre
-            const municipioEncontrado = municipios.find((m: Municipio) =>
-                m.nombre.trim().toLowerCase() === usuarioData.municipio.trim().toLowerCase()
-            );
-
-            if (municipioEncontrado) {
-                setMunicipio(municipioEncontrado.idMunicipio.toString());
-            }
-        } catch (error) {
-            console.error("Error buscando municipio:", error);
-        }
-    };
-
+    // FUNCIÓN MEJORADA PARA PRECARGAR DATOS
     const precargarDatosUsuario = async () => {
         if (!userData?.carnet) return;
 
         try {
             const usuarioResponse = await axios.get(`${API_URL}/usuarios/${userData.carnet}`);
             const usuarioData = usuarioResponse.data;
+
+            console.log("📋 Datos del usuario:", usuarioData);
 
             // Carrera
             if (usuarioData.carrera && carreras.length > 0) {
@@ -318,21 +403,29 @@ export default function EditarPerfil() {
                 );
                 if (carreraEncontrada) {
                     setCarrera(carreraEncontrada.idCarrera.toString());
+                    console.log("✅ Carrera precargada:", carreraEncontrada.nombre);
                 }
             }
 
-            // Departamento
-            if (usuarioData.departamento && departamentos.length > 0) {
-                const deptoEncontrado = departamentos.find(d =>
-                    d.nombre.trim().toLowerCase() === usuarioData.departamento.trim().toLowerCase()
-                );
-                if (deptoEncontrado) {
-                    setDepartamento(deptoEncontrado.idDepartamento.toString());
+            // Departamento - AHORA ESPERAMOS A QUE SE CARGUEN LOS MUNICIPIOS
+            if (usuarioData.idDepartamento) {
+                setDepartamento(usuarioData.idDepartamento.toString());
+                console.log("✅ Departamento precargado por ID:", usuarioData.idDepartamento);
 
-                    // Esperar a que se carguen los municipios y luego buscar el municipio
-                    setTimeout(async () => {
-                        await buscarMunicipioUsuario();
-                    }, 500);
+                // Cargar municipios del departamento
+                const municipiosCargados = await cargarMunicipios(usuarioData.idDepartamento);
+
+                // Y aquí directamente seteamos el municipio si lo tenemos
+                if (usuarioData.idMunicipio) {
+                    const existeMunicipio = municipiosCargados.find(
+                        (m: Municipio) => m.idMunicipio === usuarioData.idMunicipio
+                    );
+                    if (existeMunicipio) {
+                        setMunicipio(usuarioData.idMunicipio.toString());
+                        console.log("✅ Municipio precargado por ID:", existeMunicipio.nombre);
+                    } else {
+                        console.warn("⚠️ Municipio del usuario no encontrado en la lista");
+                    }
                 }
             }
 
@@ -343,10 +436,11 @@ export default function EditarPerfil() {
                 );
                 if (dispEncontrada) {
                     setDisponibilidad(dispEncontrada.idDisponibilidad.toString());
+                    console.log("✅ Disponibilidad precargada:", dispEncontrada.nombre);
                 }
             }
         } catch (error) {
-            console.error("Error precargando datos:", error);
+            console.error("❌ Error precargando datos:", error);
         }
     };
 
@@ -402,8 +496,9 @@ export default function EditarPerfil() {
         setCarnet(usuarioData.carnet || "");
         setTelefono(usuarioData.telefono || "");
         setUnidades(usuarioData.uvs?.toString() || "0");
+        setTransporte(usuarioData.tieneTransporte || false);
 
-        // Cargar CV existente - SIMPLEMENTE GUARDAR LA URL COMO STRING
+        // Cargar CV existente
         if (usuarioData.urlCv) {
             setCv(usuarioData.urlCv);
         }
@@ -479,20 +574,25 @@ export default function EditarPerfil() {
         }
     };
 
-    const formularioValido = () => {
-        return (
-            nombre &&
-            carrera &&
-            correo &&
-            carnet &&
-            cumple &&
-            unidades &&
-            /^\d{4}-\d{4}$/.test(telefono) &&
-            /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo) &&
-            departamento &&
-            municipio &&
-            disponibilidad
-        );
+    const validarFormulario = () => {
+        const nuevosErrores: string[] = [];
+
+        if (!nombre) nuevosErrores.push("Nombre");
+        if (!carrera) nuevosErrores.push("Carrera");
+        if (!correo) nuevosErrores.push("Correo");
+        if (!cumple) nuevosErrores.push("Fecha de cumpleaños");
+        if (!unidades) nuevosErrores.push("Unidades");
+        if (!telefono) nuevosErrores.push("Teléfono");
+        if (!departamento) nuevosErrores.push("Departamento");
+        if (!municipio) nuevosErrores.push("Municipio");
+        if (!disponibilidad) nuevosErrores.push("Disponibilidad");
+
+        // Validaciones de formato
+        if (telefono && !/^\d{4}-\d{4}$/.test(telefono)) nuevosErrores.push("Teléfono debe tener formato 0000-0000");
+        if (correo && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) nuevosErrores.push("Correo electrónico válido");
+
+        setErrores(nuevosErrores);
+        return nuevosErrores.length === 0;
     };
 
     // Toast personalizado
@@ -512,21 +612,26 @@ export default function EditarPerfil() {
     };
 
     const handleSubmit = async () => {
-        if (!formularioValido()) {
-            showToast("⚠️ Completa todos los campos");
+        // Validar primero
+        if (!validarFormulario()) {
+            showToast(`⚠️ Completa los campos requeridos`);
             return;
         }
 
         try {
             // 1️⃣ Subir CV
             let urlCvFinal = "";
-            if (cv && cv.uri) { // Si es un archivo nuevo (tiene URI)
+            if (cv && cv.uri) {
                 urlCvFinal = await uploadCv();
-            } else if (cv) { // Si es la URL existente
+            } else if (cv) {
                 urlCvFinal = cv;
             }
 
-            // 2️⃣ Preparar datos para actualizar
+            // 2️⃣ Preparar arrays de idiomas y niveles para múltiples selecciones
+            const idIdiomas = idiomasSeleccionados.map(item => item.idIdioma);
+            const idNiveles = idiomasSeleccionados.map(item => item.idINivel);
+
+            // 3️⃣ Preparar datos para actualizar
             const datosActualizacion = {
                 nombre,
                 genero: userData?.genero || "O",
@@ -537,8 +642,8 @@ export default function EditarPerfil() {
                 municipio: Number(municipio),
                 idCarrera: Number(carrera),
                 uvs: parseInt(unidades),
-                idIdioma: idiomasSeleccionados.length > 0 ? idiomasSeleccionados[0].idIdioma : null,
-                idNivel: idiomasSeleccionados.length > 0 ? idiomasSeleccionados[0].idINivel : null,
+                idIdioma: idIdiomas, // Ahora es un array
+                idNivel: idNiveles,  // Ahora es un array
                 idHorario: Number(disponibilidad),
                 habilidadesTecnicas: habilidadesTecnicas.map(h => h.idHabilidad).join(","),
                 habilidadesBlandas: habilidadesBlandas.map(h => h.idHabilidad).join(","),
@@ -546,16 +651,16 @@ export default function EditarPerfil() {
                 urlCv: urlCvFinal,
             };
 
-            console.log("Campos antes de enviar:", datosActualizacion);
+            console.log("📤 Enviando datos:", datosActualizacion);
 
-            // 3️⃣ Actualizar usuario en backend
+            // 4️⃣ Actualizar usuario en backend
             await axios.put(`${API_URL}/usuarios/${carnet}`, datosActualizacion);
 
             showToast("✅ Perfil actualizado correctamente", true);
             setTimeout(() => router.back(), 1500);
-             
+
         } catch (error) {
-            console.error("Error actualizando perfil:", error);
+            console.error("❌ Error actualizando perfil:", error);
             showToast("❌ Error actualizando perfil");
         }
     };
@@ -585,6 +690,16 @@ export default function EditarPerfil() {
 
             {/* Contenido */}
             <ScrollView style={styles.contentBackground} contentContainerStyle={{ paddingBottom: 120 }}>
+                {/* Mostrar errores si existen */}
+                {errores.length > 0 && (
+                    <View style={styles.erroresContainer}>
+                        <Text style={styles.erroresTitle}>Faltan campos por llenar:</Text>
+                        {errores.map((error, index) => (
+                            <Text key={index} style={styles.errorItem}>• {error}</Text>
+                        ))}
+                    </View>
+                )}
+
                 {/* Nombre */}
                 <View style={[styles.inputContainer, { marginTop: 30 }]}>
                     <TextInput
@@ -739,10 +854,10 @@ export default function EditarPerfil() {
                 </TouchableOpacity>
 
                 {/* Habilidades técnicas */}
-                <View style={{ zIndex: 20 }}>
+                <View style={{ zIndex: 1000 }}>
                     <View style={styles.chipsInputContainer} onLayout={(event) => {
                         const { y, width } = event.nativeEvent.layout;
-                        setLayoutTecnicas({ y: y, width: width });
+                        setLayoutTecnicas({ y: y + 60, width: width });
                     }}>
                         <View style={styles.chipsContainer}>
                             {habilidadesTecnicas.map(h => (
@@ -763,21 +878,31 @@ export default function EditarPerfil() {
                         </View>
                     </View>
                     {inputHabilidadTecnica.length > 0 && sugerenciasTecnicas.length > 0 && (
-                        <View style={[styles.suggestionsList, { top: layoutTecnicas.y, width: layoutTecnicas.width }]}>
-                            {sugerenciasTecnicas.map(item => (
-                                <TouchableOpacity key={item.idHabilidad} onPress={() => agregarHabilidad(item, "Técnica")} style={styles.suggestionItem}>
-                                    <Text style={styles.suggestionText}>{item.nombre}</Text>
-                                </TouchableOpacity>
-                            ))}
+                        <View style={[styles.suggestionsList, {
+                            top: layoutTecnicas.y,
+                            width: layoutTecnicas.width,
+                            left: 20
+                        }]}>
+                            <ScrollView style={styles.suggestionsScroll} nestedScrollEnabled={true}>
+                                {sugerenciasTecnicas.map(item => (
+                                    <TouchableOpacity
+                                        key={item.idHabilidad}
+                                        onPress={() => agregarHabilidad(item, "Técnica")}
+                                        style={styles.suggestionItem}
+                                    >
+                                        <Text style={styles.suggestionText}>{item.nombre}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </ScrollView>
                         </View>
                     )}
                 </View>
 
                 {/* Habilidades blandas */}
-                <View style={{ zIndex: 10 }}>
+                <View style={{ zIndex: 900 }}>
                     <View style={styles.chipsInputContainer} onLayout={(event) => {
                         const { y, width } = event.nativeEvent.layout;
-                        setLayoutBlandas({ y: y, width: width });
+                        setLayoutBlandas({ y: y + 60, width: width });
                     }}>
                         <View style={styles.chipsContainer}>
                             {habilidadesBlandas.map(h => (
@@ -798,12 +923,22 @@ export default function EditarPerfil() {
                         </View>
                     </View>
                     {inputHabilidadBlanda.length > 0 && sugerenciasBlandas.length > 0 && (
-                        <View style={[styles.suggestionsList, { top: layoutBlandas.y, width: layoutBlandas.width }]}>
-                            {sugerenciasBlandas.map(item => (
-                                <TouchableOpacity key={item.idHabilidad} onPress={() => agregarHabilidad(item, "Blanda")} style={styles.suggestionItem}>
-                                    <Text style={styles.suggestionText}>{item.nombre}</Text>
-                                </TouchableOpacity>
-                            ))}
+                        <View style={[styles.suggestionsList, {
+                            top: layoutBlandas.y,
+                            width: layoutBlandas.width,
+                            left: 20
+                        }]}>
+                            <ScrollView style={styles.suggestionsScroll} nestedScrollEnabled={true}>
+                                {sugerenciasBlandas.map(item => (
+                                    <TouchableOpacity
+                                        key={item.idHabilidad}
+                                        onPress={() => agregarHabilidad(item, "Blanda")}
+                                        style={styles.suggestionItem}
+                                    >
+                                        <Text style={styles.suggestionText}>{item.nombre}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </ScrollView>
                         </View>
                     )}
                 </View>
@@ -837,7 +972,7 @@ export default function EditarPerfil() {
                         thumbColor={transporte ? "#fff" : "#fff"}
                     />
                 </View>
-
+                        
                 {/* Subir CV */}
                 <TouchableOpacity style={styles.inputContainer} onPress={pickDocument}>
                     <Text style={[styles.input, { color: cv ? "#000" : "#666" }]}>
@@ -849,12 +984,8 @@ export default function EditarPerfil() {
                 {/* Botón guardar */}
                 <View style={{ alignItems: "flex-end", marginTop: 20 }}>
                     <TouchableOpacity
-                        style={[
-                            styles.buttonYellow,
-                            !formularioValido() && styles.buttonDisabled
-                        ]}
+                        style={styles.buttonYellow}
                         onPress={handleSubmit}
-                        disabled={!formularioValido()}
                     >
                         <Ionicons name="save-outline" size={28} color="#fff" />
                     </TouchableOpacity>
@@ -987,7 +1118,7 @@ export default function EditarPerfil() {
     );
 }
 
-// Estilos (se mantienen iguales)
+// ESTILOS (mantener igual que en tu código original)
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: "#fff" },
     loadingContainer: {
@@ -1087,10 +1218,6 @@ const styles = StyleSheet.create({
         shadowRadius: 8,
         elevation: 10,
     },
-    buttonDisabled: {
-        backgroundColor: "#ccc",
-        shadowColor: "#999",
-    },
     bottomNav: {
         flexDirection: "row",
         justifyContent: "space-around",
@@ -1154,25 +1281,31 @@ const styles = StyleSheet.create({
     suggestionsList: {
         position: 'absolute',
         backgroundColor: '#fff',
-        borderWidth: 1,
-        borderColor: '#ddd',
-        borderRadius: 8,
-        zIndex: 100,
-        elevation: 5,
-        maxHeight: 150,
+        borderWidth: 2,
+        borderColor: '#2666DE',
+        borderRadius: 12,
+        zIndex: 2000,
+        elevation: 20,
+        maxHeight: 200,
         shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        overflow: 'hidden',
+    },
+    suggestionsScroll: {
+        maxHeight: 200,
     },
     suggestionItem: {
-        padding: 10,
+        padding: 12,
         borderBottomWidth: 1,
-        borderBottomColor: '#eee'
+        borderBottomColor: '#f0f0f0',
+        backgroundColor: '#fff',
     },
     suggestionText: {
         fontSize: 14,
-        fontFamily: 'Inter-Medium'
+        fontFamily: 'Inter-Medium',
+        color: '#333',
     },
     modalOverlay: {
         flex: 1,
@@ -1283,5 +1416,25 @@ const styles = StyleSheet.create({
         fontWeight: 'bold',
         fontSize: 16,
         fontFamily: 'MyriadPro-Bold',
+    },
+    erroresContainer: {
+        backgroundColor: '#FFEAA7',
+        padding: 15,
+        borderRadius: 10,
+        marginTop: 15,
+        borderLeftWidth: 4,
+        borderLeftColor: '#E53935',
+    },
+    erroresTitle: {
+        fontSize: 14,
+        fontFamily: 'Inter-Bold',
+        color: '#D63031',
+        marginBottom: 5,
+    },
+    errorItem: {
+        fontSize: 12,
+        fontFamily: 'Inter-Medium',
+        color: '#E17055',
+        marginLeft: 10,
     },
 });

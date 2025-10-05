@@ -72,10 +72,10 @@ export default function AgregarProyecto() {
     const [institucion, setInstitucion] = useState<string | number>("");
     const [fechaInicio, setFechaInicio] = useState<Date | null>(null);
     const [fechaFin, setFechaFin] = useState<Date | null>(null);
-    const [fechaAplicacion, setFechaAplicacion] = useState<Date | null>(null); // NUEVO CAMPO
+    const [fechaAplicacion, setFechaAplicacion] = useState<Date | null>(null);
     const [showInicio, setShowInicio] = useState(false);
     const [showFin, setShowFin] = useState(false);
-    const [showAplicacion, setShowAplicacion] = useState(false); // NUEVO ESTADO
+    const [showAplicacion, setShowAplicacion] = useState(false);
     const [descripcion, setDescripcion] = useState("");
     const [capacidad, setCapacidad] = useState("");
     const [horas, setHoras] = useState("");
@@ -93,6 +93,9 @@ export default function AgregarProyecto() {
     // Estados para modales
     const [modalEspecialidadesVisible, setModalEspecialidadesVisible] = useState(false);
     const [modalIdiomasVisible, setModalIdiomasVisible] = useState(false);
+
+    // Estado para errores
+    const [errores, setErrores] = useState<string[]>([]);
 
     // Posición de sugerencias
     const [layoutTecnicas, setLayoutTecnicas] = useState({ y: 0, width: 0 });
@@ -339,35 +342,47 @@ export default function AgregarProyecto() {
         return true;
     };
 
-    const formularioValido = () => {
+    // NUEVA LÓGICA DE VALIDACIÓN
+    const validarFormulario = () => {
         const hoy = new Date();
         hoy.setHours(0, 0, 0, 0);
+        const nuevosErrores: string[] = [];
 
+        if (!nombreProyecto) nuevosErrores.push("Nombre del proyecto");
+        if (especialidades.length === 0) nuevosErrores.push("Especialidades");
+        
         // Validar institución
-        const institucionValida = crearNuevaInstitucion
-            ? nuevaInstitucion.nombre &&
-            nuevaInstitucion.idDepartamento &&
-            nuevaInstitucion.idMunicipio &&
-            nuevaInstitucion.nombreContacto &&
-            /^\d{4}-\d{4}$/.test(nuevaInstitucion.telefonoContacto) &&
-            /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(nuevaInstitucion.emailContacto)
-            : institucion !== "";
+        if (crearNuevaInstitucion) {
+            if (!nuevaInstitucion.nombre) nuevosErrores.push("Nombre de institución");
+            if (!nuevaInstitucion.idDepartamento) nuevosErrores.push("Departamento");
+            if (!nuevaInstitucion.idMunicipio) nuevosErrores.push("Municipio");
+            if (!nuevaInstitucion.nombreContacto) nuevosErrores.push("Nombre de contacto");
+            if (!nuevaInstitucion.telefonoContacto) nuevosErrores.push("Teléfono");
+            if (!nuevaInstitucion.emailContacto) nuevosErrores.push("Email");
+        } else {
+            if (!institucion) nuevosErrores.push("Institución");
+        }
 
-        return (
-            nombreProyecto &&
-            especialidades.length > 0 &&
-            institucionValida &&
-            fechaInicio && fechaInicio >= hoy &&
-            fechaFin && fechaFin > fechaInicio &&
-            fechaAplicacion && fechaAplicacion >= hoy && // NUEVA VALIDACIÓN
-            fechaAplicacion <= fechaInicio && // NUEVA VALIDACIÓN
-            descripcion &&
-            capacidad &&
-            horas &&
-            habilidadesTecnicas.length > 0 &&
-            habilidadesBlandas.length > 0 &&
-            modalidad !== ""
-        );
+        // FECHAS EN ORDEN CORRECTO
+        if (!fechaAplicacion) nuevosErrores.push("Fecha de aplicación");
+        else if (fechaAplicacion < hoy) nuevosErrores.push("Fecha aplicación no puede ser anterior a hoy");
+
+        if (!fechaInicio) nuevosErrores.push("Fecha de inicio");
+        else if (fechaInicio < hoy) nuevosErrores.push("Fecha de inicio no puede ser anterior a hoy");
+        else if (fechaAplicacion && fechaInicio < fechaAplicacion) nuevosErrores.push("Fecha inicio debe ser posterior a fecha aplicación");
+
+        if (!fechaFin) nuevosErrores.push("Fecha de fin");
+        else if (fechaFin <= fechaInicio!) nuevosErrores.push("Fecha fin debe ser posterior a inicio");
+
+        if (!descripcion) nuevosErrores.push("Descripción");
+        if (!capacidad) nuevosErrores.push("Capacidad");
+        if (!horas) nuevosErrores.push("Horas");
+        if (habilidadesTecnicas.length === 0) nuevosErrores.push("Habilidades técnicas");
+        if (habilidadesBlandas.length === 0) nuevosErrores.push("Habilidades blandas");
+        if (!modalidad) nuevosErrores.push("Modalidad");
+
+        setErrores(nuevosErrores);
+        return nuevosErrores.length === 0;
     };
 
     // Toast personalizado
@@ -396,8 +411,9 @@ export default function AgregarProyecto() {
     };
 
     const handleSubmit = async () => {
-        if (!formularioValido()) {
-            showToast("⚠️ Completa todos los campos correctamente");
+        // Validar primero
+        if (!validarFormulario()) {
+            showToast(`⚠️ Completa los campos requeridos`);
             return;
         }
 
@@ -422,7 +438,7 @@ export default function AgregarProyecto() {
                 idInstitucion: crearNuevaInstitucion ? null : (institucion ? Number(institucion) : null),
                 fechaInicio: fechaInicio?.toISOString().split("T")[0],
                 fechaFin: fechaFin?.toISOString().split("T")[0],
-                fechaAplicacion: fechaAplicacion?.toISOString().split("T")[0], // NUEVO CAMPO
+                fechaAplicacion: fechaAplicacion?.toISOString().split("T")[0],
                 idModalidad: modalidad ? Number(modalidad) : null,
                 idDepartamento: nuevaInstitucion.idDepartamento,
                 idMunicipio: nuevaInstitucion.idMunicipio,
@@ -468,6 +484,7 @@ export default function AgregarProyecto() {
 
             {/* Contenido */}
             <ScrollView style={styles.contentBackground} contentContainerStyle={{ paddingBottom: 120 }}>
+
                 {/* Nombre del proyecto */}
                 <View style={[styles.inputContainer, { marginTop: 30 }]}>
                     <TextInput
@@ -623,11 +640,36 @@ export default function AgregarProyecto() {
                     </>
                 )}
 
-                {/* Fechas con validación - AGREGADO FECHA APLICACIÓN */}
+                {/* FECHA DE APLICACIÓN PRIMERO */}
+                <TouchableOpacity
+                    style={styles.inputContainer}
+                    onPress={() => setShowAplicacion(true)}
+                >
+                    <Text style={[styles.input, { color: fechaAplicacion ? "#000" : "#666" }]}>
+                        {fechaAplicacion ? fechaAplicacion.toLocaleDateString() : "Fecha límite para aplicar"}
+                    </Text>
+                    <Ionicons name="calendar-outline" size={22} color="#213A8E" style={styles.iconCalendar} />
+                </TouchableOpacity>
+                {showAplicacion && (
+                    <DateTimePicker
+                        value={fechaAplicacion || new Date()}
+                        mode="date"
+                        display="calendar"
+                        onChange={(event, selectedDate) => {
+                            setShowAplicacion(false);
+                            if (selectedDate) {
+                                setFechaAplicacion(selectedDate);
+                            }
+                        }}
+                    />
+                )}
+
+                {/* FECHAS DE INICIO Y FIN DESPUÉS */}
                 <View style={styles.row}>
                     <TouchableOpacity
-                        style={[styles.inputContainer2, styles.half]}
-                        onPress={() => setShowInicio(true)}
+                        style={[styles.inputContainer2, styles.half, { opacity: fechaAplicacion ? 1 : 0.5 }]}
+                        onPress={() => fechaAplicacion && setShowInicio(true)}
+                        disabled={!fechaAplicacion}
                     >
                         <Text style={[styles.input, { color: fechaInicio ? "#000" : "#666" }]}>
                             {fechaInicio ? fechaInicio.toLocaleDateString() : "Inicio"}
@@ -673,32 +715,6 @@ export default function AgregarProyecto() {
                         />
                     )}
                 </View>
-
-                {/* Fecha de Aplicación - NUEVO CAMPO */}
-                <TouchableOpacity
-                    style={[styles.inputContainer, { opacity: fechaInicio ? 1 : 0.5 }]}
-                    onPress={() => fechaInicio && setShowAplicacion(true)}
-                    disabled={!fechaInicio}
-                >
-                    <Text style={[styles.input, { color: fechaAplicacion ? "#000" : "#666" }]}>
-                        {fechaAplicacion ? fechaAplicacion.toLocaleDateString() : "Fecha límite para aplicar"}
-                    </Text>
-                    <Ionicons name="calendar-outline" size={22} color="#213A8E" style={styles.iconCalendar} />
-                </TouchableOpacity>
-                {showAplicacion && (
-                    <DateTimePicker
-                        value={fechaAplicacion || new Date()}
-                        mode="date"
-                        display="calendar"
-                        onChange={(event, selectedDate) => {
-                            setShowAplicacion(false);
-                            if (selectedDate) {
-                                setFechaAplicacion(selectedDate);
-                                setTimeout(validarFechas, 100);
-                            }
-                        }}
-                    />
-                )}
 
                 {/* Descripción */}
                 <View style={[styles.inputContainer, styles.textAreaContainer]}>
@@ -749,10 +765,10 @@ export default function AgregarProyecto() {
                 </TouchableOpacity>
 
                 {/* Habilidades técnicas */}
-                <View style={{ zIndex: 20 }}>
+                <View style={{ zIndex: 1000 }}>
                     <View style={styles.chipsInputContainer} onLayout={(event) => {
                         const { y, width } = event.nativeEvent.layout;
-                        setLayoutTecnicas({ y: y, width: width });
+                        setLayoutTecnicas({ y: y + 60, width: width });
                     }}>
                         <View style={styles.chipsContainer}>
                             {habilidadesTecnicas.map(h => (
@@ -773,21 +789,31 @@ export default function AgregarProyecto() {
                         </View>
                     </View>
                     {inputHabilidadTecnica.length > 0 && sugerenciasTecnicas.length > 0 && (
-                        <View style={[styles.suggestionsList, { top: layoutTecnicas.y, width: layoutTecnicas.width }]}>
-                            {sugerenciasTecnicas.map(item => (
-                                <TouchableOpacity key={item.idHabilidad} onPress={() => agregarHabilidad(item, "Técnica")} style={styles.suggestionItem}>
-                                    <Text style={styles.suggestionText}>{item.nombre}</Text>
-                                </TouchableOpacity>
-                            ))}
+                        <View style={[styles.suggestionsList, { 
+                            top: layoutTecnicas.y, 
+                            width: layoutTecnicas.width,
+                            left: 20
+                        }]}>
+                            <ScrollView style={styles.suggestionsScroll} nestedScrollEnabled={true}>
+                                {sugerenciasTecnicas.map(item => (
+                                    <TouchableOpacity 
+                                        key={item.idHabilidad} 
+                                        onPress={() => agregarHabilidad(item, "Técnica")} 
+                                        style={styles.suggestionItem}
+                                    >
+                                        <Text style={styles.suggestionText}>{item.nombre}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </ScrollView>
                         </View>
                     )}
                 </View>
 
                 {/* Habilidades blandas */}
-                <View style={{ zIndex: 10 }}>
+                <View style={{ zIndex: 900 }}>
                     <View style={styles.chipsInputContainer} onLayout={(event) => {
                         const { y, width } = event.nativeEvent.layout;
-                        setLayoutBlandas({ y: y, width: width });
+                        setLayoutBlandas({ y: y + 60, width: width });
                     }}>
                         <View style={styles.chipsContainer}>
                             {habilidadesBlandas.map(h => (
@@ -808,12 +834,22 @@ export default function AgregarProyecto() {
                         </View>
                     </View>
                     {inputHabilidadBlanda.length > 0 && sugerenciasBlandas.length > 0 && (
-                        <View style={[styles.suggestionsList, { top: layoutBlandas.y, width: layoutBlandas.width }]}>
-                            {sugerenciasBlandas.map(item => (
-                                <TouchableOpacity key={item.idHabilidad} onPress={() => agregarHabilidad(item, "Blanda")} style={styles.suggestionItem}>
-                                    <Text style={styles.suggestionText}>{item.nombre}</Text>
-                                </TouchableOpacity>
-                            ))}
+                        <View style={[styles.suggestionsList, { 
+                            top: layoutBlandas.y, 
+                            width: layoutBlandas.width,
+                            left: 20
+                        }]}>
+                            <ScrollView style={styles.suggestionsScroll} nestedScrollEnabled={true}>
+                                {sugerenciasBlandas.map(item => (
+                                    <TouchableOpacity 
+                                        key={item.idHabilidad} 
+                                        onPress={() => agregarHabilidad(item, "Blanda")} 
+                                        style={styles.suggestionItem}
+                                    >
+                                        <Text style={styles.suggestionText}>{item.nombre}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </ScrollView>
                         </View>
                     )}
                 </View>
@@ -837,15 +873,11 @@ export default function AgregarProyecto() {
                     </Picker>
                 </View>
 
-                {/* Botón guardar */}
+                {/* Botón guardar - SIEMPRE HABILITADO */}
                 <View style={{ alignItems: "flex-end", marginTop: 20 }}>
                     <TouchableOpacity
-                        style={[
-                            styles.buttonYellow,
-                            !formularioValido() && styles.buttonDisabled
-                        ]}
+                        style={styles.buttonYellow}
                         onPress={handleSubmit}
-                        disabled={!formularioValido()}
                     >
                         <Ionicons name="save-outline" size={28} color="#fff" />
                     </TouchableOpacity>
@@ -1030,7 +1062,7 @@ export default function AgregarProyecto() {
     );
 }
 
-// Los estilos se mantienen iguales
+// ESTILOS ACTUALIZADOS
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: "#fff" },
     header: {
@@ -1136,10 +1168,6 @@ const styles = StyleSheet.create({
         shadowRadius: 8,
         elevation: 10,
     },
-    buttonDisabled: {
-        backgroundColor: "#ccc",
-        shadowColor: "#999",
-    },
     bottomNav: {
         flexDirection: "row",
         justifyContent: "space-around",
@@ -1203,25 +1231,31 @@ const styles = StyleSheet.create({
     suggestionsList: {
         position: 'absolute',
         backgroundColor: '#fff',
-        borderWidth: 1,
-        borderColor: '#ddd',
-        borderRadius: 8,
-        zIndex: 100,
-        elevation: 5,
-        maxHeight: 150,
+        borderWidth: 2,
+        borderColor: '#2666DE',
+        borderRadius: 12,
+        zIndex: 2000,
+        elevation: 20,
+        maxHeight: 200,
         shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        overflow: 'hidden',
+    },
+    suggestionsScroll: {
+        maxHeight: 200,
     },
     suggestionItem: {
-        padding: 10,
+        padding: 12,
         borderBottomWidth: 1,
-        borderBottomColor: '#eee'
+        borderBottomColor: '#f0f0f0',
+        backgroundColor: '#fff',
     },
     suggestionText: {
         fontSize: 14,
-        fontFamily: 'Inter-Medium'
+        fontFamily: 'Inter-Medium',
+        color: '#333',
     },
     modalOverlay: {
         flex: 1,
@@ -1374,5 +1408,26 @@ const styles = StyleSheet.create({
     },
     disabledInput: {
         opacity: 0.6,
+    },
+    // ESTILOS PARA ERRORES
+    erroresContainer: {
+        backgroundColor: '#FFEAA7',
+        padding: 15,
+        borderRadius: 10,
+        marginTop: 15,
+        borderLeftWidth: 4,
+        borderLeftColor: '#E53935',
+    },
+    erroresTitle: {
+        fontSize: 14,
+        fontFamily: 'Inter-Bold',
+        color: '#D63031',
+        marginBottom: 5,
+    },
+    errorItem: {
+        fontSize: 12,
+        fontFamily: 'Inter-Medium',
+        color: '#E17055',
+        marginLeft: 10,
     },
 });

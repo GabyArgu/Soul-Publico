@@ -1,9 +1,10 @@
-import { useEffect, useRef } from "react";
-import { View, StyleSheet, Animated, ImageBackground, AppState } from "react-native";
+// app/index.tsx
 import { useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
+import { useEffect, useRef } from "react";
+import { Animated, AppState, ImageBackground, StyleSheet, View } from "react-native";
 
-export default function Splash() {
+export default function index() {
     const router = useRouter();
     const fade1 = useRef(new Animated.Value(1)).current;
     const fade2 = useRef(new Animated.Value(0)).current;

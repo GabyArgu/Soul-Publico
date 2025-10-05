@@ -1,6 +1,6 @@
 import { Stack } from "expo-router";
+import { configureFonts, MD3LightTheme, PaperProvider } from "react-native-paper";
 import { RootSiblingParent } from "react-native-root-siblings";
-import { PaperProvider, configureFonts, MD3LightTheme } from "react-native-paper";
 import { UserCreationProvider } from "./context/UserCreationContext";
 
 const customTheme = {
@@ -23,13 +23,13 @@ export default function Layout() {
       <PaperProvider theme={customTheme}>
         <UserCreationProvider>
           <Stack
-            initialRouteName="Splash"
+            initialRouteName="index"
             screenOptions={{
               headerShown: false,
               animation: "fade",
             }}
           >
-            <Stack.Screen name="Splash" />
+            <Stack.Screen name="index" />
             <Stack.Screen name="(auth)/LoginScreen" />
             <Stack.Screen name="(auth)/Crear" />
             <Stack.Screen name="(auth)/Crear2" />

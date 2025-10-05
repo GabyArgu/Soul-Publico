@@ -221,6 +221,7 @@ const styles = StyleSheet.create({
     switchText: {
         fontSize: 15,
         fontFamily: "Inter-Medium",
+        fontWeight: "medium",
         color: "#000",
         flex: 1,
     },
@@ -230,6 +231,7 @@ const styles = StyleSheet.create({
         flex: 1, 
         fontSize: 15, 
         fontFamily: "Inter-Medium", 
+        fontWeight: "medium",
         color: "#000", 
         height: 52,
         minHeight: 52,

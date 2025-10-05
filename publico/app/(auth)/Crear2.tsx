@@ -605,6 +605,7 @@ const styles = StyleSheet.create({
         marginLeft: 10,
         fontSize: 15,
         fontFamily: 'Inter-Medium',
+        fontWeight: "medium",
         color: '#333',
         flex: 1,
     },
@@ -615,6 +616,7 @@ const styles = StyleSheet.create({
     nivelesTitle: {
         fontSize: 12,
         fontFamily: 'Inter-Medium',
+        fontWeight: "medium",
         color: '#666',
         marginBottom: 5,
     },
@@ -638,6 +640,7 @@ const styles = StyleSheet.create({
     nivelText: {
         fontSize: 12,
         fontFamily: 'Inter-Medium',
+        fontWeight: "medium",
         color: '#666',
     },
     nivelTextSelected: {

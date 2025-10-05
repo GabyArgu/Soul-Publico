@@ -5,7 +5,7 @@ import type { IconProps } from "@expo/vector-icons/build/createIconSet";
 import { useRouter } from "expo-router";
 import { useState, useEffect } from "react";
 import axios from "axios";
-import { getUserData, UserData } from '../utils/session';
+import { getUserData, UserData, checkAuthStatus  } from '../utils/session';
 
 interface Notificacion {
     idNotificacion: number;
