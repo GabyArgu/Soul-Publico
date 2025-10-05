@@ -1,11 +1,11 @@
 // app/(main)/Perfil.tsx
 import { View, Text, StyleSheet, Image, TouchableOpacity, Linking } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter, useLocalSearchParams } from "expo-router";
+import { useRouter } from "expo-router";
 import { useState, useEffect } from "react";
 import axios from "axios";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Dialog, Portal, Button, Paragraph } from 'react-native-paper';
+import { getUserData, UserData, clearUserData } from '../utils/session';
 
 // Interface para los datos del usuario
 interface Usuario {
@@ -25,73 +25,72 @@ interface Usuario {
 
 export default function Perfil() {
     const router = useRouter();
-    const params = useLocalSearchParams();
 
+    const [userData, setUserData] = useState<UserData | null>(null);
     const [usuario, setUsuario] = useState<Usuario | null>(null);
     const [cargando, setCargando] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [logoutVisible, setLogoutVisible] = useState(false);
     const [cvErrorVisible, setCvErrorVisible] = useState(false);
     const [cvErrorMessage, setCvErrorMessage] = useState("");
-    const API_URL = "http://192.168.1.11:4000/api";
+    const API_URL = "https://d06a6c5dfc30.ngrok-free.app/api";
 
-    // Obtener carnet del usuario logeado
-    const obtenerCarnetUsuario = async (): Promise<string | null> => {
-        try {
-            const userData = await AsyncStorage.getItem("userData");
-            if (userData) {
-                const parsedData = JSON.parse(userData);
-                return parsedData.carnet || null;
-            }
-            if (params.carnet) {
-                return params.carnet as string;
-            }
-            return null;
-        } catch (error) {
-            console.error("Error obteniendo carnet:", error);
-            return null;
-        }
-    };
-
-    // Obtener datos del usuario al cargar el componente
+    // Cargar datos del usuario logeado
     useEffect(() => {
-        const cargarDatosUsuario = async () => {
-            try {
-                setCargando(true);
-                setError(null);
-                const carnetUsuario = await obtenerCarnetUsuario();
-
-                if (!carnetUsuario) {
-                    setError("No se pudo identificar al usuario. Por favor, inicia sesión nuevamente.");
-                    setCargando(false);
-                    return;
-                }
-                console.log("Cargando datos para carnet:", carnetUsuario);
-
-                const respuesta = await axios.get(`${API_URL}/usuarios/${carnetUsuario}`);
-
-                if (respuesta.data && respuesta.data.carnet) {
-                    setUsuario(respuesta.data);
-                } else {
-                    setError("No se encontraron datos para el usuario");
-                }
-            } catch (error: any) {
-                console.error("Error cargando datos del usuario:", error);
-                if (error.response?.status === 404) {
-                    setError("Usuario no encontrado en el sistema");
-                } else if (error.response?.status === 401) {
-                    setError("Sesión expirada. Por favor, inicia sesión nuevamente.");
-                } else if (error.code === "NETWORK_ERROR") {
-                    setError("Error de conexión. Verifica tu internet.");
-                } else {
-                    setError("Error al cargar los datos del usuario");
-                }
-            } finally {
-                setCargando(false);
+        const loadUser = async () => {
+            const data = await getUserData();
+            if (data) {
+                setUserData(data);
+            } else {
+                router.replace('/(auth)/LoginScreen');
             }
         };
-        cargarDatosUsuario();
+        loadUser();
     }, []);
+
+    // Obtener datos del perfil cuando userData esté disponible
+    useEffect(() => {
+        if (userData?.carnet) {
+            cargarDatosUsuario();
+        }
+    }, [userData]);
+
+    // Obtener datos del usuario al cargar el componente
+    const cargarDatosUsuario = async () => {
+        try {
+            setCargando(true);
+            setError(null);
+            
+            if (!userData?.carnet) {
+                setError("No se pudo identificar al usuario. Por favor, inicia sesión nuevamente.");
+                setCargando(false);
+                return;
+            }
+            
+            console.log("Cargando datos para carnet:", userData.carnet);
+
+            const respuesta = await axios.get(`${API_URL}/usuarios/${userData.carnet}`);
+
+            if (respuesta.data && respuesta.data.carnet) {
+                setUsuario(respuesta.data);
+            } else {
+                setError("No se encontraron datos para el usuario");
+            }
+        } catch (error: any) {
+            console.error("Error cargando datos del usuario:", error);
+            if (error.response?.status === 404) {
+                setError("Usuario no encontrado en el sistema");
+            } else if (error.response?.status === 401) {
+                setError("Sesión expirada. Por favor, inicia sesión nuevamente.");
+            } else if (error.code === "NETWORK_ERROR") {
+                setError("Error de conexión. Verifica tu internet.");
+            } else {
+                setError("Error al cargar los datos del usuario");
+            }
+        } finally {
+            setCargando(false);
+        }
+    };
 
     // Función para manejar cierre de sesión
     const handleLogout = () => {
@@ -100,7 +99,7 @@ export default function Perfil() {
 
     const confirmLogout = async () => {
         try {
-            await AsyncStorage.multiRemove(["userData", "authToken"]);
+            await clearUserData();
             setLogoutVisible(false);
             router.replace("/(auth)/LoginScreen");
         } catch (error) {
@@ -284,9 +283,9 @@ export default function Perfil() {
                         pathname: "/(tabs)/editar",
                         params: {
                             usuario: JSON.stringify(usuario),
-                            carnetUsuario: params.carnetUsuario,
-                            nombreUsuario: params.nombreUsuario,
-                            generoUsuario: params.generoUsuario
+                            carnetUsuario: userData?.carnet,
+                            nombreUsuario: userData?.nombreCompleto,
+                            generoUsuario: userData?.genero
                         }
                     })
                 }
@@ -296,72 +295,37 @@ export default function Perfil() {
 
             {/* Bottom nav */}
             <View style={styles.bottomNav}>
-                            <Ionicons
-                                name="home-outline"
-                                size={28}
-                                color="#fff"
-                                onPress={() => router.push({
-                                    pathname: "/",
-                                    params: {
-                                        carnetUsuario: params.carnetUsuario,
-                                        nombreUsuario: params.nombreUsuario,
-                                        generoUsuario: params.generoUsuario
-                                    }
-                                })}
-                            />
-                            <Ionicons
-                                name="cloud-outline"
-                                size={28}
-                                color="#fff"
-                                onPress={() => router.push({
-                                    pathname: "/(tabs)/guardados",
-                                    params: {
-                                        carnetUsuario: params.carnetUsuario,
-                                        nombreUsuario: params.nombreUsuario,
-                                        generoUsuario: params.generoUsuario
-                                    }
-                                })}
-                            />
-                            <Ionicons
-                                name="file-tray-outline"
-                                size={28}
-                                color="#fff"
-                                onPress={() => router.push({
-                                    pathname: "/(tabs)/aplicaciones",
-                                    params: {
-                                        carnetUsuario: params.carnetUsuario,
-                                        nombreUsuario: params.nombreUsuario,
-                                        generoUsuario: params.generoUsuario
-                                    }
-                                })}
-                            />
-                            <Ionicons
-                                name="notifications-outline"
-                                size={28}
-                                color="#fff"
-                                onPress={() => router.push({
-                                    pathname: "/(tabs)/notificaciones",
-                                    params: {
-                                        carnetUsuario: params.carnetUsuario,
-                                        nombreUsuario: params.nombreUsuario,
-                                        generoUsuario: params.generoUsuario
-                                    }
-                                })}
-                            />
-                            <Ionicons
-                                name="person"
-                                size={28}
-                                color="#fff"
-                                onPress={() => router.push({
-                                    pathname: "/(tabs)/cuenta",
-                                    params: {
-                                        carnetUsuario: params.carnetUsuario,
-                                        nombreUsuario: params.nombreUsuario,
-                                        generoUsuario: params.generoUsuario
-                                    }
-                                })}
-                            />
-                        </View>
+                <Ionicons
+                    name="home-outline"
+                    size={28}
+                    color="#fff"
+                    onPress={() => router.push("/")}
+                />
+                <Ionicons
+                    name="cloud-outline"
+                    size={28}
+                    color="#fff"
+                    onPress={() => router.push("/(tabs)/guardados")}
+                />
+                <Ionicons
+                    name="file-tray-outline"
+                    size={28}
+                    color="#fff"
+                    onPress={() => router.push("/(tabs)/aplicaciones")}
+                />
+                <Ionicons
+                    name="notifications-outline"
+                    size={28}
+                    color="#fff"
+                    onPress={() => router.push("/(tabs)/notificaciones")}
+                />
+                <Ionicons
+                    name="person"
+                    size={28}
+                    color="#fff"
+                    onPress={() => router.push("/(tabs)/cuenta")}
+                />
+            </View>
 
             {/* Portal para los diálogos profesionales */}
             <Portal>

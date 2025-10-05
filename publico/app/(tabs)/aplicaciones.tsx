@@ -2,9 +2,8 @@
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, FlatList, ScrollView, Modal, ActivityIndicator, Dimensions } from "react-native";
 import { useRouter, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { useLocalSearchParams } from "expo-router";
 import { useState, useEffect, useCallback } from "react";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getUserData, UserData } from '../utils/session';
 
 interface Aplicacion {
     idAplicacion: number;
@@ -20,15 +19,15 @@ const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 export default function Aplicaciones() {
     const router = useRouter();
-    const params = useLocalSearchParams();
 
+    const [userData, setUserData] = useState<UserData | null>(null);
     const [aplicaciones, setAplicaciones] = useState<Aplicacion[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState("");
     const [searchTimeout, setSearchTimeout] = useState<any>();
     const [filterModalVisible, setFilterModalVisible] = useState(false);
 
-    // Filtros - TODOS LOS MISMOS QUE GUARDADOS
+    // Filtros
     const [selectedIdiomas, setSelectedIdiomas] = useState<string[]>([]);
     const [selectedCarreras, setSelectedCarreras] = useState<string[]>([]);
     const [selectedHabilidades, setSelectedHabilidades] = useState<string[]>([]);
@@ -36,42 +35,39 @@ export default function Aplicaciones() {
     const [selectedEstado, setSelectedEstado] = useState<string[]>([]);
     const [selectedInstitucion, setSelectedInstitucion] = useState<string[]>([]);
 
-    // Opciones de filtros - TODOS LOS MISMOS QUE GUARDADOS
+    // Opciones de filtros
     const [idiomasDisponibles, setIdiomasDisponibles] = useState<string[]>([]);
     const [carrerasDisponibles, setCarrerasDisponibles] = useState<string[]>([]);
     const [habilidadesDisponibles, setHabilidadesDisponibles] = useState<{ blandas: string[], tecnicas: string[] }>({ blandas: [], tecnicas: [] });
     const [institucionesDisponibles, setInstitucionesDisponibles] = useState<string[]>([]);
 
-    // Obtener carnet - MISMA LÓGICA QUE GUARDADOS
-    const obtenerCarnetUsuario = async (): Promise<string | null> => {
-        try {
-            const userData = await AsyncStorage.getItem("userData");
-            if (userData) {
-                const parsed = JSON.parse(userData);
-                return parsed.carnet || null;
-            }
-            return null;
-        } catch (err) {
-            console.error("Error obteniendo carnet:", err);
-            return null;
-        }
-    };
+    const API_URL = "https://d06a6c5dfc30.ngrok-free.app/api";
 
-    // Cargar aplicaciones con filtros - MISMA LÓGICA QUE GUARDADOS
+    // Cargar datos del usuario
+    useEffect(() => {
+        const loadUser = async () => {
+            const data = await getUserData();
+            if (data) setUserData(data);
+            else router.replace('/(auth)/Login');
+        };
+        loadUser();
+    }, []);
+
+    // Cargar aplicaciones cuando userData esté disponible
+    useEffect(() => {
+        if (userData?.carnet) {
+            cargarAplicaciones();
+        }
+    }, [userData]);
+
+    // Cargar aplicaciones con filtros
     const cargarAplicaciones = async () => {
+        if (!userData?.carnet) return;
+
         setLoading(true);
         try {
-            const carnet = await obtenerCarnetUsuario();
-
-            if (!carnet) {
-                console.warn("⚠️ No se encontró carnet del usuario");
-                setAplicaciones([]);
-                return;
-            }
-
             const queryParams = new URLSearchParams();
 
-            // MISMA LÓGICA QUE EN GUARDADOS: append múltiple para arrays
             if (searchQuery) queryParams.append("search", searchQuery);
             selectedIdiomas.forEach(i => queryParams.append("idioma", i));
             selectedCarreras.forEach(c => queryParams.append("carrera", c));
@@ -80,11 +76,11 @@ export default function Aplicaciones() {
             selectedInstitucion.forEach(i => queryParams.append("institucion", i));
             queryParams.append("minHoras", selectedHorasRange[0].toString());
             queryParams.append("maxHoras", selectedHorasRange[1].toString());
-            queryParams.append("carnet", carnet);
+            queryParams.append("carnet", userData.carnet);
 
             console.log("🔍 Enviando filtros:", queryParams.toString());
 
-            const response = await fetch(`http://192.168.1.11:4000/api/aplicaciones?${queryParams.toString()}`);
+            const response = await fetch(`${API_URL}/aplicaciones?${queryParams.toString()}`);
             const data = await response.json();
             setAplicaciones(Array.isArray(data) ? data : []);
         } catch (err) {
@@ -95,14 +91,14 @@ export default function Aplicaciones() {
         }
     };
 
-    // Cargar opciones de filtros - MISMA FUNCIÓN QUE GUARDADOS
+    // Cargar opciones de filtros
     const cargarFiltrosDisponibles = async () => {
         try {
             const [idiomasRes, carrerasRes, habilidadesRes, institucionesRes] = await Promise.all([
-                fetch("http://192.168.1.11:4000/api/proyectos/idiomas").then(r => r.json()),
-                fetch("http://192.168.1.11:4000/api/proyectos/carreras").then(r => r.json()),
-                fetch("http://192.168.1.11:4000/api/proyectos/habilidades").then(r => r.json()),
-                fetch("http://192.168.1.11:4000/api/proyectos/instituciones").then(r => r.json())
+                fetch(`${API_URL}/proyectos/idiomas`).then(r => r.json()),
+                fetch(`${API_URL}/proyectos/carreras`).then(r => r.json()),
+                fetch(`${API_URL}/proyectos/habilidades`).then(r => r.json()),
+                fetch(`${API_URL}/proyectos/instituciones`).then(r => r.json())
             ]);
 
             setIdiomasDisponibles(Array.isArray(idiomasRes) ? idiomasRes : []);
@@ -113,7 +109,7 @@ export default function Aplicaciones() {
                 tecnicas: Array.isArray(habilidadesRes?.tecnicas) ? habilidadesRes.tecnicas : []
             });
 
-            // CORRECCIÓN: Extraer solo los nombres de las instituciones
+            // Extraer nombres de instituciones
             if (Array.isArray(institucionesRes)) {
                 const nombresInstituciones = institucionesRes.map(item =>
                     typeof item === 'string' ? item : item.nombre
@@ -132,15 +128,15 @@ export default function Aplicaciones() {
         }
     };
 
-    // Recargar al enfocar la pantalla - MISMA LÓGICA QUE GUARDADOS
+    // Recargar al enfocar la pantalla
     useFocusEffect(
         useCallback(() => {
             cargarAplicaciones();
             cargarFiltrosDisponibles();
-        }, [])
+        }, [userData?.carnet]) // Dependencia del carnet
     );
 
-    // Limpiar timeout al desmontar - MISMA LÓGICA QUE GUARDADOS
+    // Limpiar timeout al desmontar
     useEffect(() => {
         return () => {
             if (searchTimeout) {
@@ -171,7 +167,6 @@ export default function Aplicaciones() {
         setSelectedHorasRange([0, 1000]);
         setSelectedEstado([]);
         setSelectedInstitucion([]);
-        // Aplicar filtros limpios inmediatamente
         cargarAplicaciones();
     };
 
@@ -188,9 +183,9 @@ export default function Aplicaciones() {
                         pathname: "/(tabs)/detallesA",
                         params: {
                             idAplicacion: item.idAplicacion.toString(),
-                            carnetUsuario: params.carnetUsuario,
-                            nombreUsuario: params.nombreUsuario,
-                            generoUsuario: params.generoUsuario
+                            carnetUsuario: userData?.carnet,
+                            nombreUsuario: userData?.nombreCompleto,
+                            generoUsuario: userData?.genero
                         }
                     })}
                 >
@@ -267,7 +262,7 @@ export default function Aplicaciones() {
                 )}
             </View>
 
-            {/* Modal de filtros - TODOS LOS FILTROS DE GUARDADOS MÁS ESTADO E INSTITUCIÓN */}
+            {/* Modal de filtros */}
             <Modal
                 visible={filterModalVisible}
                 animationType="slide"
@@ -451,73 +446,38 @@ export default function Aplicaciones() {
                     name="home-outline"
                     size={28}
                     color="#fff"
-                    onPress={() => router.push({
-                        pathname: "/",
-                        params: {
-                            carnetUsuario: params.carnetUsuario,
-                            nombreUsuario: params.nombreUsuario,
-                            generoUsuario: params.generoUsuario
-                        }
-                    })}
+                    onPress={() => router.push("/")}
                 />
                 <Ionicons
                     name="star-outline"
                     size={28}
                     color="#fff"
-                    onPress={() => router.push({
-                        pathname: "/(tabs)/guardados",
-                        params: {
-                            carnetUsuario: params.carnetUsuario,
-                            nombreUsuario: params.nombreUsuario,
-                            generoUsuario: params.generoUsuario
-                        }
-                    })}
+                    onPress={() => router.push("/(tabs)/guardados")}
                 />
                 <Ionicons
                     name="file-tray"
                     size={28}
                     color="#fff"
-                    onPress={() => router.push({
-                        pathname: "/(tabs)/aplicaciones",
-                        params: {
-                            carnetUsuario: params.carnetUsuario,
-                            nombreUsuario: params.nombreUsuario,
-                            generoUsuario: params.generoUsuario
-                        }
-                    })}
+                    onPress={() => router.push("/(tabs)/aplicaciones")}
                 />
                 <Ionicons
                     name="notifications-outline"
                     size={28}
                     color="#fff"
-                    onPress={() => router.push({
-                        pathname: "/(tabs)/notificaciones",
-                        params: {
-                            carnetUsuario: params.carnetUsuario,
-                            nombreUsuario: params.nombreUsuario,
-                            generoUsuario: params.generoUsuario
-                        }
-                    })}
+                    onPress={() => router.push("/(tabs)/notificaciones")}
                 />
                 <Ionicons
                     name="person-outline"
                     size={28}
                     color="#fff"
-                    onPress={() => router.push({
-                        pathname: "/(tabs)/cuenta",
-                        params: {
-                            carnetUsuario: params.carnetUsuario,
-                            nombreUsuario: params.nombreUsuario,
-                            generoUsuario: params.generoUsuario
-                        }
-                    })}
+                    onPress={() => router.push("/(tabs)/cuenta")}
                 />
             </View>
         </View>
     );
 }
 
-// Estilos - MANTENIENDO DISEÑO ORIGINAL
+// Estilos (se mantienen iguales)
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: "#fff" },
     header: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingHorizontal: 20, paddingTop: 91, marginBottom: 20, backgroundColor: "#fff" },
@@ -540,7 +500,7 @@ const styles = StyleSheet.create({
     bottomNav: { flexDirection: "row", justifyContent: "space-around", alignItems: "center", paddingVertical: 12, backgroundColor: "#2666DE", borderTopLeftRadius: 30, borderTopRightRadius: 30, paddingBottom: 30, paddingTop: 20 },
     emptyText: { textAlign: 'center', color: '#666', fontStyle: 'italic', marginHorizontal: 20, marginVertical: 10, },
 
-    // Estilos del modal (iguales a guardados)
+    // Estilos del modal
     modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
     modalContainer: { backgroundColor: '#fff', borderTopLeftRadius: 25, borderTopRightRadius: 25, maxHeight: screenHeight * 0.85, paddingBottom: 20 },
     modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: '#E5E7EB' },

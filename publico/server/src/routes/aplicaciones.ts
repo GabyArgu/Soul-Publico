@@ -77,6 +77,7 @@ router.get("/detalle/:idAplicacion", async (req, res) => {
                 horasServicio AS horas,
                 fechaInicio,
                 fechaFin,
+                fechaAplicacion,
                 nombreInstitucion AS institucion,
                 nombreContacto,
                 emailContacto,

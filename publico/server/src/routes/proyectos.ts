@@ -108,6 +108,7 @@ router.get("/", async (req, res) => {
                 nombreProyecto as titulo,
                 descripcion,
                 capacidad,
+                fechaAplicacion,
                 horasServicio as horas,
                 tipoProyecto,
                 carrerasRelacionadas,
@@ -156,7 +157,7 @@ router.get("/", async (req, res) => {
     }
 });
 
-// GET /proyectos/:id (Detalle de proyecto) - ¡Ahora va después de las rutas fijas!
+// GET /proyectos/:id (Detalle de proyecto) 
 router.get("/:id", async (req, res) => {
     try {
         const { id } = req.params;
@@ -172,6 +173,7 @@ router.get("/:id", async (req, res) => {
                 tipoProyecto,
                 fechaInicio,
                 fechaFin,
+                fechaAplicacion,
                 nombreInstitucion as institucion,
                 telefonoContacto as telefono,
                 emailContacto,
@@ -203,6 +205,7 @@ router.get("/:id", async (req, res) => {
 });
 
 // POST /proyectos (Crear nuevo proyecto)
+// POST /proyectos (Crear nuevo proyecto)
 router.post("/", async (req, res) => {
     const transaction = await getConnection().then(pool => pool.transaction());
 
@@ -212,9 +215,9 @@ router.post("/", async (req, res) => {
             descripcion,
             capacidad,
             horas,
-            carrerasRelacionadas, // Array de IDs de carreras
-            habilidadesRelacionadas, // Array de objetos {idHabilidad, esRequerida}
-            idiomasRelacionados, // Array de objetos {idIdioma, idINivel}
+            carrerasRelacionadas,
+            habilidadesRelacionadas,
+            idiomasRelacionados,
             idInstitucion, 
             nombreInstitucion, 
             idDepartamento,
@@ -224,6 +227,7 @@ router.post("/", async (req, res) => {
             emailContacto,
             fechaInicio,
             fechaFin,
+            fechaAplicacion, // NUEVO CAMPO
             idModalidad,
             carnetUsuario 
         } = req.body;
@@ -261,7 +265,7 @@ router.post("/", async (req, res) => {
 
         const idUsuario = usuarioResult.recordset[0].idUsuario;
 
-        // PASO 3: Crear el proyecto
+        // PASO 3: Crear el proyecto - AGREGAR fechaAplicacion
         const proyectoResult = await transaction.request()
             .input("titulo", titulo)
             .input("descripcion", descripcion)
@@ -270,21 +274,22 @@ router.post("/", async (req, res) => {
             .input("idInstitucion", institucionId)
             .input("fechaInicio", fechaInicio)
             .input("fechaFin", fechaFin)
+            .input("fechaAplicacion", fechaAplicacion) // NUEVO PARÁMETRO
             .input("idModalidad", idModalidad)
             .input("idUsuario", idUsuario)
             .query(`
-        INSERT INTO proyectos (
-            nombre, descripcion, capacidad, horasServicio,
-            idInstitucion, fechaInicio, fechaFin, idModalidad, 
-            idUsuario, estado
-        ) 
-        OUTPUT INSERTED.idProyecto
-        VALUES (
-            @titulo, @descripcion, @capacidad, @horasServicio,
-            @idInstitucion, @fechaInicio, @fechaFin, @idModalidad,
-            @idUsuario, 1
-        )
-    `);
+                INSERT INTO proyectos (
+                    nombre, descripcion, capacidad, horasServicio,
+                    idInstitucion, fechaInicio, fechaFin, fechaAplicacion, idModalidad, 
+                    idUsuario, estado
+                ) 
+                OUTPUT INSERTED.idProyecto
+                VALUES (
+                    @titulo, @descripcion, @capacidad, @horasServicio,
+                    @idInstitucion, @fechaInicio, @fechaFin, @fechaAplicacion, @idModalidad,
+                    @idUsuario, 1
+                )
+            `);
 
         const idProyecto = proyectoResult.recordset[0].idProyecto;
 
@@ -338,7 +343,7 @@ router.post("/", async (req, res) => {
 
     } catch (error) {
         await transaction.rollback();
-        console.error(error);
+        console.error("Error detallado:", error);
         res.status(500).json({ error: "Error al crear proyecto: " + error });
     }
 });

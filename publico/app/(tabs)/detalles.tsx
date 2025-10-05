@@ -4,7 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import Toast from "react-native-root-toast";
 import { useState, useEffect } from "react";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getUserData, UserData } from '../utils/session';
 
 interface ProyectoDetalle {
     idProyecto: number;
@@ -19,94 +19,65 @@ interface ProyectoDetalle {
     modalidad: string;
     fechaInicio: string;
     fechaFin: string;
+    fechaAplicacion: string; // NUEVO CAMPO
     telefono: string;
     emailContacto: string;
     nombreContacto: string;
 }
 
-interface ProyectoGuardado {
-    idUsuario: number;
-    idProyecto: number;
-    guardadoEn: string;
-}
-
 export default function DetalleProyecto() {
     const router = useRouter();
     const params = useLocalSearchParams();
+
+    const API_URL = "https://d06a6c5dfc30.ngrok-free.app/api";
+
     const [proyecto, setProyecto] = useState<ProyectoDetalle | null>(null);
     const [loading, setLoading] = useState(true);
     const [isGuardado, setIsGuardado] = useState(false);
     const [idUsuario, setIdUsuario] = useState<number | null>(null);
     const [cargandoGuardado, setCargandoGuardado] = useState(false);
-    const [userDataState, setUserDataState] = useState<any>(null);
+    const [userData, setUserData] = useState<UserData | null>(null);
+    const [yaAplico, setYaAplico] = useState(false);
 
     const idProyecto = params.idProyecto;
 
-    const obtenerIdUsuario = async (): Promise<number | null> => {
-    try {
-        const userData = await AsyncStorage.getItem("userData");
-        if (!userData) return null;
+    // Cargar datos del usuario
+    useEffect(() => {
+        const loadUser = async () => {
+            const data = await getUserData();
+            if (data) {
+                setUserData(data);
+                await obtenerIdUsuario(data.carnet);
+            } else {
+                router.replace('/(auth)/LoginScreen');
+            }
+        };
+        loadUser();
+    }, []);
 
-        const parsedData = JSON.parse(userData);
-        const carnet = parsedData.carnet;
-        if (!carnet) return null;
-
-        const response = await fetch(`http://192.168.1.11:4000/api/usuarios/${carnet}`);
-        if (!response.ok) throw new Error(`Error HTTP: ${response.status}`);
-
-        const usuario = await response.json();
-        console.log("Datos completos del usuario:", usuario);
-
-        setUserDataState(usuario); // 👈 guardamos todo el usuario en el state
-        return usuario.idUsuario || null;
-    } catch (error) {
-        console.error("Error obteniendo ID de usuario:", error);
-        return null;
-    }
-};
-
-    // Verificar si el proyecto está guardado
-    const verificarProyectoGuardado = async () => {
+    const obtenerIdUsuario = async (carnet: string): Promise<number | null> => {
         try {
-            if (!idUsuario || !idProyecto) {
-                console.log("No hay usuario o proyecto para verificar");
-                return;
-            }
+            const response = await fetch(`${API_URL}/usuarios/${carnet}`);
+            if (!response.ok) throw new Error(`Error HTTP: ${response.status}`);
 
-            console.log("Verificando guardado - Usuario:", idUsuario, "Proyecto:", idProyecto);
-
-            const response = await fetch(`http://192.168.1.11:4000/api/proyectos-guardados/verificar?userId=${idUsuario}&proyectoId=${idProyecto}`);
-
-            if (!response.ok) {
-                throw new Error(`Error HTTP: ${response.status}`);
-            }
-
-            const data = await response.json();
-            console.log("Resultado verificación:", data);
-            setIsGuardado(data.estaGuardado);
-
+            const usuario = await response.json();
+            console.log("Datos completos del usuario:", usuario);
+            setIdUsuario(usuario.idUsuario || null);
+            return usuario.idUsuario || null;
         } catch (error) {
-            console.error('Error al verificar proyecto guardado:', error);
-            setIsGuardado(false);
+            console.error("Error obteniendo ID de usuario:", error);
+            return null;
         }
     };
 
-    // 1️⃣ Cargar detalles + obtener ID de usuario
+    // Cargar detalles del proyecto
     useEffect(() => {
         const cargarDetallesProyecto = async () => {
             try {
                 setLoading(true);
-                const userId = await obtenerIdUsuario();
-                if (!userId) {
-                    console.log("No se pudo obtener el ID del usuario");
-                    showToast("Debes iniciar sesión para usar esta función", false);
-                    return;
-                }
+                if (!idProyecto) return;
 
-                setIdUsuario(userId); // 👈 acá solo seteás, no verificás todavía
-
-                // Cargar detalles del proyecto
-                const response = await fetch(`http://192.168.1.11:4000/api/proyectos/${idProyecto}`);
+                const response = await fetch(`${API_URL}/proyectos/${idProyecto}`);
                 if (!response.ok) throw new Error("Error al cargar detalles del proyecto");
                 const data = await response.json();
                 setProyecto(data);
@@ -118,68 +89,80 @@ export default function DetalleProyecto() {
             }
         };
 
-        if (idProyecto) {
-            cargarDetallesProyecto();
-        }
+        cargarDetallesProyecto();
     }, [idProyecto]);
 
-    // 2️⃣ Verificar guardado solo cuando idUsuario y idProyecto estén listos
+    // Verificar si el proyecto está guardado y si ya se aplicó
+    useEffect(() => {
+        if (idUsuario && idProyecto) {
+            verificarProyectoGuardado();
+            verificarAplicacion();
+        }
+    }, [idUsuario, idProyecto]);
 
-    // 3️⃣ Verificar aplicación después de tener idUsuario e idProyecto
-useEffect(() => {
-    if (idUsuario && idProyecto) {
-        const checkAplicacion = async () => {
-            try {
-                const pool = await fetch(
-                    `http://192.168.1.11:4000/api/aplicaciones/verificar?userId=${idUsuario}&proyectoId=${idProyecto}`
-                );
-                const data = await pool.json();
-                setYaAplico(data.yaAplico);
+    const verificarProyectoGuardado = async () => {
+        try {
+            console.log("Verificando guardado - Usuario:", idUsuario, "Proyecto:", idProyecto);
 
-                // Mostrar toast si ya aplicó
-                if (data.yaAplico) {
-                    showToast("⚠️ Ya aplicaste a este proyecto", false, "warning");
-                }
-            } catch (error) {
-                console.error("Error verificando aplicación:", error);
+            const response = await fetch(`${API_URL}/proyectos-guardados/verificar?userId=${idUsuario}&proyectoId=${idProyecto}`);
+            if (!response.ok) throw new Error(`Error HTTP: ${response.status}`);
+
+            const data = await response.json();
+            console.log("Resultado verificación:", data);
+            setIsGuardado(data.estaGuardado);
+        } catch (error) {
+            console.error('Error al verificar proyecto guardado:', error);
+            setIsGuardado(false);
+        }
+    };
+
+    const verificarAplicacion = async () => {
+        try {
+            const response = await fetch(
+                `${API_URL}/aplicaciones/verificar?userId=${idUsuario}&proyectoId=${idProyecto}`
+            );
+            if (!response.ok) throw new Error(`Error HTTP: ${response.status}`);
+            
+            const data = await response.json();
+            setYaAplico(data.yaAplico);
+
+            // Mostrar toast si ya aplicó
+            if (data.yaAplico) {
+                showToast("⚠️ Ya aplicaste a este proyecto", false, "warning");
             }
-        };
-
-        checkAplicacion();
-        verificarProyectoGuardado();
-    }
-}, [idUsuario, idProyecto]);
-
-
+        } catch (error) {
+            console.error("Error verificando aplicación:", error);
+            setYaAplico(false);
+        }
+    };
 
     const showToast = (message: string, success: boolean = false, type: "success" | "error" | "warning" = "error") => {
-    let backgroundColor = "#E53935"; // rojo por defecto
-    if (type === "success") backgroundColor = "#4CAF50";
-    if (type === "warning") backgroundColor = "#F0C02A"; // amarillo
+        let backgroundColor = "#E53935";
+        if (type === "success") backgroundColor = "#4CAF50";
+        if (type === "warning") backgroundColor = "#F0C02A";
 
-    Toast.show(message, {
-        duration: 2000,
-        position: Toast.positions.TOP,
-        shadow: true,
-        animation: true,
-        hideOnPress: true,
-        backgroundColor,
-        textColor: "#fff",
-        opacity: 0.95,
-        containerStyle: {
-            borderRadius: 10,
-            paddingHorizontal: 15,
-            paddingVertical: 10,
-            marginTop: 60,
-            alignSelf: "center",
-        },
-        textStyle: {
-            fontFamily: "MyriadPro-Bold",
-            fontSize: 14,
-        },
-    });
-};
-
+        Toast.show(message, {
+            duration: 2000,
+            position: Toast.positions.TOP,
+            shadow: true,
+            animation: true,
+            hideOnPress: true,
+            backgroundColor,
+            textColor: "#fff",
+            opacity: 0.95,
+            containerStyle: {
+                borderRadius: 10,
+                paddingHorizontal: 15,
+                paddingVertical: 10,
+                marginTop: 60,
+                alignSelf: "center",
+            },
+            textStyle: {
+                fontFamily: "MyriadPro-Bold",
+                fontSize: 14,
+            },
+        });
+    };
 
     // Guardar proyecto
     const guardarProyecto = async () => {
@@ -192,7 +175,7 @@ useEffect(() => {
             setCargandoGuardado(true);
             const fechaActual = new Date().toISOString();
 
-            const response = await fetch('http://192.168.1.11:4000/api/proyectos-guardados', {
+            const response = await fetch(`${API_URL}/proyectos-guardados`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -227,12 +210,13 @@ useEffect(() => {
 
         try {
             setCargandoGuardado(true);
-            const response = await fetch(`http://192.168.1.11:4000/api/proyectos-guardados?userId=${idUsuario}&proyectoId=${idProyecto}`, {
+            const response = await fetch(`${API_URL}/proyectos-guardados?userId=${idUsuario}&proyectoId=${idProyecto}`, {
                 method: 'DELETE',
             });
 
             if (response.ok) {
                 setIsGuardado(false);
+                showToast("Proyecto removido de guardados", true, "success");
             } else {
                 throw new Error('Error al desguardar proyecto');
             }
@@ -253,70 +237,43 @@ useEffect(() => {
         }
     };
 
-    const [yaAplico, setYaAplico] = useState(false);
+    const handleAplicarClick = async () => {
+        if (yaAplico) {
+            showToast("❌ Ya aplicaste a este proyecto", false);
+            return;
+        }
 
-const verificarAplicacion = async () => {
-  if (!idUsuario || !idProyecto) return;
+        if (!idUsuario || !proyecto || !userData?.urlCv) {
+            showToast("Error: Usuario o CV no disponible", false);
+            return;
+        }
 
-  try {
-    const response = await fetch(
-      `http://192.168.1.11:4000/api/aplicaciones/verificar?userId=${idUsuario}&proyectoId=${idProyecto}`
-    );
+        try {
+            const usuario = {
+                idUsuario,
+                nombreCompleto: userData.nombreCompleto || "Sin nombre",
+                email: userData.email || "Sin email",
+                urlCv: userData.urlCv,
+            };
 
-    if (!response.ok) throw new Error(`Error HTTP: ${response.status}`);
-    const data = await response.json();
-    setYaAplico(data.yaAplico); // asumimos que la API devuelve { yaAplico: true/false }
-  } catch (error) {
-    console.error("Error verificando aplicación:", error);
-    setYaAplico(false);
-  }
-};
+            const response = await fetch(`${API_URL}/aplicaciones/aplicar`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    idProyecto: proyecto.idProyecto,
+                    usuario
+                }),
+            });
 
-// 3️⃣ Verificar aplicación después de tener idUsuario e idProyecto
-useEffect(() => {
-  if (idUsuario && idProyecto) {
-    verificarAplicacion();
-  }
-}, [idUsuario, idProyecto]);
+            if (!response.ok) throw new Error("Error al enviar aplicación");
 
-const handleAplicarClick = async () => {
-  if (yaAplico) {
-    showToast("❌ Ya aplicaste a este proyecto", false);
-    return;
-  }
-
-  // Tu lógica actual de aplicar
-  if (!idUsuario || !proyecto || !userDataState?.urlCv) {
-    showToast("Error: Usuario o CV no disponible", false);
-    return;
-  }
-
-  try {
-    const usuario = {
-      idUsuario,
-      nombreCompleto: userDataState.nombreCompleto || "Sin nombre",
-      email: userDataState.email || "Sin email",
-      urlCv: userDataState.urlCv,
+            setYaAplico(true);
+            showToast("✅ Aplicación enviada correctamente", true, "success");
+        } catch (error) {
+            console.error(error);
+            showToast("Error al enviar la aplicación", false);
+        }
     };
-
-    const response = await fetch("http://192.168.1.11:4000/api/aplicaciones/aplicar", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ idProyecto: proyecto.idProyecto, usuario }),
-    });
-
-    if (!response.ok) throw new Error("Error al enviar aplicación");
-
-    setYaAplico(true); // bloqueamos después de aplicar
-    showToast("✅ Aplicación enviada correctamente", true, "success");
-  } catch (error) {
-    console.error(error);
-    showToast("Error al enviar la aplicación", false);
-  }
-};
-
-
-
 
     const formatearFecha = (fecha: string) => {
         if (!fecha) return 'No especificada';
@@ -331,6 +288,17 @@ const handleAplicarClick = async () => {
             .replace(/\bIngeniería\b/gi, "Ing.")
             .replace(/\bTécnico\b/gi, "Téc.")
             .replace(/\bLicenciatura\b/gi, "Lic.");
+    };
+
+    // Verificar si el proyecto aún está disponible para aplicar
+    const estaDisponibleParaAplicar = () => {
+        if (!proyecto?.fechaAplicacion) return true; // Sin fecha límite, siempre disponible
+        
+        const fechaAplicacion = new Date(proyecto.fechaAplicacion);
+        const hoy = new Date();
+        hoy.setHours(0, 0, 0, 0);
+        
+        return fechaAplicacion >= hoy;
     };
 
     if (loading) {
@@ -375,6 +343,8 @@ const handleAplicarClick = async () => {
         ? proyecto.idiomasRelacionados.split(',').map(i => i.trim()).filter(i => i !== '')
         : [];
 
+    const disponibleParaAplicar = estaDisponibleParaAplicar();
+
     return (
         <View style={styles.container}>
             <View style={styles.header}>
@@ -408,6 +378,22 @@ const handleAplicarClick = async () => {
                         <Text style={styles.info}><Text style={styles.bold}>Fin: </Text>{formatearFecha(proyecto.fechaFin)}</Text>
                     </View>
                 </View>
+
+                {/* Fecha límite para aplicar - NUEVO CAMPO */}
+                {proyecto.fechaAplicacion && (
+                    <View style={styles.infoRow}>
+                        <View style={styles.col}>
+                            <Text style={[
+                                styles.info, 
+                                !disponibleParaAplicar && { color: '#E53935', fontWeight: 'bold' }
+                            ]}>
+                                <Text style={styles.bold}>Límite para aplicar: </Text>
+                                {formatearFecha(proyecto.fechaAplicacion)}
+                                {!disponibleParaAplicar && " (Vencida)"}
+                            </Text>
+                        </View>
+                    </View>
+                )}
 
                 {/* Contacto y Teléfono en la misma fila */}
                 {(proyecto.nombreContacto || proyecto.telefono || proyecto.emailContacto) && (
@@ -493,17 +479,30 @@ const handleAplicarClick = async () => {
                     </TouchableOpacity>
 
                     <TouchableOpacity
-                        style={[styles.buttonRight, yaAplico && { opacity: 0.9 }]}
+                        style={[
+                            styles.buttonRight, 
+                            (yaAplico || !disponibleParaAplicar) && { 
+                                backgroundColor: '#ccc',
+                                shadowColor: '#999'
+                            }
+                        ]}
                         onPress={handleAplicarClick}
-                        disabled={yaAplico} 
+                        disabled={yaAplico || !disponibleParaAplicar}
                     >
                         <Ionicons
-                            name={yaAplico ? "send" : "send-outline"}
+                            name={yaAplico ? "checkmark-circle" : "send-outline"}
                             size={26}
                             color="#fff"
                         />
                     </TouchableOpacity>
                 </View>
+
+                {/* Mensaje si no está disponible para aplicar */}
+                {!disponibleParaAplicar && !yaAplico && (
+                    <Text style={[styles.info, { color: '#E53935', textAlign: 'center', marginTop: 10 }]}>
+                        ❌ Este proyecto ya no acepta aplicaciones
+                    </Text>
+                )}
             </ScrollView>
 
             {/* Bottom nav */}
@@ -512,66 +511,31 @@ const handleAplicarClick = async () => {
                     name="home-outline"
                     size={28}
                     color="#fff"
-                    onPress={() => router.push({
-                        pathname: "/",
-                        params: {
-                            carnetUsuario: params.carnetUsuario,
-                            nombreUsuario: params.nombreUsuario,
-                            generoUsuario: params.generoUsuario
-                        }
-                    })}
+                    onPress={() => router.push("/")}
                 />
                 <Ionicons
                     name="star-outline"
                     size={28}
                     color="#fff"
-                    onPress={() => router.push({
-                        pathname: "/(tabs)/guardados",
-                        params: {
-                            carnetUsuario: params.carnetUsuario,
-                            nombreUsuario: params.nombreUsuario,
-                            generoUsuario: params.generoUsuario
-                        }
-                    })}
+                    onPress={() => router.push("/(tabs)/guardados")}
                 />
                 <Ionicons
                     name="file-tray-outline"
                     size={28}
                     color="#fff"
-                    onPress={() => router.push({
-                        pathname: "/(tabs)/aplicaciones",
-                        params: {
-                            carnetUsuario: params.carnetUsuario,
-                            nombreUsuario: params.nombreUsuario,
-                            generoUsuario: params.generoUsuario
-                        }
-                    })}
+                    onPress={() => router.push("/(tabs)/aplicaciones")}
                 />
                 <Ionicons
                     name="notifications-outline"
                     size={28}
                     color="#fff"
-                    onPress={() => router.push({
-                        pathname: "/(tabs)/notificaciones",
-                        params: {
-                            carnetUsuario: params.carnetUsuario,
-                            nombreUsuario: params.nombreUsuario,
-                            generoUsuario: params.generoUsuario
-                        }
-                    })}
+                    onPress={() => router.push("/(tabs)/notificaciones")}
                 />
                 <Ionicons
                     name="person-outline"
                     size={28}
                     color="#fff"
-                    onPress={() => router.push({
-                        pathname: "/(tabs)/cuenta",
-                        params: {
-                            carnetUsuario: params.carnetUsuario,
-                            nombreUsuario: params.nombreUsuario,
-                            generoUsuario: params.generoUsuario
-                        }
-                    })}
+                    onPress={() => router.push("/(tabs)/cuenta")}
                 />
             </View>
         </View>

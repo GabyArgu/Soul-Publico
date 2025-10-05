@@ -1,16 +1,27 @@
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ImageBackground, Platform } from "react-native";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import axios from "axios";
 import Toast from "react-native-root-toast";
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import * as SecureStore from 'expo-secure-store';
+import { AppState } from "react-native";
 
 export default function Login() {
     const router = useRouter();
     const [carnet, setCarnet] = useState("");
     const [password, setPassword] = useState("");
-    const API_URL = "http://192.168.1.11:4000/api/auth";
+    const API_URL = "https://d06a6c5dfc30.ngrok-free.app/api/auth";
+
+    // Detectar cierre de app / background → eliminar sesión
+    useEffect(() => {
+        const subscription = AppState.addEventListener("change", (state) => {
+            if (state === "inactive" || state === "background") {
+                SecureStore.deleteItemAsync("userData");
+            }
+        });
+        return () => subscription.remove();
+    }, []);
 
     const validarCarnet = (text: string) => {
         if (/^[A-Za-z]{0,2}[0-9]{0,6}$/.test(text)) {
@@ -33,7 +44,6 @@ export default function Login() {
         });
     };
 
-// En tu Login.tsx, modifica la función handleLogin:
     const handleLogin = async () => {
         if (!carnet || !password) {
             showToast("⚠️ Completa carnet y contraseña");
@@ -46,21 +56,30 @@ export default function Login() {
 
             const fullName = res.data.user.nombreCompleto;
             const genero = res.data.user.genero || "O";
-            const userCarnet = res.data.user.carnet; // ✅ OBTENER CARNET
+            const userCarnet = res.data.user.carnet;
+            const id = res.data.user.id;
+            const email = res.data.user.email;
+            const urlCv = res.data.user.urlCv;
 
-            // ✅ GUARDAR EN ASYNCSTORAGE
-            await AsyncStorage.setItem('userData', JSON.stringify({
+            console.log("Datos del usuario:", fullName, genero, userCarnet, id, email, urlCv);
+
+            // Guardar en SecureStore para mantener sesión segura
+            await SecureStore.setItemAsync('userData', JSON.stringify({
                 carnet: userCarnet,
                 nombreCompleto: fullName,
-                genero: genero
+                genero: genero,
+                id: id,
+                email: email,
+                urlCv: urlCv
+
             }));
 
-            // ✅ MANTENER TU LÓGICA ORIGINAL DE NOMBRE
+            // Lógica de displayName
             const nameParts = fullName.split(" ");
             const displayName = nameParts.length >= 3 ? `${nameParts[0]} ${nameParts[2]}` : nameParts[0];
 
-            // ✅ NAVEGAR SIN PASAR EL CARNET POR PARÁMETROS
-            router.push({
+            // Navegar a Tabs
+            router.replace({
                 pathname: "/(tabs)",
                 params: {
                     nombreUsuario: displayName,
@@ -73,6 +92,7 @@ export default function Login() {
             showToast("❌ Carnet o contraseña incorrectos");
         }
     };
+
     return (
         <KeyboardAwareScrollView
             contentContainerStyle={styles.scrollContainer}
@@ -113,28 +133,10 @@ export default function Login() {
 }
 
 const styles = StyleSheet.create({
-    scrollContainer: {
-        flexGrow: 1,
-    },
-    background: {
-        flex: 1,
-        width: '100%',
-        height: '100%',
-        justifyContent: 'flex-end',
-        alignItems: 'center',
-    },
-    container: {
-        flex: 1,
-        justifyContent: 'flex-end',
-        alignItems: 'center',
-        marginBottom: 45,
-    },
-    formContainer: {
-        width: 300,
-        borderRadius: 15,
-        padding: 8,
-        backgroundColor: 'transparent'
-    },
+    scrollContainer: { flexGrow: 1 },
+    background: { flex: 1, width: '100%', height: '100%', justifyContent: 'flex-end', alignItems: 'center' },
+    container: { flex: 1, justifyContent: 'flex-end', alignItems: 'center', marginBottom: 45 },
+    formContainer: { width: 300, borderRadius: 15, padding: 8, backgroundColor: 'transparent' },
     input: { backgroundColor: '#EFF1F8', borderRadius: 12, padding: 15, marginBottom: 20, fontSize: 16, fontFamily: 'Inter-Bold' },
     inputCarnet: { borderLeftWidth: 15, borderLeftColor: '#F9DC50' },
     inputPassword: { borderLeftWidth: 15, borderLeftColor: '#2666DE' },

@@ -4,46 +4,54 @@ import { useRouter, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams } from "expo-router";
 import { useState, useEffect, useCallback } from "react";
+import { getUserData, UserData } from '../utils/session';
+
 
 interface Proyecto {
-  idProyecto: number;
-  titulo: string;
-  descripcion: string;
-  capacidad: number;
-  horas: number;
-  tipoProyecto: string;
-  carrerasRelacionadas: string;
-  habilidadesRelacionadas: string;
-  idiomasRelacionados: string;
+    idProyecto: number;
+    titulo: string;
+    descripcion: string;
+    capacidad: number;
+    horas: number;
+    tipoProyecto: string;
+    carrerasRelacionadas: string;
+    habilidadesRelacionadas: string;
+    idiomasRelacionados: string;
 }
 
 const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 export default function Index() {
-    const params = useLocalSearchParams();
+    const [userData, setUserData] = useState<UserData | null>(null);
+
+    useEffect(() => {
+    const loadUser = async () => {
+        const data = await getUserData();
+        if (data) setUserData(data);
+        else router.replace('/(auth)/Login'); // Redirige a login si no hay sesión
+    };
+    loadUser();
+        }, []);
+
+
     const [proyectos, setProyectos] = useState<Proyecto[]>([]);
     const [loading, setLoading] = useState(true);
 
     const [searchQuery, setSearchQuery] = useState("");
     const [filterModalVisible, setFilterModalVisible] = useState(false);
-    const [searchTimeout, setSearchTimeout] = useState<any>(); 
+    const [searchTimeout, setSearchTimeout] = useState<any>();
 
-    
+    const API_URL = "https://d06a6c5dfc30.ngrok-free.app/api";
 
     const [idiomasDisponibles, setIdiomasDisponibles] = useState<string[]>([]);
     const [carrerasDisponibles, setCarrerasDisponibles] = useState<string[]>([]);
-    const [habilidadesDisponibles, setHabilidadesDisponibles] = useState<{blandas: string[], tecnicas: string[]}>({blandas: [], tecnicas: []});
+    const [habilidadesDisponibles, setHabilidadesDisponibles] = useState<{ blandas: string[], tecnicas: string[] }>({ blandas: [], tecnicas: [] });
 
     const [selectedIdiomas, setSelectedIdiomas] = useState<string[]>([]);
     const [selectedCarreras, setSelectedCarreras] = useState<string[]>([]);
     const [selectedHabilidades, setSelectedHabilidades] = useState<string[]>([]);
     const [selectedHorasRange, setSelectedHorasRange] = useState<[number, number]>([0, 1000]);
 
-    const rawNombreParam = params.nombreUsuario;
-    const rawNombre = Array.isArray(rawNombreParam) ? rawNombreParam[0] : rawNombreParam || "Gabriela";
-    
-    const generoParam = params.generoUsuario;
-    const genero = Array.isArray(generoParam) ? generoParam[0] : generoParam || "O";
 
     const procesarNombre = (nombre: string) => {
         const palabras = nombre.trim().split(" ");
@@ -53,10 +61,13 @@ export default function Index() {
         return `${primerNombre} ${apellido}`;
     };
 
-    const nombre = procesarNombre(rawNombre);
+    const nombre = userData ? procesarNombre(userData.nombreCompleto) : "";
+    const carnet = userData?.carnet;
+    const genero = userData?.genero;
+
 
     const obtenerSaludo = (genero: string) => {
-        switch(genero) {
+        switch (genero) {
             case 'F': return '¡Bienvenida';
             case 'M': return '¡Bienvenido';
             default: return '¡Bienvenido/a';
@@ -64,15 +75,15 @@ export default function Index() {
     };
 
     const obtenerAvatar = (genero: string) => {
-        switch(genero) {
+        switch (genero) {
             case 'F': return require("../../assets/images/avatar.png");
             case 'M': return require("../../assets/images/avatar2.png");
             default: return require("../../assets/images/avatar3.png");
         }
     };
 
-    const saludo = obtenerSaludo(genero); 
-    const avatar = obtenerAvatar(genero); 
+    const saludo = obtenerSaludo(genero || "O"); 
+const avatar = obtenerAvatar(genero || "O");
 
     const router = useRouter();
 
@@ -87,10 +98,11 @@ export default function Index() {
             selectedHabilidades.forEach(h => params.append("habilidad", h));
             params.append("minHoras", selectedHorasRange[0].toString());
             params.append("maxHoras", selectedHorasRange[1].toString());
-            
-            const response = await fetch(`http://192.168.1.11:4000/api/proyectos?${params.toString()}`);
+
+            const response = await fetch(`${API_URL}/proyectos?${params.toString()}`);
+
             const data = await response.json();
-            
+
             setProyectos(data);
         } catch (err) {
             console.error('Error al cargar proyectos:', err);
@@ -103,27 +115,28 @@ export default function Index() {
     const cargarFiltrosDisponibles = async () => {
         try {
             const [idiomasRes, carrerasRes, habilidadesRes] = await Promise.all([
-                fetch("http://192.168.1.11:4000/api/proyectos/idiomas").then(r => r.json()),
-                fetch("http://192.168.1.11:4000/api/proyectos/carreras").then(r => r.json()),
-                fetch("http://192.168.1.11:4000/api/proyectos/habilidades").then(r => r.json())
+                fetch(`${API_URL}/proyectos/idiomas`).then(r => r.json()),
+                fetch(`${API_URL}/proyectos/carreras`).then(r => r.json()),
+                fetch(`${API_URL}/proyectos/habilidades`).then(r => r.json())
             ]);
-            
+
+
             // VERIFICACIÓN CLAVE: Asegurar que la respuesta es un array (o usar [])
             setIdiomasDisponibles(Array.isArray(idiomasRes) ? idiomasRes : []);
             setCarrerasDisponibles(Array.isArray(carrerasRes) ? carrerasRes : []);
-            
+
             // Asegurar que las habilidades tienen la estructura correcta
             setHabilidadesDisponibles({
                 blandas: Array.isArray(habilidadesRes?.blandas) ? habilidadesRes.blandas : [],
                 tecnicas: Array.isArray(habilidadesRes?.tecnicas) ? habilidadesRes.tecnicas : []
             });
-            
+
         } catch (err) {
             console.error('Error al cargar filtros:', err);
             // Opcional: Establecer todos los estados a vacíos en caso de fallo total
             setIdiomasDisponibles([]);
             setCarrerasDisponibles([]);
-            setHabilidadesDisponibles({blandas: [], tecnicas: []});
+            setHabilidadesDisponibles({ blandas: [], tecnicas: [] });
         }
     };
 
@@ -196,9 +209,9 @@ export default function Index() {
                         pathname: "/(tabs)/detalles",
                         params: {
                             idProyecto: item.idProyecto.toString(),
-                            carnetUsuario: params.carnetUsuario,
-                            nombreUsuario: params.nombreUsuario,
-                            generoUsuario: params.generoUsuario
+                            carnetUsuario: userData?.carnet,
+nombreUsuario: userData?.nombreCompleto,
+generoUsuario: userData?.genero
                         }
                     })}
                 >
@@ -221,10 +234,10 @@ export default function Index() {
             {/* Header */}
             <View style={styles.header}>
                 <View>
-                    <Text style={styles.hola}>{saludo},</Text> 
+                    <Text style={styles.hola}>{saludo},</Text>
                     <Text style={styles.nombre}>{nombre}</Text>
                 </View>
-                <Image source={avatar} style={styles.avatar} /> 
+                <Image source={avatar} style={styles.avatar} />
             </View>
 
             {/* Fondo de todo lo demás */}
@@ -232,10 +245,10 @@ export default function Index() {
                 {/* Buscador + Botones */}
                 <View style={styles.searchRow}>
                     <View style={styles.searchBox}>
-                        <TextInput 
-                            style={styles.searchInput} 
-                            placeholder="Buscar" 
-                            placeholderTextColor="#666" 
+                        <TextInput
+                            style={styles.searchInput}
+                            placeholder="Buscar"
+                            placeholderTextColor="#666"
                             value={searchQuery}
                             onChangeText={(text) => {
                                 setSearchQuery(text);
@@ -249,14 +262,14 @@ export default function Index() {
                         <Ionicons name="search" size={20} color="#EAC306" style={styles.searchIconInside} />
                     </View>
                     <TouchableOpacity style={styles.iconButton}>
-                        <Ionicons name="add" size={22} color="#fff"  onPress={() => router.push({
-                        pathname: "/(tabs)/proyecto",
-                        params: {
-                            carnetUsuario: params.carnetUsuario,
-                            nombreUsuario: params.nombreUsuario,
-                            generoUsuario: params.generoUsuario
-                        }
-                    })} />
+                        <Ionicons name="add" size={22} color="#fff" onPress={() => router.push({
+                            pathname: "/(tabs)/proyecto",
+                            params: {
+                                carnetUsuario: userData?.carnet,
+nombreUsuario: userData?.nombreCompleto,
+generoUsuario: userData?.genero
+                            }
+                        })} />
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.iconButton} onPress={() => setFilterModalVisible(true)}>
                         <Ionicons name="filter" size={22} color="#fff" />
@@ -312,7 +325,7 @@ export default function Index() {
                         {/* Header del Modal */}
                         <View style={styles.modalHeader}>
                             <Text style={styles.modalTitle}>Filtros</Text>
-                            <TouchableOpacity 
+                            <TouchableOpacity
                                 style={styles.closeButton}
                                 onPress={() => setFilterModalVisible(false)}
                             >
@@ -325,18 +338,18 @@ export default function Index() {
                             <Text style={styles.filterSectionTitle}>Idiomas</Text>
                             <View style={styles.filterOptionsContainer}>
                                 {idiomasDisponibles.map(idioma => (
-                                    <TouchableOpacity 
-                                        key={idioma} 
+                                    <TouchableOpacity
+                                        key={idioma}
                                         style={[
                                             styles.filterOption,
                                             selectedIdiomas.includes(idioma) && styles.filterOptionSelected
                                         ]}
                                         onPress={() => toggleSelection(idioma, selectedIdiomas, setSelectedIdiomas)}
                                     >
-                                        <Ionicons 
-                                            name={selectedIdiomas.includes(idioma) ? "checkbox" : "square-outline"} 
-                                            size={20} 
-                                            color={selectedIdiomas.includes(idioma) ? "#2666DE" : "#666"} 
+                                        <Ionicons
+                                            name={selectedIdiomas.includes(idioma) ? "checkbox" : "square-outline"}
+                                            size={20}
+                                            color={selectedIdiomas.includes(idioma) ? "#2666DE" : "#666"}
                                         />
                                         <Text style={[
                                             styles.filterOptionText,
@@ -350,18 +363,18 @@ export default function Index() {
                             <Text style={styles.filterSectionTitle}>Carreras</Text>
                             <View style={styles.filterOptionsContainer}>
                                 {carrerasDisponibles.map(carrera => (
-                                    <TouchableOpacity 
-                                        key={carrera} 
+                                    <TouchableOpacity
+                                        key={carrera}
                                         style={[
                                             styles.filterOption,
                                             selectedCarreras.includes(carrera) && styles.filterOptionSelected
                                         ]}
                                         onPress={() => toggleSelection(carrera, selectedCarreras, setSelectedCarreras)}
                                     >
-                                        <Ionicons 
-                                            name={selectedCarreras.includes(carrera) ? "checkbox" : "square-outline"} 
-                                            size={20} 
-                                            color={selectedCarreras.includes(carrera) ? "#2666DE" : "#666"} 
+                                        <Ionicons
+                                            name={selectedCarreras.includes(carrera) ? "checkbox" : "square-outline"}
+                                            size={20}
+                                            color={selectedCarreras.includes(carrera) ? "#2666DE" : "#666"}
                                         />
                                         <Text style={[
                                             styles.filterOptionText,
@@ -375,18 +388,18 @@ export default function Index() {
                             <Text style={styles.filterSectionTitle}>Habilidades Blandas</Text>
                             <View style={styles.filterOptionsContainer}>
                                 {habilidadesDisponibles.blandas?.map(habilidad => (
-                                    <TouchableOpacity 
-                                        key={habilidad} 
+                                    <TouchableOpacity
+                                        key={habilidad}
                                         style={[
                                             styles.filterOption,
                                             selectedHabilidades.includes(habilidad) && styles.filterOptionSelected
                                         ]}
                                         onPress={() => toggleSelection(habilidad, selectedHabilidades, setSelectedHabilidades)}
                                     >
-                                        <Ionicons 
-                                            name={selectedHabilidades.includes(habilidad) ? "checkbox" : "square-outline"} 
-                                            size={20} 
-                                            color={selectedHabilidades.includes(habilidad) ? "#2666DE" : "#666"} 
+                                        <Ionicons
+                                            name={selectedHabilidades.includes(habilidad) ? "checkbox" : "square-outline"}
+                                            size={20}
+                                            color={selectedHabilidades.includes(habilidad) ? "#2666DE" : "#666"}
                                         />
                                         <Text style={[
                                             styles.filterOptionText,
@@ -400,18 +413,18 @@ export default function Index() {
                             <Text style={styles.filterSectionTitle}>Habilidades Técnicas</Text>
                             <View style={styles.filterOptionsContainer}>
                                 {habilidadesDisponibles.tecnicas?.map(habilidad => (
-                                    <TouchableOpacity 
-                                        key={habilidad} 
+                                    <TouchableOpacity
+                                        key={habilidad}
                                         style={[
                                             styles.filterOption,
                                             selectedHabilidades.includes(habilidad) && styles.filterOptionSelected
                                         ]}
                                         onPress={() => toggleSelection(habilidad, selectedHabilidades, setSelectedHabilidades)}
                                     >
-                                        <Ionicons 
-                                            name={selectedHabilidades.includes(habilidad) ? "checkbox" : "square-outline"} 
-                                            size={20} 
-                                            color={selectedHabilidades.includes(habilidad) ? "#2666DE" : "#666"} 
+                                        <Ionicons
+                                            name={selectedHabilidades.includes(habilidad) ? "checkbox" : "square-outline"}
+                                            size={20}
+                                            color={selectedHabilidades.includes(habilidad) ? "#2666DE" : "#666"}
                                         />
                                         <Text style={[
                                             styles.filterOptionText,
@@ -425,18 +438,18 @@ export default function Index() {
                             <Text style={styles.filterSectionTitle}>Horas Mínimas</Text>
                             <View style={styles.horasContainer}>
                                 {[0, 25, 50, 75, 100].map(horas => (
-                                    <TouchableOpacity 
+                                    <TouchableOpacity
                                         key={horas}
                                         style={[
                                             styles.horasOption,
-                                            { 
+                                            {
                                                 backgroundColor: selectedHorasRange[0] === horas ? '#2666DE' : '#F2F6FC',
                                                 borderColor: selectedHorasRange[0] === horas ? '#2666DE' : '#D1D5DB'
                                             }
                                         ]}
                                         onPress={() => setSelectedHorasRange([horas, 200])}
                                     >
-                                        <Text style={{ 
+                                        <Text style={{
                                             color: selectedHorasRange[0] === horas ? '#fff' : '#213A8E',
                                             fontWeight: selectedHorasRange[0] === horas ? 'bold' : '600',
                                             fontSize: 13
@@ -450,13 +463,13 @@ export default function Index() {
 
                         {/* Botones del Modal */}
                         <View style={styles.modalButtons}>
-                            <TouchableOpacity 
+                            <TouchableOpacity
                                 style={styles.limpiarButton}
                                 onPress={limpiarFiltros}
                             >
                                 <Text style={styles.limpiarButtonText}>Limpiar</Text>
                             </TouchableOpacity>
-                            <TouchableOpacity 
+                            <TouchableOpacity
                                 style={styles.aplicarButton}
                                 onPress={aplicarFiltros}
                             >
@@ -477,9 +490,9 @@ export default function Index() {
                     onPress={() => router.push({
                         pathname: "/",
                         params: {
-                            carnetUsuario: params.carnetUsuario,
-                            nombreUsuario: params.nombreUsuario,
-                            generoUsuario: params.generoUsuario
+                            carnetUsuario: userData?.carnet,
+nombreUsuario: userData?.nombreCompleto,
+generoUsuario: userData?.genero
                         }
                     })}
                 />
@@ -490,9 +503,9 @@ export default function Index() {
                     onPress={() => router.push({
                         pathname: "/(tabs)/guardados",
                         params: {
-                            carnetUsuario: params.carnetUsuario,
-                            nombreUsuario: params.nombreUsuario,
-                            generoUsuario: params.generoUsuario
+                            carnetUsuario: userData?.carnet,
+nombreUsuario: userData?.nombreCompleto,
+generoUsuario: userData?.genero
                         }
                     })}
                 />
@@ -503,9 +516,9 @@ export default function Index() {
                     onPress={() => router.push({
                         pathname: "/(tabs)/aplicaciones",
                         params: {
-                            carnetUsuario: params.carnetUsuario,
-                            nombreUsuario: params.nombreUsuario,
-                            generoUsuario: params.generoUsuario
+                            carnetUsuario: userData?.carnet,
+nombreUsuario: userData?.nombreCompleto,
+generoUsuario: userData?.genero
                         }
                     })}
                 />
@@ -516,9 +529,9 @@ export default function Index() {
                     onPress={() => router.push({
                         pathname: "/(tabs)/notificaciones",
                         params: {
-                            carnetUsuario: params.carnetUsuario,
-                            nombreUsuario: params.nombreUsuario,
-                            generoUsuario: params.generoUsuario
+                            carnetUsuario: userData?.carnet,
+nombreUsuario: userData?.nombreCompleto,
+generoUsuario: userData?.genero
                         }
                     })}
                 />
@@ -529,9 +542,9 @@ export default function Index() {
                     onPress={() => router.push({
                         pathname: "/(tabs)/cuenta",
                         params: {
-                            carnetUsuario: params.carnetUsuario,
-                            nombreUsuario: params.nombreUsuario,
-                            generoUsuario: params.generoUsuario
+                            carnetUsuario: userData?.carnet,
+nombreUsuario: userData?.nombreCompleto,
+generoUsuario: userData?.genero
                         }
                     })}
                 />

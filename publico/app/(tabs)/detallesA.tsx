@@ -4,7 +4,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import Toast from "react-native-root-toast";
 import { useState, useEffect } from "react";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getUserData, UserData } from '../utils/session';
 
 interface AplicacionDetalle {
     idAplicacion: number;
@@ -43,11 +43,28 @@ interface EstadoTracking {
 export default function DetalleAplicacion() {
     const router = useRouter();
     const params = useLocalSearchParams();
+
+    const API_URL = "https://d06a6c5dfc30.ngrok-free.app/api";
+
+    const [userData, setUserData] = useState<UserData | null>(null);
     const [aplicacion, setAplicacion] = useState<AplicacionDetalle | null>(null);
     const [loading, setLoading] = useState(true);
     const [trackingEstados, setTrackingEstados] = useState<EstadoTracking[]>([]);
 
     const idAplicacion = params.idAplicacion;
+
+    // Cargar datos del usuario
+    useEffect(() => {
+        const loadUser = async () => {
+            const data = await getUserData();
+            if (data) {
+                setUserData(data);
+            } else {
+                router.replace('/(auth)/LoginScreen');
+            }
+        };
+        loadUser();
+    }, []);
 
     // Cargar detalles de la aplicación
     useEffect(() => {
@@ -55,8 +72,10 @@ export default function DetalleAplicacion() {
             try {
                 setLoading(true);
 
+                if (!idAplicacion) return;
+
                 // Cargar detalles de la aplicación
-                const response = await fetch(`http://192.168.1.11:4000/api/aplicaciones/detalle/${idAplicacion}`);
+                const response = await fetch(`${API_URL}/aplicaciones/detalle/${idAplicacion}`);
                 if (!response.ok) throw new Error("Error al cargar detalles de la aplicación");
                 const data = await response.json();
                 setAplicacion(data);
@@ -72,9 +91,7 @@ export default function DetalleAplicacion() {
             }
         };
 
-        if (idAplicacion) {
-            cargarDetallesAplicacion();
-        }
+        cargarDetallesAplicacion();
     }, [idAplicacion]);
 
     const configurarTrackingEstados = (app: AplicacionDetalle) => {
@@ -257,7 +274,7 @@ export default function DetalleAplicacion() {
             </View>
 
             <ScrollView style={styles.contentBackground} contentContainerStyle={{ paddingBottom: 30 }}>
-                {/* Tracking de Estados - NUEVO DISEÑO */}
+                {/* Tracking de Estados */}
                 <View style={styles.trackingContainer}>
                     <View style={styles.trackingHeader}>
                         <Ionicons name="time" size={24} color="#2666DE" />
@@ -441,66 +458,31 @@ export default function DetalleAplicacion() {
                     name="home-outline"
                     size={28}
                     color="#fff"
-                    onPress={() => router.push({
-                        pathname: "/",
-                        params: {
-                            carnetUsuario: params.carnetUsuario,
-                            nombreUsuario: params.nombreUsuario,
-                            generoUsuario: params.generoUsuario
-                        }
-                    })}
+                    onPress={() => router.push("/")}
                 />
                 <Ionicons
                     name="star-outline"
                     size={28}
                     color="#fff"
-                    onPress={() => router.push({
-                        pathname: "/(tabs)/guardados",
-                        params: {
-                            carnetUsuario: params.carnetUsuario,
-                            nombreUsuario: params.nombreUsuario,
-                            generoUsuario: params.generoUsuario
-                        }
-                    })}
+                    onPress={() => router.push("/(tabs)/guardados")}
                 />
                 <Ionicons
                     name="file-tray-outline"
                     size={28}
                     color="#fff"
-                    onPress={() => router.push({
-                        pathname: "/(tabs)/aplicaciones",
-                        params: {
-                            carnetUsuario: params.carnetUsuario,
-                            nombreUsuario: params.nombreUsuario,
-                            generoUsuario: params.generoUsuario
-                        }
-                    })}
+                    onPress={() => router.push("/(tabs)/aplicaciones")}
                 />
                 <Ionicons
                     name="notifications-outline"
                     size={28}
                     color="#fff"
-                    onPress={() => router.push({
-                        pathname: "/(tabs)/notificaciones",
-                        params: {
-                            carnetUsuario: params.carnetUsuario,
-                            nombreUsuario: params.nombreUsuario,
-                            generoUsuario: params.generoUsuario
-                        }
-                    })}
+                    onPress={() => router.push("/(tabs)/notificaciones")}
                 />
                 <Ionicons
                     name="person-outline"
                     size={28}
                     color="#fff"
-                    onPress={() => router.push({
-                        pathname: "/(tabs)/cuenta",
-                        params: {
-                            carnetUsuario: params.carnetUsuario,
-                            nombreUsuario: params.nombreUsuario,
-                            generoUsuario: params.generoUsuario
-                        }
-                    })}
+                    onPress={() => router.push("/(tabs)/cuenta")}
                 />
             </View>
         </View>
@@ -530,7 +512,7 @@ const styles = StyleSheet.create({
         paddingHorizontal: 20
     },
 
-    // Tracking Styles - NUEVO DISEÑO MEJORADO
+    // Tracking Styles
     trackingContainer: {
         backgroundColor: '#fff',
         borderRadius: 15,

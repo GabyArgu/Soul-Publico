@@ -1,44 +1,43 @@
 import { useEffect, useRef } from "react";
-import { View, StyleSheet, Animated, ImageBackground } from "react-native";
+import { View, StyleSheet, Animated, ImageBackground, AppState } from "react-native";
 import { useRouter } from "expo-router";
+import * as SecureStore from "expo-secure-store";
 
 export default function Splash() {
     const router = useRouter();
-    const fadeSplash1 = useRef(new Animated.Value(1)).current;
-    const fadeSplash2 = useRef(new Animated.Value(0)).current;
+    const fade1 = useRef(new Animated.Value(1)).current;
+    const fade2 = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
-        // Mantener Splash 1 visible un momento
-        const timeout1 = setTimeout(() => {
-            //Crossfade: Splash 1 se difumina mientras Splash 2 aparece
-            Animated.parallel([
-                Animated.timing(fadeSplash1, {
-                    toValue: 0,
-                    duration: 600, 
-                    useNativeDriver: true,
-                }),
-                Animated.timing(fadeSplash2, {
-                    toValue: 1,
-                    duration: 600, 
-                    useNativeDriver: true,
-                }),
+        // Detectar cierre/app en background → eliminar sesión
+        const subscription = AppState.addEventListener("change", (state) => {
+            if (state === "inactive" || state === "background") {
+                SecureStore.deleteItemAsync("userToken");
+            }
+        });
+
+        const checkLogin = async () => {
+            const token = await SecureStore.getItemAsync("userToken");
+
+            Animated.sequence([
+                Animated.delay(1200),
+                Animated.parallel([
+                    Animated.timing(fade1, { toValue: 0, duration: 600, useNativeDriver: true }),
+                    Animated.timing(fade2, { toValue: 1, duration: 600, useNativeDriver: true }),
+                ]),
+                Animated.delay(1200),
+                Animated.timing(fade2, { toValue: 0, duration: 600, useNativeDriver: true }),
             ]).start(() => {
-                // Mantener Splash 2 un momento antes de difuminar todo
-                const timeout2 = setTimeout(() => {
-                    Animated.timing(fadeSplash2, {
-                        toValue: 0,
-                        duration: 600, 
-                        useNativeDriver: true,
-                    }).start(() => {
-                        router.replace("/(auth)/LoginScreen"); 
-                    });
-                }, 1200);
-
-                return () => clearTimeout(timeout2);
+                if (token) {
+                    router.replace("/(tabs)");
+                } else {
+                    router.replace("/(auth)/LoginScreen");
+                }
             });
-        }, 1200);
+        };
 
-        return () => clearTimeout(timeout1);
+        checkLogin();
+        return () => subscription.remove();
     }, []);
 
     return (
@@ -49,7 +48,7 @@ export default function Splash() {
                 resizeMode="cover"
             />
 
-            <Animated.View style={[styles.background, { position: "absolute", opacity: fadeSplash1 }]}>
+            <Animated.View style={[styles.background, { position: "absolute", opacity: fade1 }]}>
                 <ImageBackground
                     source={require("../assets/images/splash1.png")}
                     style={styles.background}
@@ -57,7 +56,7 @@ export default function Splash() {
                 />
             </Animated.View>
 
-            <Animated.View style={[styles.background, { position: "absolute", opacity: fadeSplash2 }]}>
+            <Animated.View style={[styles.background, { position: "absolute", opacity: fade2 }]}>
                 <ImageBackground
                     source={require("../assets/images/splash2.png")}
                     style={styles.background}

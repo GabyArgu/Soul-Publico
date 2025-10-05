@@ -1,13 +1,14 @@
 // app/(main)/EditarPerfil.tsx
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Switch, Modal } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter, useLocalSearchParams } from "expo-router";
+import { useRouter } from "expo-router";
 import { useState, useEffect } from "react";
 import { Picker } from "@react-native-picker/picker";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import Toast from "react-native-root-toast";
 import * as DocumentPicker from "expo-document-picker";
 import axios from "axios";
+import { getUserData, UserData } from '../utils/session';
 
 // Interfaces para los datos
 interface Usuario {
@@ -64,8 +65,10 @@ interface Disponibilidad {
 
 export default function EditarPerfil() {
     const router = useRouter();
-    const params = useLocalSearchParams();
-    const API_URL = "http://192.168.1.11:4000/api";
+    const API_URL = "https://d06a6c5dfc30.ngrok-free.app/api";
+
+    // Estados para datos de usuario
+    const [userData, setUserData] = useState<UserData | null>(null);
 
     // Estados para datos de API
     const [carreras, setCarreras] = useState<Carrera[]>([]);
@@ -89,7 +92,7 @@ export default function EditarPerfil() {
     const [municipio, setMunicipio] = useState("");
     const [transporte, setTransporte] = useState(false);
     const [disponibilidad, setDisponibilidad] = useState("");
-    const [cv, setCv] = useState<any>(null); // EXACTAMENTE IGUAL QUE EN CREAR3
+    const [cv, setCv] = useState<any>(null);
     const [cargando, setCargando] = useState(true);
 
     // Estados para habilidades
@@ -100,7 +103,7 @@ export default function EditarPerfil() {
     const [sugerenciasTecnicas, setSugerenciasTecnicas] = useState<Habilidad[]>([]);
     const [sugerenciasBlandas, setSugerenciasBlandas] = useState<Habilidad[]>([]);
 
-    // Estados para idiomas (COMO EN PROYECTOS)
+    // Estados para idiomas
     const [idiomasSeleccionados, setIdiomasSeleccionados] = useState<{ idIdioma: number, idINivel: number }[]>([]);
     const [modalIdiomasVisible, setModalIdiomasVisible] = useState(false);
 
@@ -108,51 +111,67 @@ export default function EditarPerfil() {
     const [layoutTecnicas, setLayoutTecnicas] = useState({ y: 0, width: 0 });
     const [layoutBlandas, setLayoutBlandas] = useState({ y: 0, width: 0 });
 
-    // Cargar datos desde API
+    // Cargar datos del usuario logeado
     useEffect(() => {
-        const cargarDatosIniciales = async () => {
-            try {
-                setCargando(true);
-
-                // Cargar todos los datos necesarios con endpoints CORRECTOS
-                const [
-                    carrerasRes,
-                    departamentosRes,
-                    idiomasRes,
-                    nivelesRes,
-                    habilidadesRes,
-                    disponibilidadesRes
-                ] = await Promise.all([
-                    axios.get(`${API_URL}/carreras`),
-                    axios.get(`${API_URL}/departamentos`),
-                    axios.get(`${API_URL}/idiomas`),
-                    axios.get(`${API_URL}/niveles`),
-                    axios.get(`${API_URL}/habilidades`),
-                    axios.get(`${API_URL}/disponibilidad`).catch(() => {
-                        return { data: [] };
-                    })
-                ]);
-
-                setCarreras(carrerasRes.data || []);
-                setDepartamentos(departamentosRes.data || []);
-                setIdiomas(idiomasRes.data || []);
-                setNiveles(nivelesRes.data || []);
-                setHabilidades(habilidadesRes.data || []);
-                setDisponibilidades(disponibilidadesRes.data || []);
-
-                // Cargar datos del usuario DESPUÉS de tener todos los catálogos
-                await cargarDatosUsuario();
-
-            } catch (error) {
-                console.error("❌ Error cargando datos iniciales:", error);
-                showToast("⚠️ Algunos datos no se cargaron correctamente");
-            } finally {
-                setCargando(false);
+        const loadUser = async () => {
+            const data = await getUserData();
+            if (data) {
+                setUserData(data);
+            } else {
+                router.replace('/(auth)/LoginScreen');
             }
         };
-
-        cargarDatosIniciales();
+        loadUser();
     }, []);
+
+    // Cargar datos desde API cuando userData esté disponible
+    useEffect(() => {
+        if (userData?.carnet) {
+            cargarDatosIniciales();
+        }
+    }, [userData]);
+
+    // Cargar datos desde API
+    const cargarDatosIniciales = async () => {
+        try {
+            setCargando(true);
+
+            // Cargar todos los datos necesarios con endpoints CORRECTOS
+            const [
+                carrerasRes,
+                departamentosRes,
+                idiomasRes,
+                nivelesRes,
+                habilidadesRes,
+                disponibilidadesRes
+            ] = await Promise.all([
+                axios.get(`${API_URL}/carreras`),
+                axios.get(`${API_URL}/departamentos`),
+                axios.get(`${API_URL}/idiomas`),
+                axios.get(`${API_URL}/niveles`),
+                axios.get(`${API_URL}/habilidades`),
+                axios.get(`${API_URL}/disponibilidad`).catch(() => {
+                    return { data: [] };
+                })
+            ]);
+
+            setCarreras(carrerasRes.data || []);
+            setDepartamentos(departamentosRes.data || []);
+            setIdiomas(idiomasRes.data || []);
+            setNiveles(nivelesRes.data || []);
+            setHabilidades(habilidadesRes.data || []);
+            setDisponibilidades(disponibilidadesRes.data || []);
+
+            // Cargar datos del usuario DESPUÉS de tener todos los catálogos
+            await cargarDatosUsuario();
+
+        } catch (error) {
+            console.error("❌ Error cargando datos iniciales:", error);
+            showToast("⚠️ Algunos datos no se cargaron correctamente");
+        } finally {
+            setCargando(false);
+        }
+    };
 
     // Cargar municipios cuando cambie el departamento
     useEffect(() => {
@@ -163,10 +182,10 @@ export default function EditarPerfil() {
 
     // Precargar datos cuando se carguen los catálogos
     useEffect(() => {
-        if (params.usuario && carreras.length > 0 && departamentos.length > 0 && disponibilidades.length > 0) {
+        if (userData?.carnet && carreras.length > 0 && departamentos.length > 0 && disponibilidades.length > 0) {
             precargarDatosUsuario();
         }
-    }, [carreras, departamentos, disponibilidades, params.usuario]);
+    }, [carreras, departamentos, disponibilidades, userData]);
 
     const cargarMunicipios = async (idDepartamento: number) => {
         try {
@@ -174,16 +193,14 @@ export default function EditarPerfil() {
             setMunicipios(response.data);
 
             // Después de cargar municipios, buscar el municipio del usuario
-            if (params.usuario) {
-                const usuarioData = JSON.parse(params.usuario as string);
-                buscarMunicipioUsuario(usuarioData);
+            if (userData?.carnet) {
+                await buscarMunicipioUsuario();
             }
         } catch (error) {
             console.error("Error cargando municipios:", error);
         }
     };
 
-    // EXACTAMENTE IGUAL QUE EN CREAR3 - COPIA Y PEGA LITERAL
     const pickDocument = async () => {
         try {
             const result = await DocumentPicker.getDocumentAsync({ type: "application/pdf" });
@@ -197,7 +214,6 @@ export default function EditarPerfil() {
         }
     };
 
-    // EXACTAMENTE IGUAL QUE EN CREAR3 - COPIA Y PEGA LITERAL
     const uploadCv = async () => {
         if (!cv) throw new Error("No se seleccionó CV");
 
@@ -264,23 +280,24 @@ export default function EditarPerfil() {
         }
     };
 
-    // 3. Función mejorada para buscar municipio
-    const buscarMunicipioUsuario = async (usuarioData: Usuario) => {
-        if (!usuarioData.municipio || !departamento) return;
+    // Función mejorada para buscar municipio
+    const buscarMunicipioUsuario = async () => {
+        if (!userData?.carnet || !departamento) return;
 
         try {
-            // Primero necesitamos cargar los municipios del departamento seleccionado
-            const municipiosResponse = await axios.get(`${API_URL}/municipios/${departamento}`);
-            const municipiosCargados = municipiosResponse.data;
+            // Cargar datos del usuario para obtener el municipio
+            const usuarioResponse = await axios.get(`${API_URL}/usuarios/${userData.carnet}`);
+            const usuarioData = usuarioResponse.data;
+
+            if (!usuarioData.municipio) return;
 
             // Buscar el municipio por nombre
-            const municipioEncontrado = municipiosCargados.find((m: Municipio) =>
+            const municipioEncontrado = municipios.find((m: Municipio) =>
                 m.nombre.trim().toLowerCase() === usuarioData.municipio.trim().toLowerCase()
             );
 
             if (municipioEncontrado) {
                 setMunicipio(municipioEncontrado.idMunicipio.toString());
-            } else {
             }
         } catch (error) {
             console.error("Error buscando municipio:", error);
@@ -288,43 +305,48 @@ export default function EditarPerfil() {
     };
 
     const precargarDatosUsuario = async () => {
-        if (!params.usuario) return;
+        if (!userData?.carnet) return;
 
-        const usuarioData = JSON.parse(params.usuario as string);
+        try {
+            const usuarioResponse = await axios.get(`${API_URL}/usuarios/${userData.carnet}`);
+            const usuarioData = usuarioResponse.data;
 
-        // Carrera
-        if (usuarioData.carrera && carreras.length > 0) {
-            const carreraEncontrada = carreras.find(c =>
-                c.nombre.trim().toLowerCase() === usuarioData.carrera.trim().toLowerCase()
-            );
-            if (carreraEncontrada) {
-                setCarrera(carreraEncontrada.idCarrera.toString());
+            // Carrera
+            if (usuarioData.carrera && carreras.length > 0) {
+                const carreraEncontrada = carreras.find(c =>
+                    c.nombre.trim().toLowerCase() === usuarioData.carrera.trim().toLowerCase()
+                );
+                if (carreraEncontrada) {
+                    setCarrera(carreraEncontrada.idCarrera.toString());
+                }
             }
-        }
 
-        // Departamento
-        if (usuarioData.departamento && departamentos.length > 0) {
-            const deptoEncontrado = departamentos.find(d =>
-                d.nombre.trim().toLowerCase() === usuarioData.departamento.trim().toLowerCase()
-            );
-            if (deptoEncontrado) {
-                setDepartamento(deptoEncontrado.idDepartamento.toString());
+            // Departamento
+            if (usuarioData.departamento && departamentos.length > 0) {
+                const deptoEncontrado = departamentos.find(d =>
+                    d.nombre.trim().toLowerCase() === usuarioData.departamento.trim().toLowerCase()
+                );
+                if (deptoEncontrado) {
+                    setDepartamento(deptoEncontrado.idDepartamento.toString());
 
-                // Esperar a que se carguen los municipios y luego buscar el municipio
-                setTimeout(async () => {
-                    await buscarMunicipioUsuario(usuarioData);
-                }, 500);
+                    // Esperar a que se carguen los municipios y luego buscar el municipio
+                    setTimeout(async () => {
+                        await buscarMunicipioUsuario();
+                    }, 500);
+                }
             }
-        }
 
-        // Disponibilidad
-        if (usuarioData.disponibilidad && disponibilidades.length > 0) {
-            const dispEncontrada = disponibilidades.find(d =>
-                d.nombre.trim().toLowerCase() === usuarioData.disponibilidad.trim().toLowerCase()
-            );
-            if (dispEncontrada) {
-                setDisponibilidad(dispEncontrada.idDisponibilidad.toString());
+            // Disponibilidad
+            if (usuarioData.disponibilidad && disponibilidades.length > 0) {
+                const dispEncontrada = disponibilidades.find(d =>
+                    d.nombre.trim().toLowerCase() === usuarioData.disponibilidad.trim().toLowerCase()
+                );
+                if (dispEncontrada) {
+                    setDisponibilidad(dispEncontrada.idDisponibilidad.toString());
+                }
             }
+        } catch (error) {
+            console.error("Error precargando datos:", error);
         }
     };
 
@@ -349,16 +371,12 @@ export default function EditarPerfil() {
 
     const cargarDatosUsuario = async () => {
         try {
-            // Verificar si tenemos datos del usuario en los parámetros
-            if (params.usuario) {
-                const usuarioData = JSON.parse(params.usuario as string);
-                llenarFormularioBasico(usuarioData);
-            } else if (params.carnetUsuario) {
-                // Si no hay datos en params, cargar desde API
-                await cargarDesdeAPI(params.carnetUsuario as string);
-            } else {
+            if (!userData?.carnet) {
                 showToast("❌ No se pudieron cargar los datos del usuario");
+                return;
             }
+
+            await cargarDesdeAPI(userData.carnet);
         } catch (error) {
             console.error("❌ Error cargando datos del usuario:", error);
             showToast("❌ Error cargando datos del usuario");
@@ -378,7 +396,6 @@ export default function EditarPerfil() {
     };
 
     const llenarFormularioBasico = async (usuarioData: Usuario) => {
-
         // Datos básicos
         setNombre(usuarioData.nombreCompleto || "");
         setCorreo(usuarioData.email || "");
@@ -406,7 +423,6 @@ export default function EditarPerfil() {
         // Cargar datos adicionales
         await cargarHabilidadesUsuario(usuarioData.carnet);
         await cargarIdiomasUsuario(usuarioData.carnet);
-
     };
 
     // Funciones para habilidades
@@ -427,7 +443,7 @@ export default function EditarPerfil() {
             setHabilidadesBlandas(habilidadesBlandas.filter(h => h.idHabilidad !== id));
     };
 
-    // Funciones para idiomas y niveles (COMO EN PROYECTOS)
+    // Funciones para idiomas y niveles
     const toggleIdiomaNivel = (idIdioma: number, idINivel: number) => {
         const existeIndex = idiomasSeleccionados.findIndex(item => item.idIdioma === idIdioma);
 
@@ -479,7 +495,7 @@ export default function EditarPerfil() {
         );
     };
 
-    // Toast personalizado - EXACTAMENTE IGUAL QUE EN CREAR3
+    // Toast personalizado
     const showToast = (message: string, success: boolean = false) => {
         Toast.show(message, {
             duration: 3000,
@@ -495,7 +511,6 @@ export default function EditarPerfil() {
         });
     };
 
-    // EXACTAMENTE LA MISMA LÓGICA QUE CREAR3 - SOLO CAMBIA EL ENDPOINT FINAL
     const handleSubmit = async () => {
         if (!formularioValido()) {
             showToast("⚠️ Completa todos los campos");
@@ -503,7 +518,7 @@ export default function EditarPerfil() {
         }
 
         try {
-            // 1️⃣ Subir CV - EXACTAMENTE IGUAL QUE CREAR3
+            // 1️⃣ Subir CV
             let urlCvFinal = "";
             if (cv && cv.uri) { // Si es un archivo nuevo (tiene URI)
                 urlCvFinal = await uploadCv();
@@ -514,7 +529,7 @@ export default function EditarPerfil() {
             // 2️⃣ Preparar datos para actualizar
             const datosActualizacion = {
                 nombre,
-                genero: params.generoUsuario || "O",
+                genero: userData?.genero || "O",
                 fechaNacimiento: cumple?.toISOString().split("T")[0],
                 email: correo,
                 telefono,
@@ -533,11 +548,12 @@ export default function EditarPerfil() {
 
             console.log("Campos antes de enviar:", datosActualizacion);
 
-            // 3️⃣ Actualizar usuario en backend (SOLO ESTO CAMBIA RESPECTO A CREAR3)
+            // 3️⃣ Actualizar usuario en backend
             await axios.put(`${API_URL}/usuarios/${carnet}`, datosActualizacion);
 
             showToast("✅ Perfil actualizado correctamente", true);
             setTimeout(() => router.back(), 1500);
+             
         } catch (error) {
             console.error("Error actualizando perfil:", error);
             showToast("❌ Error actualizando perfil");
@@ -711,7 +727,7 @@ export default function EditarPerfil() {
                     </Picker>
                 </View>
 
-                {/* Idiomas y Niveles - Selección múltiple (COMO EN PROYECTOS) */}
+                {/* Idiomas y Niveles - Selección múltiple */}
                 <TouchableOpacity
                     style={styles.inputContainer}
                     onPress={() => setModalIdiomasVisible(true)}
@@ -822,7 +838,7 @@ export default function EditarPerfil() {
                     />
                 </View>
 
-                {/* Subir CV - EXACTAMENTE IGUAL QUE EN CREAR3 */}
+                {/* Subir CV */}
                 <TouchableOpacity style={styles.inputContainer} onPress={pickDocument}>
                     <Text style={[styles.input, { color: cv ? "#000" : "#666" }]}>
                         {cv ? (cv.name || "CV actual") : "Sube tu CV"}
@@ -845,7 +861,7 @@ export default function EditarPerfil() {
                 </View>
             </ScrollView>
 
-            {/* Modal de Idiomas (COMO EN PROYECTOS) */}
+            {/* Modal de Idiomas */}
             <Modal
                 visible={modalIdiomasVisible}
                 animationType="slide"
@@ -940,72 +956,38 @@ export default function EditarPerfil() {
                     name="home-outline"
                     size={28}
                     color="#fff"
-                    onPress={() => router.push({
-                        pathname: "/",
-                        params: {
-                            carnetUsuario: params.carnetUsuario,
-                            nombreUsuario: params.nombreUsuario,
-                            generoUsuario: params.generoUsuario
-                        }
-                    })}
+                    onPress={() => router.push("/")}
                 />
                 <Ionicons
                     name="star-outline"
                     size={28}
                     color="#fff"
-                    onPress={() => router.push({
-                        pathname: "/(tabs)/guardados",
-                        params: {
-                            carnetUsuario: params.carnetUsuario,
-                            nombreUsuario: params.nombreUsuario,
-                            generoUsuario: params.generoUsuario
-                        }
-                    })}
+                    onPress={() => router.push("/(tabs)/guardados")}
                 />
                 <Ionicons
                     name="file-tray-outline"
                     size={28}
                     color="#fff"
-                    onPress={() => router.push({
-                        pathname: "/(tabs)/aplicaciones",
-                        params: {
-                            carnetUsuario: params.carnetUsuario,
-                            nombreUsuario: params.nombreUsuario,
-                            generoUsuario: params.generoUsuario
-                        }
-                    })}
+                    onPress={() => router.push("/(tabs)/aplicaciones")}
                 />
                 <Ionicons
                     name="notifications-outline"
                     size={28}
                     color="#fff"
-                    onPress={() => router.push({
-                        pathname: "/(tabs)/notificaciones",
-                        params: {
-                            carnetUsuario: params.carnetUsuario,
-                            nombreUsuario: params.nombreUsuario,
-                            generoUsuario: params.generoUsuario
-                        }
-                    })}
+                    onPress={() => router.push("/(tabs)/notificaciones")}
                 />
                 <Ionicons
                     name="person-outline"
                     size={28}
                     color="#fff"
-                    onPress={() => router.push({
-                        pathname: "/(tabs)/cuenta",
-                        params: {
-                            carnetUsuario: params.carnetUsuario,
-                            nombreUsuario: params.nombreUsuario,
-                            generoUsuario: params.generoUsuario
-                        }
-                    })}
+                    onPress={() => router.push("/(tabs)/cuenta")}
                 />
             </View>
         </View>
     );
 }
 
+// Estilos (se mantienen iguales)
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: "#fff" },
     loadingContainer: {

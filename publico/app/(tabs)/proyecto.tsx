@@ -7,8 +7,7 @@ import { Picker } from "@react-native-picker/picker";
 import DateTimePicker from "@react-native-community/datetimepicker";
 import Toast from "react-native-root-toast";
 import axios from "axios";
-import { useLocalSearchParams } from "expo-router";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getUserData, UserData } from '../utils/session';
 
 interface Habilidad {
     idHabilidad: number;
@@ -27,7 +26,7 @@ interface Idioma {
 }
 
 interface Nivel {
-    idINivel: number; // corregido (antes idINivel)
+    idINivel: number;
     nombre: string;
 }
 
@@ -51,9 +50,11 @@ interface Modalidad {
 const { width: screenWidth } = Dimensions.get('window');
 
 export default function AgregarProyecto() {
-    const params = useLocalSearchParams();
     const router = useRouter();
-    const API_URL = "http://192.168.1.11:4000/api";
+    const API_URL = "https://d06a6c5dfc30.ngrok-free.app/api";
+
+    // Estados para datos de usuario
+    const [userData, setUserData] = useState<UserData | null>(null);
 
     // Estados para datos de API
     const [carreras, setCarreras] = useState<Carrera[]>([]);
@@ -68,17 +69,18 @@ export default function AgregarProyecto() {
     // Estados del formulario
     const [nombreProyecto, setNombreProyecto] = useState("");
     const [especialidades, setEspecialidades] = useState<number[]>([]);
-    const [institucion, setInstitucion] = useState<string | number>(0); // "" en lugar de undefined
+    const [institucion, setInstitucion] = useState<string | number>("");
     const [fechaInicio, setFechaInicio] = useState<Date | null>(null);
     const [fechaFin, setFechaFin] = useState<Date | null>(null);
+    const [fechaAplicacion, setFechaAplicacion] = useState<Date | null>(null); // NUEVO CAMPO
     const [showInicio, setShowInicio] = useState(false);
     const [showFin, setShowFin] = useState(false);
+    const [showAplicacion, setShowAplicacion] = useState(false); // NUEVO ESTADO
     const [descripcion, setDescripcion] = useState("");
     const [capacidad, setCapacidad] = useState("");
     const [horas, setHoras] = useState("");
     const [idiomasSeleccionados, setIdiomasSeleccionados] = useState<{ idIdioma: number, idINivel: number }[]>([]);
-    const [modalidad, setModalidad] = useState<string | number>(0); // "" como default
-    const [carnetUsuario, setCarnetUsuario] = useState<string | null>(null);
+    const [modalidad, setModalidad] = useState<string | number>("");
 
     // Estados para habilidades
     const [inputHabilidadTecnica, setInputHabilidadTecnica] = useState("");
@@ -96,36 +98,18 @@ export default function AgregarProyecto() {
     const [layoutTecnicas, setLayoutTecnicas] = useState({ y: 0, width: 0 });
     const [layoutBlandas, setLayoutBlandas] = useState({ y: 0, width: 0 });
 
-    // Función para obtener el carnet del usuario
-    const obtenerCarnetUsuario = async (): Promise<string | null> => {
-        try {
-            const userData = await AsyncStorage.getItem("userData");
-            if (userData) {
-                const parsedData = JSON.parse(userData);
-                return parsedData.carnet || null;
-            }
-            if ((params as any)?.carnet) { // params puede ser any
-                return (params as any).carnet as string;
-            }
-            return null;
-        } catch (error) {
-            console.error("Error obteniendo carnet:", error);
-            return null;
-        }
-    };
-
+    // Cargar datos del usuario logeado
     useEffect(() => {
-        (async () => {
-            const carnet = await obtenerCarnetUsuario();
-            if (carnet) {
-                setCarnetUsuario(carnet);
-                console.log("Carnet obtenido:", carnet);
+        const loadUser = async () => {
+            const data = await getUserData();
+            if (data) {
+                setUserData(data);
             } else {
-                console.warn("No se encontró carnet en AsyncStorage ni en params");
+                router.replace('/(auth)/LoginScreen');
             }
-        })();
+        };
+        loadUser();
     }, []);
-
 
     // Estado para nueva institución
     const [crearNuevaInstitucion, setCrearNuevaInstitucion] = useState(false);
@@ -191,8 +175,6 @@ export default function AgregarProyecto() {
         if (institucion !== "" && instituciones.length > 0) {
             const institucionSeleccionada = instituciones.find(i => i.idInstitucion === Number(institucion));
             if (institucionSeleccionada) {
-                // Si hay una institución seleccionada, llenar automáticamente los campos de nueva institución
-                // pero NO activar el modo crear nueva institución
                 setNuevaInstitucion({
                     nombre: institucionSeleccionada.nombre,
                     idDepartamento: institucionSeleccionada.idDepartamento,
@@ -288,7 +270,6 @@ export default function AgregarProyecto() {
     // Toggle para crear nueva institución
     const toggleCrearInstitucion = () => {
         if (institucion !== "") {
-            // Si ya hay una institución seleccionada, no permitir activar el checkbox
             showToast("❌ Primero deselecciona la institución actual");
             return;
         }
@@ -296,7 +277,6 @@ export default function AgregarProyecto() {
         setCrearNuevaInstitucion(!crearNuevaInstitucion);
 
         if (!crearNuevaInstitucion) {
-            // Al activar "crear nueva", limpiar los campos
             setNuevaInstitucion({
                 nombre: "",
                 idDepartamento: 0,
@@ -343,6 +323,19 @@ export default function AgregarProyecto() {
             return false;
         }
 
+        // Validar fecha de aplicación
+        if (fechaAplicacion && fechaAplicacion < hoy) {
+            showToast("❌ La fecha de aplicación no puede ser anterior a hoy");
+            setFechaAplicacion(null);
+            return false;
+        }
+
+        if (fechaAplicacion && fechaInicio && fechaAplicacion > fechaInicio) {
+            showToast("❌ La fecha de aplicación debe ser anterior al inicio del proyecto");
+            setFechaAplicacion(null);
+            return false;
+        }
+
         return true;
     };
 
@@ -358,7 +351,7 @@ export default function AgregarProyecto() {
             nuevaInstitucion.nombreContacto &&
             /^\d{4}-\d{4}$/.test(nuevaInstitucion.telefonoContacto) &&
             /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(nuevaInstitucion.emailContacto)
-            : institucion !== ""; // Si no es nueva, solo validar que esté seleccionada
+            : institucion !== "";
 
         return (
             nombreProyecto &&
@@ -366,6 +359,8 @@ export default function AgregarProyecto() {
             institucionValida &&
             fechaInicio && fechaInicio >= hoy &&
             fechaFin && fechaFin > fechaInicio &&
+            fechaAplicacion && fechaAplicacion >= hoy && // NUEVA VALIDACIÓN
+            fechaAplicacion <= fechaInicio && // NUEVA VALIDACIÓN
             descripcion &&
             capacidad &&
             horas &&
@@ -406,7 +401,7 @@ export default function AgregarProyecto() {
             return;
         }
 
-        if (!carnetUsuario) {
+        if (!userData?.carnet) {
             showToast("⚠️ No se identificó al usuario. Inicia sesión nuevamente.");
             return;
         }
@@ -423,14 +418,15 @@ export default function AgregarProyecto() {
                     ...habilidadesTecnicas.map(h => ({ idHabilidad: h.idHabilidad, esRequerida: true })),
                     ...habilidadesBlandas.map(h => ({ idHabilidad: h.idHabilidad, esRequerida: true }))
                 ],
-                idiomasRelacionados: idiomasSeleccionados, // con {idIdioma, idINivel}
+                idiomasRelacionados: idiomasSeleccionados,
                 idInstitucion: crearNuevaInstitucion ? null : (institucion ? Number(institucion) : null),
                 fechaInicio: fechaInicio?.toISOString().split("T")[0],
                 fechaFin: fechaFin?.toISOString().split("T")[0],
+                fechaAplicacion: fechaAplicacion?.toISOString().split("T")[0], // NUEVO CAMPO
                 idModalidad: modalidad ? Number(modalidad) : null,
                 idDepartamento: nuevaInstitucion.idDepartamento,
                 idMunicipio: nuevaInstitucion.idMunicipio,
-                carnetUsuario
+                carnetUsuario: userData.carnet
             };
 
             // Si se está creando nueva institución, agregar datos
@@ -444,7 +440,6 @@ export default function AgregarProyecto() {
             }
 
             console.log("Enviando datos:", proyectoData);
-            console.log("Idiomas seleccionados:", idiomasSeleccionados.length);
 
             const response = await axios.post(`${API_URL}/proyectos`, proyectoData);
 
@@ -628,7 +623,7 @@ export default function AgregarProyecto() {
                     </>
                 )}
 
-                {/* Fechas con validación */}
+                {/* Fechas con validación - AGREGADO FECHA APLICACIÓN */}
                 <View style={styles.row}>
                     <TouchableOpacity
                         style={[styles.inputContainer2, styles.half]}
@@ -678,6 +673,32 @@ export default function AgregarProyecto() {
                         />
                     )}
                 </View>
+
+                {/* Fecha de Aplicación - NUEVO CAMPO */}
+                <TouchableOpacity
+                    style={[styles.inputContainer, { opacity: fechaInicio ? 1 : 0.5 }]}
+                    onPress={() => fechaInicio && setShowAplicacion(true)}
+                    disabled={!fechaInicio}
+                >
+                    <Text style={[styles.input, { color: fechaAplicacion ? "#000" : "#666" }]}>
+                        {fechaAplicacion ? fechaAplicacion.toLocaleDateString() : "Fecha límite para aplicar"}
+                    </Text>
+                    <Ionicons name="calendar-outline" size={22} color="#213A8E" style={styles.iconCalendar} />
+                </TouchableOpacity>
+                {showAplicacion && (
+                    <DateTimePicker
+                        value={fechaAplicacion || new Date()}
+                        mode="date"
+                        display="calendar"
+                        onChange={(event, selectedDate) => {
+                            setShowAplicacion(false);
+                            if (selectedDate) {
+                                setFechaAplicacion(selectedDate);
+                                setTimeout(validarFechas, 100);
+                            }
+                        }}
+                    />
+                )}
 
                 {/* Descripción */}
                 <View style={[styles.inputContainer, styles.textAreaContainer]}>
@@ -978,72 +999,38 @@ export default function AgregarProyecto() {
                     name="home-outline"
                     size={28}
                     color="#fff"
-                    onPress={() => router.push({
-                        pathname: "/",
-                        params: {
-                            carnetUsuario: params.carnetUsuario,
-                            nombreUsuario: params.nombreUsuario,
-                            generoUsuario: params.generoUsuario
-                        }
-                    })}
+                    onPress={() => router.push("/")}
                 />
                 <Ionicons
                     name="star-outline"
                     size={28}
                     color="#fff"
-                    onPress={() => router.push({
-                        pathname: "/(tabs)/guardados",
-                        params: {
-                            carnetUsuario: params.carnetUsuario,
-                            nombreUsuario: params.nombreUsuario,
-                            generoUsuario: params.generoUsuario
-                        }
-                    })}
+                    onPress={() => router.push("/(tabs)/guardados")}
                 />
                 <Ionicons
                     name="file-tray-outline"
                     size={28}
                     color="#fff"
-                    onPress={() => router.push({
-                        pathname: "/(tabs)/aplicaciones",
-                        params: {
-                            carnetUsuario: params.carnetUsuario,
-                            nombreUsuario: params.nombreUsuario,
-                            generoUsuario: params.generoUsuario
-                        }
-                    })}
+                    onPress={() => router.push("/(tabs)/aplicaciones")}
                 />
                 <Ionicons
                     name="notifications-outline"
                     size={28}
                     color="#fff"
-                    onPress={() => router.push({
-                        pathname: "/(tabs)/notificaciones",
-                        params: {
-                            carnetUsuario: params.carnetUsuario,
-                            nombreUsuario: params.nombreUsuario,
-                            generoUsuario: params.generoUsuario
-                        }
-                    })}
+                    onPress={() => router.push("/(tabs)/notificaciones")}
                 />
                 <Ionicons
                     name="person-outline"
                     size={28}
                     color="#fff"
-                    onPress={() => router.push({
-                        pathname: "/(tabs)/cuenta",
-                        params: {
-                            carnetUsuario: params.carnetUsuario,
-                            nombreUsuario: params.nombreUsuario,
-                            generoUsuario: params.generoUsuario
-                        }
-                    })}
+                    onPress={() => router.push("/(tabs)/cuenta")}
                 />
             </View>
         </View>
     );
 }
 
+// Los estilos se mantienen iguales
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: "#fff" },
     header: {
@@ -1363,7 +1350,6 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontFamily: 'MyriadPro-Bold',
     },
-    // Nuevos estilos para el checkbox
     checkboxRow: {
         flexDirection: 'row',
         justifyContent: 'flex-end',

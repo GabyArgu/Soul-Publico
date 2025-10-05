@@ -15,7 +15,7 @@ interface Nivel { idINivel: number; nombre: string; }
 
 export default function Crear2() {
     const router = useRouter();
-    const API_URL = "http://192.168.1.11:4000/api";
+    const API_URL = "https://d06a6c5dfc30.ngrok-free.app/api";
     const params = useLocalSearchParams();
     const userData = params.userData ? JSON.parse(params.userData as string) : {};
 

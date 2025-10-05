@@ -2,10 +2,10 @@
 import { View, Text, TouchableOpacity, StyleSheet, FlatList } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import type { IconProps } from "@expo/vector-icons/build/createIconSet";
-import { useRouter, useLocalSearchParams } from "expo-router";
+import { useRouter } from "expo-router";
 import { useState, useEffect } from "react";
 import axios from "axios";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { getUserData, UserData } from '../utils/session';
 
 interface Notificacion {
     idNotificacion: number;
@@ -22,55 +22,53 @@ interface Notificacion {
 
 export default function Notificaciones() {
     const router = useRouter();
-    const params = useLocalSearchParams();
-    const API_URL = "http://192.168.1.11:4000/api";
+    const API_URL = "https://d06a6c5dfc30.ngrok-free.app/api";
 
+    const [userData, setUserData] = useState<UserData | null>(null);
     const [notificaciones, setNotificaciones] = useState<Notificacion[]>([]);
     const [cargando, setCargando] = useState(true);
 
-    // Obtener carnet del usuario logeado
-    const obtenerCarnetUsuario = async (): Promise<string | null> => {
-        try {
-            const userData = await AsyncStorage.getItem("userData");
-            if (userData) {
-                const parsedData = JSON.parse(userData);
-                return parsedData.carnet || null;
-            }
-            if (params.carnetUsuario) {
-                return params.carnetUsuario as string;
-            }
-            return null;
-        } catch (error) {
-            console.error("Error obteniendo carnet:", error);
-            return null;
-        }
-    };
-
-    // Cargar notificaciones
+    // Cargar datos del usuario logeado
     useEffect(() => {
-        const cargarNotificaciones = async () => {
-            try {
-                setCargando(true);
-                const carnetUsuario = await obtenerCarnetUsuario();
-
-                if (!carnetUsuario) {
-                    console.log("No se pudo obtener el carnet");
-                    setCargando(false);
-                    return;
-                }
-
-                const response = await axios.get(`${API_URL}/notificaciones/${carnetUsuario}`);
-                // Filtrar solo las no leídas
-                const notificacionesNoLeidas = response.data.filter((notif: Notificacion) => !notif.estaLeida);
-                setNotificaciones(notificacionesNoLeidas);
-            } catch (error) {
-                console.error("Error cargando notificaciones:", error);
-            } finally {
-                setCargando(false);
+        const loadUser = async () => {
+            const data = await getUserData();
+            if (data) {
+                setUserData(data);
+            } else {
+                router.replace('/(auth)/LoginScreen');
             }
         };
-        cargarNotificaciones();
+        loadUser();
     }, []);
+
+    // Cargar notificaciones cuando userData esté disponible
+    useEffect(() => {
+        if (userData?.carnet) {
+            cargarNotificaciones();
+        }
+    }, [userData]);
+
+    // Cargar notificaciones
+    const cargarNotificaciones = async () => {
+        try {
+            setCargando(true);
+            
+            if (!userData?.carnet) {
+                console.log("No se pudo obtener el carnet");
+                setCargando(false);
+                return;
+            }
+
+            const response = await axios.get(`${API_URL}/notificaciones/${userData.carnet}`);
+            // Filtrar solo las no leídas
+            const notificacionesNoLeidas = response.data.filter((notif: Notificacion) => !notif.estaLeida);
+            setNotificaciones(notificacionesNoLeidas);
+        } catch (error) {
+            console.error("Error cargando notificaciones:", error);
+        } finally {
+            setCargando(false);
+        }
+    };
 
     const marcarComoLeida = async (idNotificacion: number) => {
         try {
@@ -108,7 +106,6 @@ export default function Notificaciones() {
 
         return fallbackIcons[Math.floor(Math.random() * fallbackIcons.length)];
     };
-
 
     const parseFechaUTC = (fecha: string): Date => {
         const [fechaPart, horaPart] = fecha.split(" ");
@@ -158,7 +155,6 @@ export default function Notificaciones() {
         }
     };
 
-
     const handleNotificacionPress = async (notificacion: Notificacion) => {
         // Marcar como leída inmediatamente
         await marcarComoLeida(notificacion.idNotificacion);
@@ -170,9 +166,9 @@ export default function Notificaciones() {
                 pathname: "/(tabs)/detalles",
                 params: {
                     idProyecto: notificacion.idProyecto.toString(),
-                    carnetUsuario: params.carnetUsuario,
-                    nombreUsuario: params.nombreUsuario,
-                    generoUsuario: params.generoUsuario
+                    carnetUsuario: userData?.carnet,
+                    nombreUsuario: userData?.nombreCompleto,
+                    generoUsuario: userData?.genero
                 }
             });
         }
@@ -271,66 +267,31 @@ export default function Notificaciones() {
                     name="home-outline"
                     size={28}
                     color="#fff"
-                    onPress={() => router.push({
-                        pathname: "/",
-                        params: {
-                            carnetUsuario: params.carnetUsuario,
-                            nombreUsuario: params.nombreUsuario,
-                            generoUsuario: params.generoUsuario
-                        }
-                    })}
+                    onPress={() => router.push("/")}
                 />
                 <Ionicons
                     name="star-outline"
                     size={28}
                     color="#fff"
-                    onPress={() => router.push({
-                        pathname: "/(tabs)/guardados",
-                        params: {
-                            carnetUsuario: params.carnetUsuario,
-                            nombreUsuario: params.nombreUsuario,
-                            generoUsuario: params.generoUsuario
-                        }
-                    })}
+                    onPress={() => router.push("/(tabs)/guardados")}
                 />
                 <Ionicons
                     name="file-tray-outline"
                     size={28}
                     color="#fff"
-                    onPress={() => router.push({
-                        pathname: "/(tabs)/aplicaciones",
-                        params: {
-                            carnetUsuario: params.carnetUsuario,
-                            nombreUsuario: params.nombreUsuario,
-                            generoUsuario: params.generoUsuario
-                        }
-                    })}
+                    onPress={() => router.push("/(tabs)/aplicaciones")}
                 />
                 <Ionicons
                     name="notifications"
                     size={28}
                     color="#fff"
-                    onPress={() => router.push({
-                        pathname: "/(tabs)/notificaciones",
-                        params: {
-                            carnetUsuario: params.carnetUsuario,
-                            nombreUsuario: params.nombreUsuario,
-                            generoUsuario: params.generoUsuario
-                        }
-                    })}
+                    onPress={() => router.push("/(tabs)/notificaciones")}
                 />
                 <Ionicons
                     name="person-outline"
                     size={28}
                     color="#fff"
-                    onPress={() => router.push({
-                        pathname: "/(tabs)/cuenta",
-                        params: {
-                            carnetUsuario: params.carnetUsuario,
-                            nombreUsuario: params.nombreUsuario,
-                            generoUsuario: params.generoUsuario
-                        }
-                    })}
+                    onPress={() => router.push("/(tabs)/cuenta")}
                 />
             </View>
         </View>

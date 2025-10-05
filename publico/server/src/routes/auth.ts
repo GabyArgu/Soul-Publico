@@ -2,6 +2,7 @@ import { Router } from "express";
 import { getConnection, sql } from "../db";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { url } from "inspector";
 
 const router = Router();
 
@@ -52,8 +53,10 @@ router.post("/login", async (req, res) => {
       user: {
         id: user.id,
         nombreCompleto: user.nombreCompleto,
-        genero: user.genero, // ✅ CORREGIDO: "genero" no "enero"
+        genero: user.genero, 
         carnet: user.carnet,
+        email: user.email,
+        urlCv: user.urlCv
       },
     });
 

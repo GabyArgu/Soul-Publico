@@ -14,7 +14,7 @@ export default function Crear3() {
     const params = useLocalSearchParams();
     const paso2Data = params.combinedData ? JSON.parse(params.combinedData as string) : {};
 
-    const API_URL = "http://192.168.1.11:4000/api";
+    const API_URL = "https://d06a6c5dfc30.ngrok-free.app/api";
 
     // Estados
     const [transportarse, setTransportarse] = useState(false);
