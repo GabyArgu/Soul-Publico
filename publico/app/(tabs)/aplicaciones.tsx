@@ -1,8 +1,8 @@
 // app/(main)/Aplicaciones.tsx
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, FlatList, ScrollView, Modal, ActivityIndicator, Dimensions } from "react-native";
-import { useRouter, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { useState, useEffect, useCallback } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
+import { ActivityIndicator, Dimensions, FlatList, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { getUserData, UserData } from '../utils/session';
 
 interface Aplicacion {
@@ -30,18 +30,34 @@ export default function Aplicaciones() {
     // Filtros
     const [selectedIdiomas, setSelectedIdiomas] = useState<string[]>([]);
     const [selectedCarreras, setSelectedCarreras] = useState<string[]>([]);
-    const [selectedHabilidades, setSelectedHabilidades] = useState<string[]>([]);
     const [selectedHorasRange, setSelectedHorasRange] = useState<[number, number]>([0, 1000]);
     const [selectedEstado, setSelectedEstado] = useState<string[]>([]);
     const [selectedInstitucion, setSelectedInstitucion] = useState<string[]>([]);
+    const [selectedModalidades, setSelectedModalidades] = useState<string[]>([]);
+
+    const [carrerasExpandidas, setCarrerasExpandidas] = useState({
+        tecnicos: false,
+        ingenierias: false,
+        licenciaturas: false
+    });
 
     // Opciones de filtros
     const [idiomasDisponibles, setIdiomasDisponibles] = useState<string[]>([]);
     const [carrerasDisponibles, setCarrerasDisponibles] = useState<string[]>([]);
-    const [habilidadesDisponibles, setHabilidadesDisponibles] = useState<{ blandas: string[], tecnicas: string[] }>({ blandas: [], tecnicas: [] });
-    const [institucionesDisponibles, setInstitucionesDisponibles] = useState<string[]>([]);
+    const [modalidadesDisponibles, setModalidadesDisponibles] = useState<string[]>([]);
 
-    const API_URL = "https://d06a6c5dfc30.ngrok-free.app/api";
+    const carrerasAgrupadas = {
+        tecnicos: carrerasDisponibles.filter(c => c.toLowerCase().includes('técnico') || c.toLowerCase().includes('tecnico')),
+        ingenierias: carrerasDisponibles.filter(c => c.toLowerCase().includes('ingeniería') || c.toLowerCase().includes('ingenieria')),
+        licenciaturas: carrerasDisponibles.filter(c =>
+            !c.toLowerCase().includes('técnico') &&
+            !c.toLowerCase().includes('tecnico') &&
+            !c.toLowerCase().includes('ingeniería') &&
+            !c.toLowerCase().includes('ingenieria')
+        )
+    };
+
+    const API_URL = "https://888f4c9ee1eb.ngrok-free.app/api";
 
     // Cargar datos del usuario
     useEffect(() => {
@@ -71,9 +87,9 @@ export default function Aplicaciones() {
             if (searchQuery) queryParams.append("search", searchQuery);
             selectedIdiomas.forEach(i => queryParams.append("idioma", i));
             selectedCarreras.forEach(c => queryParams.append("carrera", c));
-            selectedHabilidades.forEach(h => queryParams.append("habilidad", h));
             selectedEstado.forEach(e => queryParams.append("estado", e));
             selectedInstitucion.forEach(i => queryParams.append("institucion", i));
+            selectedModalidades.forEach(m => queryParams.append("modalidad", m)); // ✅ AGREGAR ESTA LÍNEA
             queryParams.append("minHoras", selectedHorasRange[0].toString());
             queryParams.append("maxHoras", selectedHorasRange[1].toString());
             queryParams.append("carnet", userData.carnet);
@@ -94,39 +110,24 @@ export default function Aplicaciones() {
     // Cargar opciones de filtros
     const cargarFiltrosDisponibles = async () => {
         try {
-            const [idiomasRes, carrerasRes, habilidadesRes, institucionesRes] = await Promise.all([
+            const [idiomasRes, carrerasRes, modalidadesRes] = await Promise.all([
                 fetch(`${API_URL}/proyectos/idiomas`).then(r => r.json()),
                 fetch(`${API_URL}/proyectos/carreras`).then(r => r.json()),
-                fetch(`${API_URL}/proyectos/habilidades`).then(r => r.json()),
-                fetch(`${API_URL}/proyectos/instituciones`).then(r => r.json())
+                fetch(`${API_URL}/proyectos/modalidades`).then(r => r.json())
             ]);
 
             setIdiomasDisponibles(Array.isArray(idiomasRes) ? idiomasRes : []);
             setCarrerasDisponibles(Array.isArray(carrerasRes) ? carrerasRes : []);
-
-            setHabilidadesDisponibles({
-                blandas: Array.isArray(habilidadesRes?.blandas) ? habilidadesRes.blandas : [],
-                tecnicas: Array.isArray(habilidadesRes?.tecnicas) ? habilidadesRes.tecnicas : []
-            });
-
-            // Extraer nombres de instituciones
-            if (Array.isArray(institucionesRes)) {
-                const nombresInstituciones = institucionesRes.map(item =>
-                    typeof item === 'string' ? item : item.nombre
-                ).filter(nombre => nombre);
-                setInstitucionesDisponibles(nombresInstituciones);
-            } else {
-                setInstitucionesDisponibles([]);
-            }
+            setModalidadesDisponibles(Array.isArray(modalidadesRes) ? modalidadesRes.map((m: any) => m.nombre) : []);
 
         } catch (err) {
             console.error('Error al cargar filtros:', err);
             setIdiomasDisponibles([]);
             setCarrerasDisponibles([]);
-            setHabilidadesDisponibles({ blandas: [], tecnicas: [] });
-            setInstitucionesDisponibles([]);
+            setModalidadesDisponibles([]);
         }
     };
+
 
     // Recargar al enfocar la pantalla
     useFocusEffect(
@@ -155,6 +156,13 @@ export default function Aplicaciones() {
         else setSelected([...selected, item]);
     };
 
+    const toggleCarreraGroup = (group: keyof typeof carrerasExpandidas) => {
+        setCarrerasExpandidas(prev => ({
+            ...prev,
+            [group]: !prev[group]
+        }));
+    };
+
     const aplicarFiltros = () => {
         setFilterModalVisible(false);
         cargarAplicaciones();
@@ -163,11 +171,13 @@ export default function Aplicaciones() {
     const limpiarFiltros = () => {
         setSelectedIdiomas([]);
         setSelectedCarreras([]);
-        setSelectedHabilidades([]);
+        setSelectedModalidades([]);
         setSelectedHorasRange([0, 1000]);
-        setSelectedEstado([]);
-        setSelectedInstitucion([]);
-        cargarAplicaciones();
+        setCarrerasExpandidas({
+            tecnicos: false,
+            ingenierias: false,
+            licenciaturas: false
+        });
     };
 
     const renderCard = ({ item, index }: any) => {
@@ -262,70 +272,27 @@ export default function Aplicaciones() {
                 )}
             </View>
 
-            {/* Modal de filtros */}
+            {/* Modal de Filtros Mejorado */}
             <Modal
                 visible={filterModalVisible}
                 animationType="slide"
-                transparent
+                transparent={true}
                 onRequestClose={() => setFilterModalVisible(false)}
             >
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContainer}>
+                        {/* Header del Modal */}
                         <View style={styles.modalHeader}>
                             <Text style={styles.modalTitle}>Filtros</Text>
-                            <TouchableOpacity onPress={() => setFilterModalVisible(false)}>
+                            <TouchableOpacity
+                                style={styles.closeButton}
+                                onPress={() => setFilterModalVisible(false)}
+                            >
                                 <Ionicons name="close" size={24} color="#213A8E" />
                             </TouchableOpacity>
                         </View>
 
-                        <ScrollView style={styles.modalContent}>
-                            {/* Horas */}
-                            <Text style={styles.filterSectionTitle}>Horas Mínimas</Text>
-                            <View style={styles.horasContainer}>
-                                {[0, 25, 50, 75, 100].map(h => (
-                                    <TouchableOpacity
-                                        key={h}
-                                        style={[
-                                            styles.horasOption,
-                                            { backgroundColor: selectedHorasRange[0] === h ? '#2666DE' : '#F2F6FC', borderColor: selectedHorasRange[0] === h ? '#2666DE' : '#D1D5DB' }
-                                        ]}
-                                        onPress={() => setSelectedHorasRange([h, 1000])}
-                                    >
-                                        <Text style={{ color: selectedHorasRange[0] === h ? '#fff' : '#213A8E', fontWeight: selectedHorasRange[0] === h ? 'bold' : '600', fontSize: 13 }}>{h}+</Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
-
-                            {/* Estado */}
-                            <Text style={styles.filterSectionTitle}>Estado</Text>
-                            <View style={styles.filterOptionsContainer}>
-                                {['En proceso', 'Enviado', 'Aceptado', 'Rechazado'].map(e => (
-                                    <TouchableOpacity
-                                        key={e}
-                                        style={[styles.filterOption, selectedEstado.includes(e) && styles.filterOptionSelected]}
-                                        onPress={() => toggleSelection(e, selectedEstado, setSelectedEstado)}
-                                    >
-                                        <Ionicons name={selectedEstado.includes(e) ? "checkbox" : "square-outline"} size={20} color={selectedEstado.includes(e) ? "#2666DE" : "#666"} />
-                                        <Text style={[styles.filterOptionText, selectedEstado.includes(e) && styles.filterOptionTextSelected]}>{e}</Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
-
-                            {/* Institución */}
-                            <Text style={styles.filterSectionTitle}>Institución</Text>
-                            <View style={styles.filterOptionsContainer}>
-                                {institucionesDisponibles.map(i => (
-                                    <TouchableOpacity
-                                        key={i}
-                                        style={[styles.filterOption, selectedInstitucion.includes(i) && styles.filterOptionSelected]}
-                                        onPress={() => toggleSelection(i, selectedInstitucion, setSelectedInstitucion)}
-                                    >
-                                        <Ionicons name={selectedInstitucion.includes(i) ? "checkbox" : "square-outline"} size={20} color={selectedInstitucion.includes(i) ? "#2666DE" : "#666"} />
-                                        <Text style={[styles.filterOptionText, selectedInstitucion.includes(i) && styles.filterOptionTextSelected]}>{i}</Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
-
+                        <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
                             {/* Idiomas */}
                             <Text style={styles.filterSectionTitle}>Idiomas</Text>
                             <View style={styles.filterOptionsContainer}>
@@ -351,87 +318,184 @@ export default function Aplicaciones() {
                                 ))}
                             </View>
 
-                            {/* Carreras */}
+                            {/* Modalidades - NUEVO FILTRO */}
+                            <Text style={styles.filterSectionTitle}>Modalidades</Text>
+                            <View style={styles.filterOptionsContainer}>
+                                {modalidadesDisponibles.map(modalidad => (
+                                    <TouchableOpacity
+                                        key={modalidad}
+                                        style={[
+                                            styles.filterOption,
+                                            selectedModalidades.includes(modalidad) && styles.filterOptionSelected
+                                        ]}
+                                        onPress={() => toggleSelection(modalidad, selectedModalidades, setSelectedModalidades)}
+                                    >
+                                        <Ionicons
+                                            name={selectedModalidades.includes(modalidad) ? "checkbox" : "square-outline"}
+                                            size={20}
+                                            color={selectedModalidades.includes(modalidad) ? "#2666DE" : "#666"}
+                                        />
+                                        <Text style={[
+                                            styles.filterOptionText,
+                                            selectedModalidades.includes(modalidad) && styles.filterOptionTextSelected
+                                        ]}>{modalidad}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+
+                            {/* Carreras Agrupadas - MEJORADO */}
                             <Text style={styles.filterSectionTitle}>Carreras</Text>
-                            <View style={styles.filterOptionsContainer}>
-                                {carrerasDisponibles.map(carrera => (
-                                    <TouchableOpacity
-                                        key={carrera}
-                                        style={[
-                                            styles.filterOption,
-                                            selectedCarreras.includes(carrera) && styles.filterOptionSelected
-                                        ]}
-                                        onPress={() => toggleSelection(carrera, selectedCarreras, setSelectedCarreras)}
-                                    >
-                                        <Ionicons
-                                            name={selectedCarreras.includes(carrera) ? "checkbox" : "square-outline"}
-                                            size={20}
-                                            color={selectedCarreras.includes(carrera) ? "#2666DE" : "#666"}
-                                        />
-                                        <Text style={[
-                                            styles.filterOptionText,
-                                            selectedCarreras.includes(carrera) && styles.filterOptionTextSelected
-                                        ]}>{carrera}</Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
 
-                            {/* Habilidades Blandas */}
-                            <Text style={styles.filterSectionTitle}>Habilidades Blandas</Text>
-                            <View style={styles.filterOptionsContainer}>
-                                {habilidadesDisponibles.blandas?.map(habilidad => (
-                                    <TouchableOpacity
-                                        key={habilidad}
-                                        style={[
-                                            styles.filterOption,
-                                            selectedHabilidades.includes(habilidad) && styles.filterOptionSelected
-                                        ]}
-                                        onPress={() => toggleSelection(habilidad, selectedHabilidades, setSelectedHabilidades)}
-                                    >
-                                        <Ionicons
-                                            name={selectedHabilidades.includes(habilidad) ? "checkbox" : "square-outline"}
-                                            size={20}
-                                            color={selectedHabilidades.includes(habilidad) ? "#2666DE" : "#666"}
-                                        />
-                                        <Text style={[
-                                            styles.filterOptionText,
-                                            selectedHabilidades.includes(habilidad) && styles.filterOptionTextSelected
-                                        ]}>{habilidad}</Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
+                            {/* Técnicos */}
+                            <TouchableOpacity
+                                style={styles.carreraGroupHeader}
+                                onPress={() => toggleCarreraGroup('tecnicos')}
+                            >
+                                <Text style={styles.carreraGroupTitle}>Técnicos </Text>
+                                <Ionicons
+                                    name={carrerasExpandidas.tecnicos ? "chevron-up" : "chevron-down"}
+                                    size={20}
+                                    color="#213A8E"
+                                />
+                            </TouchableOpacity>
+                            {carrerasExpandidas.tecnicos && (
+                                <View style={styles.filterOptionsContainer}>
+                                    {carrerasAgrupadas.tecnicos.map(carrera => (
+                                        <TouchableOpacity
+                                            key={carrera}
+                                            style={[
+                                                styles.filterOption,
+                                                selectedCarreras.includes(carrera) && styles.filterOptionSelected
+                                            ]}
+                                            onPress={() => toggleSelection(carrera, selectedCarreras, setSelectedCarreras)}
+                                        >
+                                            <Ionicons
+                                                name={selectedCarreras.includes(carrera) ? "checkbox" : "square-outline"}
+                                                size={20}
+                                                color={selectedCarreras.includes(carrera) ? "#2666DE" : "#666"}
+                                            />
+                                            <Text style={[
+                                                styles.filterOptionText,
+                                                selectedCarreras.includes(carrera) && styles.filterOptionTextSelected
+                                            ]}>{carrera}</Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+                            )}
 
-                            {/* Habilidades Técnicas */}
-                            <Text style={styles.filterSectionTitle}>Habilidades Técnicas</Text>
-                            <View style={styles.filterOptionsContainer}>
-                                {habilidadesDisponibles.tecnicas?.map(habilidad => (
+                            {/* Ingenierías */}
+                            <TouchableOpacity
+                                style={styles.carreraGroupHeader}
+                                onPress={() => toggleCarreraGroup('ingenierias')}
+                            >
+                                <Text style={styles.carreraGroupTitle}>Ingenierías </Text>
+                                <Ionicons
+                                    name={carrerasExpandidas.ingenierias ? "chevron-up" : "chevron-down"}
+                                    size={20}
+                                    color="#213A8E"
+                                />
+                            </TouchableOpacity>
+                            {carrerasExpandidas.ingenierias && (
+                                <View style={styles.filterOptionsContainer}>
+                                    {carrerasAgrupadas.ingenierias.map(carrera => (
+                                        <TouchableOpacity
+                                            key={carrera}
+                                            style={[
+                                                styles.filterOption,
+                                                selectedCarreras.includes(carrera) && styles.filterOptionSelected
+                                            ]}
+                                            onPress={() => toggleSelection(carrera, selectedCarreras, setSelectedCarreras)}
+                                        >
+                                            <Ionicons
+                                                name={selectedCarreras.includes(carrera) ? "checkbox" : "square-outline"}
+                                                size={20}
+                                                color={selectedCarreras.includes(carrera) ? "#2666DE" : "#666"}
+                                            />
+                                            <Text style={[
+                                                styles.filterOptionText,
+                                                selectedCarreras.includes(carrera) && styles.filterOptionTextSelected
+                                            ]}>{carrera}</Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+                            )}
+
+                            {/* Licenciaturas */}
+                            <TouchableOpacity
+                                style={styles.carreraGroupHeader}
+                                onPress={() => toggleCarreraGroup('licenciaturas')}
+                            >
+                                <Text style={styles.carreraGroupTitle}>Licenciaturas </Text>
+                                <Ionicons
+                                    name={carrerasExpandidas.licenciaturas ? "chevron-up" : "chevron-down"}
+                                    size={20}
+                                    color="#213A8E"
+                                />
+                            </TouchableOpacity>
+                            {carrerasExpandidas.licenciaturas && (
+                                <View style={styles.filterOptionsContainer}>
+                                    {carrerasAgrupadas.licenciaturas.map(carrera => (
+                                        <TouchableOpacity
+                                            key={carrera}
+                                            style={[
+                                                styles.filterOption,
+                                                selectedCarreras.includes(carrera) && styles.filterOptionSelected
+                                            ]}
+                                            onPress={() => toggleSelection(carrera, selectedCarreras, setSelectedCarreras)}
+                                        >
+                                            <Ionicons
+                                                name={selectedCarreras.includes(carrera) ? "checkbox" : "square-outline"}
+                                                size={20}
+                                                color={selectedCarreras.includes(carrera) ? "#2666DE" : "#666"}
+                                            />
+                                            <Text style={[
+                                                styles.filterOptionText,
+                                                selectedCarreras.includes(carrera) && styles.filterOptionTextSelected
+                                            ]}>{carrera}</Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+                            )}
+
+                            {/* Rango de Horas */}
+                            <Text style={styles.filterSectionTitle}>Horas Mínimas</Text>
+                            <View style={styles.horasContainer}>
+                                {[0, 25, 50, 75, 100].map(horas => (
                                     <TouchableOpacity
-                                        key={habilidad}
+                                        key={horas}
                                         style={[
-                                            styles.filterOption,
-                                            selectedHabilidades.includes(habilidad) && styles.filterOptionSelected
+                                            styles.horasOption,
+                                            {
+                                                backgroundColor: selectedHorasRange[0] === horas ? '#2666DE' : '#F2F6FC',
+                                                borderColor: selectedHorasRange[0] === horas ? '#2666DE' : '#D1D5DB'
+                                            }
                                         ]}
-                                        onPress={() => toggleSelection(habilidad, selectedHabilidades, setSelectedHabilidades)}
+                                        onPress={() => setSelectedHorasRange([horas, 1000])}
                                     >
-                                        <Ionicons
-                                            name={selectedHabilidades.includes(habilidad) ? "checkbox" : "square-outline"}
-                                            size={20}
-                                            color={selectedHabilidades.includes(habilidad) ? "#2666DE" : "#666"}
-                                        />
-                                        <Text style={[
-                                            styles.filterOptionText,
-                                            selectedHabilidades.includes(habilidad) && styles.filterOptionTextSelected
-                                        ]}>{habilidad}</Text>
+                                        <Text style={{
+                                            color: selectedHorasRange[0] === horas ? '#fff' : '#213A8E',
+                                            fontWeight: selectedHorasRange[0] === horas ? 'bold' : '600',
+                                            fontSize: 13
+                                        }}>
+                                            {horas}+
+                                        </Text>
                                     </TouchableOpacity>
                                 ))}
                             </View>
                         </ScrollView>
 
+                        {/* Botones del Modal */}
                         <View style={styles.modalButtons}>
-                            <TouchableOpacity style={styles.limpiarButton} onPress={limpiarFiltros}>
+                            <TouchableOpacity
+                                style={styles.limpiarButton}
+                                onPress={limpiarFiltros}
+                            >
                                 <Text style={styles.limpiarButtonText}>Limpiar</Text>
                             </TouchableOpacity>
-                            <TouchableOpacity style={styles.aplicarButton} onPress={aplicarFiltros}>
+                            <TouchableOpacity
+                                style={styles.aplicarButton}
+                                onPress={aplicarFiltros}
+                            >
                                 <Text style={styles.aplicarButtonText}>Aplicar</Text>
                                 <Ionicons name="checkmark" size={18} color="#fff" style={{ marginLeft: 5 }} />
                             </TouchableOpacity>
@@ -519,4 +583,25 @@ const styles = StyleSheet.create({
     limpiarButtonText: { color: '#2666DE', fontWeight: 'bold', fontSize: 15, fontFamily: 'MyriadPro-Bold' },
     aplicarButton: { backgroundColor: '#2666DE', paddingHorizontal: 20, paddingVertical: 14, borderRadius: 12, flex: 2, alignItems: 'center', flexDirection: 'row', justifyContent: 'center' },
     aplicarButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 15, fontFamily: 'MyriadPro-Bold' },
+    carreraGroupHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        backgroundColor: '#F2F6FC',
+        paddingHorizontal: 15,
+        paddingVertical: 12,
+        borderRadius: 8,
+        marginBottom: 8,
+        borderWidth: 1,
+        borderColor: '#D1D5DB',
+    },
+    carreraGroupTitle: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: '#213A8E',
+        fontFamily: 'MyriadPro-Bold',
+    },
+    closeButton: {
+        padding: 4,
+    },
 });

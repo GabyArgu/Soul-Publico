@@ -1,11 +1,10 @@
 // app/(main)/Index.tsx
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, FlatList, ScrollView, Modal, ActivityIndicator, Dimensions } from "react-native";
-import { useRouter, useFocusEffect } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
-import { useLocalSearchParams } from "expo-router";
-import { useState, useEffect, useCallback } from "react";
+import { useFocusEffect, useRouter } from "expo-router";
+import { useCallback, useEffect, useState } from "react";
+import { ActivityIndicator, Dimensions, FlatList, Image, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { getUserData, UserData } from '../utils/session';
-
+import { RecommendationService } from "../../server/src/routes/recommendationService";
 
 interface Proyecto {
     idProyecto: number;
@@ -23,35 +22,55 @@ const { width: screenWidth, height: screenHeight } = Dimensions.get('window');
 
 export default function Index() {
     const [userData, setUserData] = useState<UserData | null>(null);
-
-    useEffect(() => {
-    const loadUser = async () => {
-        const data = await getUserData();
-        if (data) setUserData(data);
-        else router.replace('/(auth)/Login'); // Redirige a login si no hay sesión
-    };
-    loadUser();
-        }, []);
-
-
     const [proyectos, setProyectos] = useState<Proyecto[]>([]);
     const [loading, setLoading] = useState(true);
-
     const [searchQuery, setSearchQuery] = useState("");
     const [filterModalVisible, setFilterModalVisible] = useState(false);
     const [searchTimeout, setSearchTimeout] = useState<any>();
 
-    const API_URL = "https://d06a6c5dfc30.ngrok-free.app/api";
+    const API_URL = "https://888f4c9ee1eb.ngrok-free.app/api";
 
     const [idiomasDisponibles, setIdiomasDisponibles] = useState<string[]>([]);
     const [carrerasDisponibles, setCarrerasDisponibles] = useState<string[]>([]);
-    const [habilidadesDisponibles, setHabilidadesDisponibles] = useState<{ blandas: string[], tecnicas: string[] }>({ blandas: [], tecnicas: [] });
+    const [modalidadesDisponibles, setModalidadesDisponibles] = useState<string[]>([]);
+
+    // Agrupar carreras por tipo
+    const carrerasAgrupadas = {
+        tecnicos: carrerasDisponibles.filter(c => c.toLowerCase().includes('técnico') || c.toLowerCase().includes('tecnico')),
+        ingenierias: carrerasDisponibles.filter(c => c.toLowerCase().includes('ingeniería') || c.toLowerCase().includes('ingenieria')),
+        licenciaturas: carrerasDisponibles.filter(c => 
+            !c.toLowerCase().includes('técnico') && 
+            !c.toLowerCase().includes('tecnico') && 
+            !c.toLowerCase().includes('ingeniería') && 
+            !c.toLowerCase().includes('ingenieria')
+        )
+    };
 
     const [selectedIdiomas, setSelectedIdiomas] = useState<string[]>([]);
     const [selectedCarreras, setSelectedCarreras] = useState<string[]>([]);
-    const [selectedHabilidades, setSelectedHabilidades] = useState<string[]>([]);
+    const [selectedModalidades, setSelectedModalidades] = useState<string[]>([]);
     const [selectedHorasRange, setSelectedHorasRange] = useState<[number, number]>([0, 1000]);
 
+    // Estados para controlar qué grupos de carreras están expandidos
+    const [carrerasExpandidas, setCarrerasExpandidas] = useState({
+        tecnicos: false,
+        ingenierias: false,
+        licenciaturas: false
+    });
+
+    // Cargar usuario primero
+    useEffect(() => {
+        const loadUser = async () => {
+            const data = await getUserData();
+            if (data) {
+                setUserData(data);
+                console.log("✅ Usuario cargado:", data.carnet);
+            } else {
+                router.replace('/(auth)/Login');
+            }
+        };
+        loadUser();
+    }, []);
 
     const procesarNombre = (nombre: string) => {
         const palabras = nombre.trim().split(" ");
@@ -64,7 +83,6 @@ export default function Index() {
     const nombre = userData ? procesarNombre(userData.nombreCompleto) : "";
     const carnet = userData?.carnet;
     const genero = userData?.genero;
-
 
     const obtenerSaludo = (genero: string) => {
         switch (genero) {
@@ -83,11 +101,11 @@ export default function Index() {
     };
 
     const saludo = obtenerSaludo(genero || "O"); 
-const avatar = obtenerAvatar(genero || "O");
+    const avatar = obtenerAvatar(genero || "O");
 
     const router = useRouter();
 
-    // Cargar proyectos con filtros
+    // MODIFICAR: cargarProyectos con dependencia de userData
     const cargarProyectos = async () => {
         setLoading(true);
         try {
@@ -95,17 +113,77 @@ const avatar = obtenerAvatar(genero || "O");
             if (searchQuery) params.append("search", searchQuery);
             selectedIdiomas.forEach(i => params.append("idioma", i));
             selectedCarreras.forEach(c => params.append("carrera", c));
-            selectedHabilidades.forEach(h => params.append("habilidad", h));
+            selectedModalidades.forEach(m => params.append("modalidad", m));
             params.append("minHoras", selectedHorasRange[0].toString());
             params.append("maxHoras", selectedHorasRange[1].toString());
 
-            const response = await fetch(`${API_URL}/proyectos?${params.toString()}`);
+            // DECISIÓN: Usar recomendaciones SOLO si hay usuario cargado
+            let url = `${API_URL}/proyectos`;
+            if (userData?.carnet) {
+                url = `${API_URL}/proyectos/recomendados/${userData.carnet}`;
+                console.log(`🎯 USANDO RECOMENDACIONES para: ${userData.carnet}`);
+            } else {
+                console.log(`🔍 Usando endpoint normal (sin usuario)`);
+            }
 
-            const data = await response.json();
+            console.log(`📡 Fetching: ${url}?${params.toString()}`);
+            
+            const response = await fetch(`${url}?${params.toString()}`);
+            
+            console.log(`📊 Response status:`, response.status);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const responseText = await response.text();
+            console.log(`📊 Response recibido, longitud:`, responseText.length);
+            
+            let data;
+            try {
+                data = JSON.parse(responseText);
+                console.log(`✅ JSON parseado correctamente`);
+            } catch (parseError) {
+                console.error(`❌ Error parseando JSON:`, parseError);
+                throw new Error(`Error en formato de respuesta`);
+            }
 
+            console.log(`✅ Proyectos recibidos:`, data.length);
+            if (data.length > 0) {
+                console.log(`📋 Primer proyecto:`, data[0].titulo);
+            }
+            
             setProyectos(data);
+
         } catch (err) {
-            console.error('Error al cargar proyectos:', err);
+            console.error('❌ Error al cargar proyectos:', err);
+            
+            // Fallback robusto
+            try {
+                console.log(`🔄 Intentando fallback sin recomendaciones...`);
+                const params = new URLSearchParams();
+                if (searchQuery) params.append("search", searchQuery);
+                selectedIdiomas.forEach(i => params.append("idioma", i));
+                selectedCarreras.forEach(c => params.append("carrera", c));
+                selectedModalidades.forEach(m => params.append("modalidad", m));
+                params.append("minHoras", selectedHorasRange[0].toString());
+                params.append("maxHoras", selectedHorasRange[1].toString());
+
+                const fallbackResponse = await fetch(`${API_URL}/proyectos?${params.toString()}`);
+                
+                if (!fallbackResponse.ok) {
+                    throw new Error(`Fallback falló: ${fallbackResponse.status}`);
+                }
+                
+                const fallbackText = await fallbackResponse.text();
+                const fallbackData = JSON.parse(fallbackText);
+                
+                console.log(`✅ Fallback exitoso, proyectos:`, fallbackData.length);
+                setProyectos(fallbackData);
+            } catch (fallbackErr) {
+                console.error('❌ Error en fallback:', fallbackErr);
+                setProyectos([]);
+            }
         } finally {
             setLoading(false);
         }
@@ -114,39 +192,46 @@ const avatar = obtenerAvatar(genero || "O");
     // Cargar opciones de filtros
     const cargarFiltrosDisponibles = async () => {
         try {
-            const [idiomasRes, carrerasRes, habilidadesRes] = await Promise.all([
+            const [idiomasRes, carrerasRes, modalidadesRes] = await Promise.all([
                 fetch(`${API_URL}/proyectos/idiomas`).then(r => r.json()),
                 fetch(`${API_URL}/proyectos/carreras`).then(r => r.json()),
-                fetch(`${API_URL}/proyectos/habilidades`).then(r => r.json())
+                fetch(`${API_URL}/proyectos/modalidades`).then(r => r.json())
             ]);
 
-
-            // VERIFICACIÓN CLAVE: Asegurar que la respuesta es un array (o usar [])
             setIdiomasDisponibles(Array.isArray(idiomasRes) ? idiomasRes : []);
             setCarrerasDisponibles(Array.isArray(carrerasRes) ? carrerasRes : []);
-
-            // Asegurar que las habilidades tienen la estructura correcta
-            setHabilidadesDisponibles({
-                blandas: Array.isArray(habilidadesRes?.blandas) ? habilidadesRes.blandas : [],
-                tecnicas: Array.isArray(habilidadesRes?.tecnicas) ? habilidadesRes.tecnicas : []
-            });
+            setModalidadesDisponibles(Array.isArray(modalidadesRes) ? modalidadesRes.map((m: any) => m.nombre) : []);
 
         } catch (err) {
             console.error('Error al cargar filtros:', err);
-            // Opcional: Establecer todos los estados a vacíos en caso de fallo total
             setIdiomasDisponibles([]);
             setCarrerasDisponibles([]);
-            setHabilidadesDisponibles({ blandas: [], tecnicas: [] });
+            setModalidadesDisponibles([]);
         }
     };
 
-    // Recargar datos cuando la pantalla recibe foco
+    // MODIFICAR: Recargar cuando userData cambie o la pantalla reciba foco
     useFocusEffect(
         useCallback(() => {
+            console.log("🔄 useFocusEffect ejecutado");
+            if (userData) {
+                console.log("👤 UserData disponible, cargando proyectos...");
+                cargarProyectos();
+                cargarFiltrosDisponibles();
+            } else {
+                console.log("⏳ UserData no disponible aún...");
+            }
+        }, [userData]) // ← AÑADIR userData como dependencia
+    );
+
+    // MODIFICAR: También cargar cuando userData se establezca por primera vez
+    useEffect(() => {
+        if (userData) {
+            console.log("👤 UserData actualizado, cargando proyectos...");
             cargarProyectos();
             cargarFiltrosDisponibles();
-        }, [])
-    );
+        }
+    }, [userData]);
 
     // Limpiar timeout al desmontar
     useEffect(() => {
@@ -157,9 +242,11 @@ const avatar = obtenerAvatar(genero || "O");
         };
     }, [searchTimeout]);
 
-    // Filtrar proyectos por tipo
+    // Filtrar proyectos por tipo para los carruseles
     const proyectosInstitucionales = proyectos.filter(p => p.tipoProyecto === "Institucional");
     const proyectosExternos = proyectos.filter(p => p.tipoProyecto === "Externo");
+
+    console.log(`📊 Institucionales: ${proyectosInstitucionales.length}, Externos: ${proyectosExternos.length}`);
 
     const toggleSelection = (item: string, selected: string[], setSelected: (arr: string[]) => void) => {
         if (selected.includes(item)) {
@@ -167,6 +254,13 @@ const avatar = obtenerAvatar(genero || "O");
         } else {
             setSelected([...selected, item]);
         }
+    };
+
+    const toggleCarreraGroup = (group: keyof typeof carrerasExpandidas) => {
+        setCarrerasExpandidas(prev => ({
+            ...prev,
+            [group]: !prev[group]
+        }));
     };
 
     const aplicarFiltros = () => {
@@ -177,8 +271,13 @@ const avatar = obtenerAvatar(genero || "O");
     const limpiarFiltros = () => {
         setSelectedIdiomas([]);
         setSelectedCarreras([]);
-        setSelectedHabilidades([]);
-        setSelectedHorasRange([0, 200]);
+        setSelectedModalidades([]);
+        setSelectedHorasRange([0, 1000]);
+        setCarrerasExpandidas({
+            tecnicos: false,
+            ingenierias: false,
+            licenciaturas: false
+        });
     };
 
     const truncateText = (text: string, maxLength: number) => {
@@ -210,8 +309,8 @@ const avatar = obtenerAvatar(genero || "O");
                         params: {
                             idProyecto: item.idProyecto.toString(),
                             carnetUsuario: userData?.carnet,
-nombreUsuario: userData?.nombreCompleto,
-generoUsuario: userData?.genero
+                            nombreUsuario: userData?.nombreCompleto,
+                            generoUsuario: userData?.genero
                         }
                     })}
                 >
@@ -256,7 +355,7 @@ generoUsuario: userData?.genero
                                 const timeout = setTimeout(() => {
                                     cargarProyectos();
                                 }, 500);
-                                setSearchTimeout(timeout); // Ahora acepta el 'number' sin error
+                                setSearchTimeout(timeout);
                             }}
                         />
                         <Ionicons name="search" size={20} color="#EAC306" style={styles.searchIconInside} />
@@ -266,8 +365,8 @@ generoUsuario: userData?.genero
                             pathname: "/(tabs)/proyecto",
                             params: {
                                 carnetUsuario: userData?.carnet,
-nombreUsuario: userData?.nombreCompleto,
-generoUsuario: userData?.genero
+                                nombreUsuario: userData?.nombreCompleto,
+                                generoUsuario: userData?.genero
                             }
                         })} />
                     </TouchableOpacity>
@@ -359,80 +458,144 @@ generoUsuario: userData?.genero
                                 ))}
                             </View>
 
-                            {/* Carreras */}
+                            {/* Modalidades - NUEVO FILTRO */}
+                            <Text style={styles.filterSectionTitle}>Modalidades</Text>
+                            <View style={styles.filterOptionsContainer}>
+                                {modalidadesDisponibles.map(modalidad => (
+                                    <TouchableOpacity
+                                        key={modalidad}
+                                        style={[
+                                            styles.filterOption,
+                                            selectedModalidades.includes(modalidad) && styles.filterOptionSelected
+                                        ]}
+                                        onPress={() => toggleSelection(modalidad, selectedModalidades, setSelectedModalidades)}
+                                    >
+                                        <Ionicons
+                                            name={selectedModalidades.includes(modalidad) ? "checkbox" : "square-outline"}
+                                            size={20}
+                                            color={selectedModalidades.includes(modalidad) ? "#2666DE" : "#666"}
+                                        />
+                                        <Text style={[
+                                            styles.filterOptionText,
+                                            selectedModalidades.includes(modalidad) && styles.filterOptionTextSelected
+                                        ]}>{modalidad}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+
+                            {/* Carreras Agrupadas - MEJORADO */}
                             <Text style={styles.filterSectionTitle}>Carreras</Text>
-                            <View style={styles.filterOptionsContainer}>
-                                {carrerasDisponibles.map(carrera => (
-                                    <TouchableOpacity
-                                        key={carrera}
-                                        style={[
-                                            styles.filterOption,
-                                            selectedCarreras.includes(carrera) && styles.filterOptionSelected
-                                        ]}
-                                        onPress={() => toggleSelection(carrera, selectedCarreras, setSelectedCarreras)}
-                                    >
-                                        <Ionicons
-                                            name={selectedCarreras.includes(carrera) ? "checkbox" : "square-outline"}
-                                            size={20}
-                                            color={selectedCarreras.includes(carrera) ? "#2666DE" : "#666"}
-                                        />
-                                        <Text style={[
-                                            styles.filterOptionText,
-                                            selectedCarreras.includes(carrera) && styles.filterOptionTextSelected
-                                        ]}>{carrera}</Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
+                            
+                            {/* Técnicos */}
+                            <TouchableOpacity 
+                                style={styles.carreraGroupHeader}
+                                onPress={() => toggleCarreraGroup('tecnicos')}
+                            >
+                                <Text style={styles.carreraGroupTitle}>Técnicos </Text>
+                                <Ionicons 
+                                    name={carrerasExpandidas.tecnicos ? "chevron-up" : "chevron-down"} 
+                                    size={20} 
+                                    color="#213A8E" 
+                                />
+                            </TouchableOpacity>
+                            {carrerasExpandidas.tecnicos && (
+                                <View style={styles.filterOptionsContainer}>
+                                    {carrerasAgrupadas.tecnicos.map(carrera => (
+                                        <TouchableOpacity
+                                            key={carrera}
+                                            style={[
+                                                styles.filterOption,
+                                                selectedCarreras.includes(carrera) && styles.filterOptionSelected
+                                            ]}
+                                            onPress={() => toggleSelection(carrera, selectedCarreras, setSelectedCarreras)}
+                                        >
+                                            <Ionicons
+                                                name={selectedCarreras.includes(carrera) ? "checkbox" : "square-outline"}
+                                                size={20}
+                                                color={selectedCarreras.includes(carrera) ? "#2666DE" : "#666"}
+                                            />
+                                            <Text style={[
+                                                styles.filterOptionText,
+                                                selectedCarreras.includes(carrera) && styles.filterOptionTextSelected
+                                            ]}>{carrera}</Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+                            )}
 
-                            {/* Habilidades Blandas */}
-                            <Text style={styles.filterSectionTitle}>Habilidades Blandas</Text>
-                            <View style={styles.filterOptionsContainer}>
-                                {habilidadesDisponibles.blandas?.map(habilidad => (
-                                    <TouchableOpacity
-                                        key={habilidad}
-                                        style={[
-                                            styles.filterOption,
-                                            selectedHabilidades.includes(habilidad) && styles.filterOptionSelected
-                                        ]}
-                                        onPress={() => toggleSelection(habilidad, selectedHabilidades, setSelectedHabilidades)}
-                                    >
-                                        <Ionicons
-                                            name={selectedHabilidades.includes(habilidad) ? "checkbox" : "square-outline"}
-                                            size={20}
-                                            color={selectedHabilidades.includes(habilidad) ? "#2666DE" : "#666"}
-                                        />
-                                        <Text style={[
-                                            styles.filterOptionText,
-                                            selectedHabilidades.includes(habilidad) && styles.filterOptionTextSelected
-                                        ]}>{habilidad}</Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
+                            {/* Ingenierías */}
+                            <TouchableOpacity 
+                                style={styles.carreraGroupHeader}
+                                onPress={() => toggleCarreraGroup('ingenierias')}
+                            >
+                                <Text style={styles.carreraGroupTitle}>Ingenierías </Text>
+                                <Ionicons 
+                                    name={carrerasExpandidas.ingenierias ? "chevron-up" : "chevron-down"} 
+                                    size={20} 
+                                    color="#213A8E" 
+                                />
+                            </TouchableOpacity>
+                            {carrerasExpandidas.ingenierias && (
+                                <View style={styles.filterOptionsContainer}>
+                                    {carrerasAgrupadas.ingenierias.map(carrera => (
+                                        <TouchableOpacity
+                                            key={carrera}
+                                            style={[
+                                                styles.filterOption,
+                                                selectedCarreras.includes(carrera) && styles.filterOptionSelected
+                                            ]}
+                                            onPress={() => toggleSelection(carrera, selectedCarreras, setSelectedCarreras)}
+                                        >
+                                            <Ionicons
+                                                name={selectedCarreras.includes(carrera) ? "checkbox" : "square-outline"}
+                                                size={20}
+                                                color={selectedCarreras.includes(carrera) ? "#2666DE" : "#666"}
+                                            />
+                                            <Text style={[
+                                                styles.filterOptionText,
+                                                selectedCarreras.includes(carrera) && styles.filterOptionTextSelected
+                                            ]}>{carrera}</Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+                            )}
 
-                            {/* Habilidades Técnicas */}
-                            <Text style={styles.filterSectionTitle}>Habilidades Técnicas</Text>
-                            <View style={styles.filterOptionsContainer}>
-                                {habilidadesDisponibles.tecnicas?.map(habilidad => (
-                                    <TouchableOpacity
-                                        key={habilidad}
-                                        style={[
-                                            styles.filterOption,
-                                            selectedHabilidades.includes(habilidad) && styles.filterOptionSelected
-                                        ]}
-                                        onPress={() => toggleSelection(habilidad, selectedHabilidades, setSelectedHabilidades)}
-                                    >
-                                        <Ionicons
-                                            name={selectedHabilidades.includes(habilidad) ? "checkbox" : "square-outline"}
-                                            size={20}
-                                            color={selectedHabilidades.includes(habilidad) ? "#2666DE" : "#666"}
-                                        />
-                                        <Text style={[
-                                            styles.filterOptionText,
-                                            selectedHabilidades.includes(habilidad) && styles.filterOptionTextSelected
-                                        ]}>{habilidad}</Text>
-                                    </TouchableOpacity>
-                                ))}
-                            </View>
+                            {/* Licenciaturas */}
+                            <TouchableOpacity 
+                                style={styles.carreraGroupHeader}
+                                onPress={() => toggleCarreraGroup('licenciaturas')}
+                            >
+                                <Text style={styles.carreraGroupTitle}>Licenciaturas </Text>
+                                <Ionicons 
+                                    name={carrerasExpandidas.licenciaturas ? "chevron-up" : "chevron-down"} 
+                                    size={20} 
+                                    color="#213A8E" 
+                                />
+                            </TouchableOpacity>
+                            {carrerasExpandidas.licenciaturas && (
+                                <View style={styles.filterOptionsContainer}>
+                                    {carrerasAgrupadas.licenciaturas.map(carrera => (
+                                        <TouchableOpacity
+                                            key={carrera}
+                                            style={[
+                                                styles.filterOption,
+                                                selectedCarreras.includes(carrera) && styles.filterOptionSelected
+                                            ]}
+                                            onPress={() => toggleSelection(carrera, selectedCarreras, setSelectedCarreras)}
+                                        >
+                                            <Ionicons
+                                                name={selectedCarreras.includes(carrera) ? "checkbox" : "square-outline"}
+                                                size={20}
+                                                color={selectedCarreras.includes(carrera) ? "#2666DE" : "#666"}
+                                            />
+                                            <Text style={[
+                                                styles.filterOptionText,
+                                                selectedCarreras.includes(carrera) && styles.filterOptionTextSelected
+                                            ]}>{carrera}</Text>
+                                        </TouchableOpacity>
+                                    ))}
+                                </View>
+                            )}
 
                             {/* Rango de Horas */}
                             <Text style={styles.filterSectionTitle}>Horas Mínimas</Text>
@@ -447,7 +610,7 @@ generoUsuario: userData?.genero
                                                 borderColor: selectedHorasRange[0] === horas ? '#2666DE' : '#D1D5DB'
                                             }
                                         ]}
-                                        onPress={() => setSelectedHorasRange([horas, 200])}
+                                        onPress={() => setSelectedHorasRange([horas, 1000])}
                                     >
                                         <Text style={{
                                             color: selectedHorasRange[0] === horas ? '#fff' : '#213A8E',
@@ -491,8 +654,8 @@ generoUsuario: userData?.genero
                         pathname: "/",
                         params: {
                             carnetUsuario: userData?.carnet,
-nombreUsuario: userData?.nombreCompleto,
-generoUsuario: userData?.genero
+                            nombreUsuario: userData?.nombreCompleto,
+                            generoUsuario: userData?.genero
                         }
                     })}
                 />
@@ -504,8 +667,8 @@ generoUsuario: userData?.genero
                         pathname: "/(tabs)/guardados",
                         params: {
                             carnetUsuario: userData?.carnet,
-nombreUsuario: userData?.nombreCompleto,
-generoUsuario: userData?.genero
+                            nombreUsuario: userData?.nombreCompleto,
+                            generoUsuario: userData?.genero
                         }
                     })}
                 />
@@ -517,8 +680,8 @@ generoUsuario: userData?.genero
                         pathname: "/(tabs)/aplicaciones",
                         params: {
                             carnetUsuario: userData?.carnet,
-nombreUsuario: userData?.nombreCompleto,
-generoUsuario: userData?.genero
+                            nombreUsuario: userData?.nombreCompleto,
+                            generoUsuario: userData?.genero
                         }
                     })}
                 />
@@ -530,8 +693,8 @@ generoUsuario: userData?.genero
                         pathname: "/(tabs)/notificaciones",
                         params: {
                             carnetUsuario: userData?.carnet,
-nombreUsuario: userData?.nombreCompleto,
-generoUsuario: userData?.genero
+                            nombreUsuario: userData?.nombreCompleto,
+                            generoUsuario: userData?.genero
                         }
                     })}
                 />
@@ -543,8 +706,8 @@ generoUsuario: userData?.genero
                         pathname: "/(tabs)/cuenta",
                         params: {
                             carnetUsuario: userData?.carnet,
-nombreUsuario: userData?.nombreCompleto,
-generoUsuario: userData?.genero
+                            nombreUsuario: userData?.nombreCompleto,
+                            generoUsuario: userData?.genero
                         }
                     })}
                 />
@@ -892,6 +1055,25 @@ const styles = StyleSheet.create({
         color: '#fff',
         fontWeight: 'bold',
         fontSize: 15,
+        fontFamily: 'MyriadPro-Bold',
+    },
+    // Nuevos estilos para grupos de carreras
+    carreraGroupHeader: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        backgroundColor: '#F2F6FC',
+        paddingHorizontal: 15,
+        paddingVertical: 12,
+        borderRadius: 8,
+        marginBottom: 8,
+        borderWidth: 1,
+        borderColor: '#D1D5DB',
+    },
+    carreraGroupTitle: {
+        fontSize: 15,
+        fontWeight: '600',
+        color: '#213A8E',
         fontFamily: 'MyriadPro-Bold',
     },
 });

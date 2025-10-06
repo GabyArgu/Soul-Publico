@@ -227,7 +227,7 @@ router.get("/:carnet/idiomas", async (req, res) => {
 });
 
 router.put("/:carnet", async (req, res) => {
-  const { carnet } = req.params;
+  const { carnet: carnetViejo } = req.params; // <-- Renombramos para claridad
   const {
     nombre,
     genero,
@@ -244,10 +244,12 @@ router.put("/:carnet", async (req, res) => {
     habilidadesTecnicas,
     habilidadesBlandas,
     transportarse,
-    urlCv
+    urlCv,
+    carnet: carnetNuevo // <-- Añadimos esto para recibir el nuevo carnet
   } = req.body;
 
-  console.log("🔍 Actualizando usuario:", carnet);
+  console.log("🔍 Actualizando usuario:", carnetViejo);
+  console.log("🔄 Carnet nuevo recibido:", carnetNuevo);
   console.log("📦 Datos recibidos:", {
     nombre, email, departamento, municipio, idCarrera,
     idIdioma, idNivel, habilidadesTecnicas, habilidadesBlandas
@@ -263,7 +265,7 @@ router.put("/:carnet", async (req, res) => {
 
     // 2. Obtener el ID del usuario para operaciones secundarias
     const usuarioActual = await transaction.request()
-      .input('carnet', sql.NVarChar(30), carnet)
+      .input('carnet', sql.NVarChar(30), carnetViejo)
       .query('SELECT idUsuario FROM usuarios WHERE carnet = @carnet AND estado = 1');
 
     if (usuarioActual.recordset.length === 0) {
@@ -280,7 +282,14 @@ router.put("/:carnet", async (req, res) => {
         `;
 
     const request = transaction.request();
-    request.input('carnet', sql.NVarChar(30), carnet);
+    request.input('carnetViejo', sql.NVarChar(30), carnetViejo);
+
+    // AÑADIR ACTUALIZACIÓN DEL CARNET SI VIENE EN EL BODY
+    if (carnetNuevo !== undefined && carnetNuevo !== carnetViejo) {
+      updateQuery += `, carnet = @carnetNuevo`;
+      request.input('carnetNuevo', sql.NVarChar(30), carnetNuevo);
+      console.log("🔄 Actualizando carnet de", carnetViejo, "a", carnetNuevo);
+    }
 
     if (nombre !== undefined) {
       updateQuery += `, nombreCompleto = @nombreCompleto`;
@@ -342,14 +351,16 @@ router.put("/:carnet", async (req, res) => {
       request.input('urlCv', sql.NVarChar(500), urlCv);
     }
 
-    // Finalizar el query
-    updateQuery += ` WHERE carnet = @carnet AND estado = 1;`;
+    // Finalizar el query - usar carnetViejo en WHERE
+    updateQuery += ` WHERE carnet = @carnetViejo AND estado = 1;`;
 
     // Ejecutar actualización solo si se actualizó algo más que 'fechaActualizado'
     if (updateQuery.includes(',')) {
       await request.query(updateQuery);
       console.log("✅ Datos básicos de usuario actualizados");
     }
+
+    // ... el resto del código se mantiene igual (manejo de habilidades e idiomas)
 
     // 4. Función para manejar habilidades
     const insertarHabilidades = async (habilidadesStr: string) => {
@@ -413,9 +424,14 @@ router.put("/:carnet", async (req, res) => {
 
     // 6. Commit de la transacción
     await transaction.commit();
+    
+    // Devolver el carnet actualizado en la respuesta
+    const carnetFinal = carnetNuevo && carnetNuevo !== carnetViejo ? carnetNuevo : carnetViejo;
+    
     res.status(200).json({
       mensaje: "Usuario actualizado con éxito",
-      carnet,
+      carnet: carnetFinal,
+      carnetActualizado: carnetNuevo && carnetNuevo !== carnetViejo,
       idiomasActualizados: idIdioma ? (Array.isArray(idIdioma) ? idIdioma.length : 1) : 0
     });
 

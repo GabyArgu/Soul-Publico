@@ -5,7 +5,6 @@ import sql from "mssql";
 
 const router = Router();
 
-
 router.get("/verificar", async (req, res) => {
     const { userId, proyectoId } = req.query;
 
@@ -87,8 +86,8 @@ router.delete("/", async (req, res) => {
 
 router.get("/", async (req, res) => {
     try {
-        // Desestructurar parámetros de la query
-        const { search, habilidad, carrera, idioma, minHoras, maxHoras, carnet } = req.query;
+        // Desestructurar parámetros de la query - AGREGAR modalidad
+        const { search, habilidad, carrera, idioma, modalidad, minHoras, maxHoras, carnet } = req.query;
 
         // Validación básica para carnet
         if (!carnet) {
@@ -98,13 +97,14 @@ router.get("/", async (req, res) => {
 
         const pool = await getConnection();
 
-        // Construcción dinámica de la consulta
+        // Construcción dinámica de la consulta - AGREGAR FILTRO DE MODALIDAD
         let query = `
             SELECT 
                 idProyecto,
-                carnetUsuario  as carnet,
+                carnetUsuario as carnet,
                 nombreProyecto as titulo,
                 descripcion,
+                modalidad,
                 capacidad,
                 horasServicio as horas,
                 tipoProyecto,
@@ -112,7 +112,7 @@ router.get("/", async (req, res) => {
                 habilidadesRelacionadas,
                 idiomasRelacionados
             FROM vProyectosGuardadosResumen
-            WHERE carnetUsuario  = @carnet
+            WHERE carnetUsuario = @carnet
         `;
 
         if (search) {
@@ -127,6 +127,9 @@ router.get("/", async (req, res) => {
         if (idioma) {
             query += ` AND idiomasRelacionados LIKE '%' + @idioma + '%'`;
         }
+        if (modalidad) {
+            query += ` AND modalidad LIKE '%' + @modalidad + '%'`;
+        }
         if (minHoras) {
             query += ` AND horasServicio >= @minHoras`;
         }
@@ -136,13 +139,14 @@ router.get("/", async (req, res) => {
 
         query += " ORDER BY tipoProyecto, nombreProyecto";
 
-        // Ejecutar la consulta con tipos definidos
+        // Ejecutar la consulta con tipos definidos - AGREGAR PARÁMETRO DE MODALIDAD
         const request = pool.request()
             .input("carnet", sql.NVarChar(30), carnet)
             .input("search", sql.NVarChar(100), search || "")
             .input("habilidad", sql.NVarChar(100), habilidad || "")
             .input("carrera", sql.NVarChar(100), carrera || "")
             .input("idioma", sql.NVarChar(100), idioma || "")
+            .input("modalidad", sql.NVarChar(100), modalidad || "")
             .input("minHoras", sql.Int, minHoras || 0)
             .input("maxHoras", sql.Int, maxHoras || 1000);
 

@@ -1,5 +1,8 @@
 import { Router } from "express";
 import { getConnection } from "../db";
+import { RecommendationService } from "../routes/recommendationService";
+
+const recommendationService = new RecommendationService();
 
 const router = Router();
 
@@ -35,25 +38,15 @@ router.get("/carreras", async (req, res) => {
     }
 });
 
-// GET /proyectos/habilidades
-router.get("/habilidades", async (req, res) => {
+// GET /proyectos/modalidades
+router.get("/modalidades", async (req, res) => {
     try {
         const pool = await getConnection();
-        const result = await pool.request().query(`
-            SELECT DISTINCT h.nombre, h.tipo
-            FROM habilidades h
-            INNER JOIN habilidadesProyecto hp ON h.idHabilidad = hp.idHabilidad
-        `);
-
-        const habilidades = {
-            blandas: result.recordset.filter(h => h.tipo === "Blanda").map(h => h.nombre),
-            tecnicas: result.recordset.filter(h => h.tipo === "Técnica" || h.tipo === "Tecnica").map(h => h.nombre),
-        };
-
-        res.json(habilidades);
+        const result = await pool.request().query("SELECT * FROM modalidades");
+        res.json(result.recordset);
     } catch (error) {
         console.error(error);
-        res.status(500).json({ error: "Error al obtener habilidades" });
+        res.status(500).json({ error: "Error al obtener modalidades" });
     }
 });
 
@@ -84,22 +77,10 @@ router.get("/instituciones", async (req, res) => {
     }
 });
 
-// GET /proyectos/modalidades
-router.get("/modalidades", async (req, res) => {
-    try {
-        const pool = await getConnection();
-        const result = await pool.request().query("SELECT * FROM modalidades");
-        res.json(result.recordset);
-    } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: "Error al obtener modalidades" });
-    }
-});
-
 // GET /proyectos (Lista de proyectos con filtros)
 router.get("/", async (req, res) => {
     try {
-        const { search, habilidad, carrera, idioma, minHoras, maxHoras } = req.query;
+        const { search, modalidad, carrera, idioma, minHoras, maxHoras } = req.query;
         const pool = await getConnection();
 
         let query = `
@@ -109,6 +90,7 @@ router.get("/", async (req, res) => {
                 descripcion,
                 capacidad,
                 fechaAplicacion,
+                modalidad,
                 horasServicio as horas,
                 tipoProyecto,
                 carrerasRelacionadas,
@@ -121,8 +103,8 @@ router.get("/", async (req, res) => {
         if (search) {
             query += ` AND (nombreProyecto LIKE '%' + @search + '%' OR descripcion LIKE '%' + @search + '%')`;
         }
-        if (habilidad) {
-            query += ` AND habilidadesRelacionadas LIKE '%' + @habilidad + '%'`;
+        if (modalidad) {
+            query += ` AND modalidad LIKE '%' + @modalidad + '%'`;
         }
         if (carrera) {
             query += ` AND carrerasRelacionadas LIKE '%' + @carrera + '%'`;
@@ -141,11 +123,9 @@ router.get("/", async (req, res) => {
 
         const result = await pool.request()
             .input("search", search || "")
-            .input("habilidad", habilidad || "")
+            .input("modalidad", modalidad || "")
             .input("carrera", carrera || "")
             .input("idioma", idioma || "")
-            // Nota: Aquí no se especifica el tipo, mssql/tedious lo infiere.
-            // Si el error persiste en minHoras/maxHoras, considera usar sql.Int o sql.Numeric
             .input("minHoras", minHoras || 0) 
             .input("maxHoras", maxHoras || null) 
             .query(query);
@@ -180,13 +160,13 @@ router.get("/:id", async (req, res) => {
                 nombreContacto,
                 carrerasRelacionadas,
                 habilidadesRelacionadas,
-                idiomasRelacionados
+                idiomasRelacionados,
+                modalidad
             FROM vProyectosResumen
             WHERE idProyecto = @idProyecto
         `;
 
         const result = await pool.request()
-            // Se asume que 'id' debe ser un número entero (INT)
             .input("idProyecto", id) 
             .query(query);
 
@@ -195,8 +175,6 @@ router.get("/:id", async (req, res) => {
         }
 
         const proyecto = result.recordset[0];
-        proyecto.modalidad = "Por definir"; 
-
         res.json(proyecto);
     } catch (err) {
         console.error(err);
@@ -204,7 +182,6 @@ router.get("/:id", async (req, res) => {
     }
 });
 
-// POST /proyectos (Crear nuevo proyecto)
 // POST /proyectos (Crear nuevo proyecto)
 router.post("/", async (req, res) => {
     const transaction = await getConnection().then(pool => pool.transaction());
@@ -227,7 +204,7 @@ router.post("/", async (req, res) => {
             emailContacto,
             fechaInicio,
             fechaFin,
-            fechaAplicacion, // NUEVO CAMPO
+            fechaAplicacion,
             idModalidad,
             carnetUsuario 
         } = req.body;
@@ -265,7 +242,7 @@ router.post("/", async (req, res) => {
 
         const idUsuario = usuarioResult.recordset[0].idUsuario;
 
-        // PASO 3: Crear el proyecto - AGREGAR fechaAplicacion
+        // PASO 3: Crear el proyecto
         const proyectoResult = await transaction.request()
             .input("titulo", titulo)
             .input("descripcion", descripcion)
@@ -274,7 +251,7 @@ router.post("/", async (req, res) => {
             .input("idInstitucion", institucionId)
             .input("fechaInicio", fechaInicio)
             .input("fechaFin", fechaFin)
-            .input("fechaAplicacion", fechaAplicacion) // NUEVO PARÁMETRO
+            .input("fechaAplicacion", fechaAplicacion)
             .input("idModalidad", idModalidad)
             .input("idUsuario", idUsuario)
             .query(`
@@ -345,6 +322,106 @@ router.post("/", async (req, res) => {
         await transaction.rollback();
         console.error("Error detallado:", error);
         res.status(500).json({ error: "Error al crear proyecto: " + error });
+    }
+});
+
+router.get("/recomendados/:carnet", async (req, res) => {
+  try {
+    const { carnet } = req.params;
+    const { search, modalidad, carrera, idioma, minHoras, maxHoras } = req.query;
+    
+    // Primero obtener todos los proyectos (con los filtros existentes)
+    const pool = await getConnection();
+    
+    let query = `
+      SELECT 
+        idProyecto,
+        nombreProyecto as titulo,
+        descripcion,
+        capacidad,
+        fechaAplicacion,
+        modalidad,
+        horasServicio as horas,
+        tipoProyecto,
+        carrerasRelacionadas,
+        habilidadesRelacionadas,
+        idiomasRelacionados
+      FROM vProyectosResumen
+      WHERE 1=1
+    `;
+
+    if (search) {
+      query += ` AND (nombreProyecto LIKE '%' + @search + '%' OR descripcion LIKE '%' + @search + '%')`;
+    }
+    if (modalidad) {
+      query += ` AND modalidad LIKE '%' + @modalidad + '%'`;
+    }
+    if (carrera) {
+      query += ` AND carrerasRelacionadas LIKE '%' + @carrera + '%'`;
+    }
+    if (idioma) {
+      query += ` AND idiomasRelacionados LIKE '%' + @idioma + '%'`;
+    }
+    if (minHoras) {
+      query += ` AND horasServicio >= @minHoras`;
+    }
+    if (maxHoras) {
+      query += ` AND horasServicio <= @maxHoras`;
+    }
+
+    query += " ORDER BY tipoProyecto, nombreProyecto";
+
+    const result = await pool.request()
+      .input("search", search || "")
+      .input("modalidad", modalidad || "")
+      .input("carrera", carrera || "")
+      .input("idioma", idioma || "")
+      .input("minHoras", minHoras || 0)
+      .input("maxHoras", maxHoras || null)
+      .query(query);
+
+    const allProjects = result.recordset;
+
+    // Aplicar sistema de recomendación
+    const recommendedProjects = await recommendationService.getRecommendedProjects(carnet, allProjects);
+
+    res.json(recommendedProjects);
+
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Error al obtener proyectos recomendados" });
+  }
+});
+
+// GET /proyectos/debug/:carnet
+router.get("/debug/:carnet", async (req, res) => {
+    try {
+        const { carnet } = req.params;
+        console.log(`🔧 DEBUG Endpoint llamado para carnet: ${carnet}`);
+        
+        const pool = await getConnection();
+        const result = await pool.request()
+            .input("carnet", carnet)
+            .query(`SELECT * FROM vProyectosResumen ORDER BY tipoProyecto, nombreProyecto`);
+
+        const allProjects = result.recordset;
+        console.log(`📦 Proyectos encontrados: ${allProjects.length}`);
+
+        // Probar el servicio de recomendación
+        const recommended = await recommendationService.getRecommendedProjects(carnet, allProjects);
+        
+        res.json({
+            debug: true,
+            carnet: carnet,
+            proyectosOriginales: allProjects.length,
+            proyectosRecomendados: recommended.length,
+            recomendaciones: recommended.slice(0, 5), // Solo primeros 5 para debug
+            mensaje: "Endpoint de debug - revisa los logs del servidor"
+        });
+
+    } catch (err) {
+        console.error('❌ Error en debug:', err);
+        res.status(500).json({ error: "Error en debug", details: err });
     }
 });
 

@@ -1,13 +1,14 @@
 // app/(main)/EditarPerfil.tsx
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Switch, Modal } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import { useState, useEffect } from "react";
-import { Picker } from "@react-native-picker/picker";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import Toast from "react-native-root-toast";
-import * as DocumentPicker from "expo-document-picker";
+import { Picker } from "@react-native-picker/picker";
 import axios from "axios";
+import * as DocumentPicker from "expo-document-picker";
+import * as SecureStore from 'expo-secure-store';
+import { useRouter } from "expo-router";
+import { useEffect, useState } from "react";
+import { Modal, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from "react-native";
+import Toast from "react-native-root-toast";
 import { getUserData, UserData } from '../utils/session';
 
 // Interfaces para los datos
@@ -66,7 +67,7 @@ interface Disponibilidad {
 
 export default function EditarPerfil() {
     const router = useRouter();
-    const API_URL = "https://d06a6c5dfc30.ngrok-free.app/api";
+    const API_URL = "https://888f4c9ee1eb.ngrok-free.app/api";
 
     // Estados para datos de usuario
     const [userData, setUserData] = useState<UserData | null>(null);
@@ -87,6 +88,7 @@ export default function EditarPerfil() {
     const [carnet, setCarnet] = useState("");
     const [cumple, setCumple] = useState<Date | null>(null);
     const [showCumple, setShowCumple] = useState(false);
+    const [fechaTexto, setFechaTexto] = useState(""); // NUEVO: para entrada de texto de fecha
     const [unidades, setUnidades] = useState("");
     const [telefono, setTelefono] = useState("");
     const [departamento, setDepartamento] = useState("");
@@ -103,11 +105,13 @@ export default function EditarPerfil() {
     const [habilidadesBlandas, setHabilidadesBlandas] = useState<Habilidad[]>([]);
     const [sugerenciasTecnicas, setSugerenciasTecnicas] = useState<Habilidad[]>([]);
     const [sugerenciasBlandas, setSugerenciasBlandas] = useState<Habilidad[]>([]);
+    const [creandoHabilidad, setCreandoHabilidad] = useState<"Técnica" | "Blanda" | null>(null); // NUEVO: estado para crear habilidades
 
     // Estados para idiomas
     const [idiomasSeleccionados, setIdiomasSeleccionados] = useState<{ idIdioma: number, idINivel: number }[]>([]);
     const [modalIdiomasVisible, setModalIdiomasVisible] = useState(false);
 
+    
     // Estado para errores
     const [errores, setErrores] = useState<string[]>([]);
 
@@ -121,6 +125,7 @@ export default function EditarPerfil() {
             const data = await getUserData();
             if (data) {
                 setUserData(data);
+                setCarnet(data.carnet); // Precargar carnet del usuario logueado
             } else {
                 router.replace('/(auth)/LoginScreen');
             }
@@ -166,15 +171,6 @@ export default function EditarPerfil() {
             setHabilidades(habilidadesRes.data || []);
             setDisponibilidades(disponibilidadesRes.data || []);
 
-            console.log("✅ Catálogos cargados:", {
-                carreras: carrerasRes.data?.length,
-                departamentos: departamentosRes.data?.length,
-                idiomas: idiomasRes.data?.length,
-                niveles: nivelesRes.data?.length,
-                habilidades: habilidadesRes.data?.length,
-                disponibilidades: disponibilidadesRes.data?.length
-            });
-
             // Cargar datos del usuario DESPUÉS de tener todos los catálogos
             await cargarDatosUsuario();
 
@@ -199,22 +195,23 @@ export default function EditarPerfil() {
     // Precargar datos cuando se carguen los catálogos
     useEffect(() => {
         if (userData?.carnet && carreras.length > 0 && departamentos.length > 0 && disponibilidades.length > 0) {
-            console.log("🚀 Iniciando precarga de datos del usuario...");
             precargarDatosUsuario();
         }
     }, [carreras, departamentos, disponibilidades, userData]);
 
+    // Sincronizar fecha texto con fecha Date
+    useEffect(() => {
+        if (cumple) {
+            setFechaTexto(cumple.toLocaleDateString('es-ES'));
+        }
+    }, [cumple]);
+
     // Debuggear cambios
     useEffect(() => {
-        console.log("🔄 Municipios actualizados:", municipios.length);
-        console.log("📍 Municipio seleccionado:", municipio);
     }, [municipios, municipio]);
 
     useEffect(() => {
-        console.log("🔄 Departamento seleccionado:", departamento);
     }, [departamento]);
-
-
 
     // Función para eliminar acentos
     const eliminarAcentos = (texto: string) => {
@@ -224,15 +221,11 @@ export default function EditarPerfil() {
     // Función mejorada para cargar municipios
     const cargarMunicipios = async (idDepartamento: number) => {
         try {
-            console.log(`📍 Cargando municipios para departamento: ${idDepartamento}`);
             const response = await axios.get(`${API_URL}/municipios/${idDepartamento}`);
             const municipiosCargados = response.data || [];
             setMunicipios(municipiosCargados);
-            console.log(`✅ Municipios cargados: ${municipiosCargados.length}`);
-
             return municipiosCargados;
         } catch (error) {
-            console.error("❌ Error cargando municipios:", error);
             setMunicipios([]);
             return [];
         }
@@ -257,9 +250,6 @@ export default function EditarPerfil() {
             return;
         }
 
-        console.log(`🔍 Buscando municipio: "${nombreMunicipio}" entre ${municipios.length} municipios`);
-        console.log("Municipios disponibles:", municipios.map(m => m.nombre));
-
         // Búsqueda más flexible
         const municipioEncontrado = municipios.find((m: Municipio) => {
             const municipioNombre = m.nombre.trim().toLowerCase();
@@ -273,7 +263,6 @@ export default function EditarPerfil() {
 
         if (municipioEncontrado) {
             setMunicipio(municipioEncontrado.idMunicipio.toString());
-            console.log("✅ Municipio encontrado y seleccionado:", municipioEncontrado.nombre);
         } else {
             console.log("❌ Municipio no encontrado:", nombreMunicipio);
             // Intentar una segunda búsqueda más agresiva después de un delay
@@ -300,7 +289,6 @@ export default function EditarPerfil() {
 
         if (municipioEncontrado) {
             setMunicipio(municipioEncontrado.idMunicipio.toString());
-            console.log("✅ Municipio encontrado (búsqueda agresiva):", municipioEncontrado.nombre);
         }
     };
 
@@ -319,8 +307,6 @@ export default function EditarPerfil() {
 
     const uploadCv = async () => {
         if (!cv) throw new Error("No se seleccionó CV");
-
-        console.log("📤 Intentando subir archivo:", cv.name, "URI:", cv.uri);
 
         const formData = new FormData();
         formData.append("cv", {
@@ -355,8 +341,6 @@ export default function EditarPerfil() {
 
                 setHabilidadesTecnicas(tecnicas);
                 setHabilidadesBlandas(blandas);
-
-                console.log(`✅ Habilidades cargadas: ${tecnicas.length} técnicas, ${blandas.length} blandas`);
             }
         } catch (error) {
             console.error("Error cargando habilidades:", error);
@@ -374,10 +358,8 @@ export default function EditarPerfil() {
                     idINivel: item.idINivel
                 }));
                 setIdiomasSeleccionados(idiomasConNiveles);
-                console.log(`✅ ${idiomasConNiveles.length} idioma(s) cargado(s)`);
             } else {
                 setIdiomasSeleccionados([]);
-                console.log("ℹ️ No se encontraron idiomas para el usuario");
             }
         } catch (error) {
             console.error("❌ Error cargando idiomas:", error);
@@ -394,7 +376,6 @@ export default function EditarPerfil() {
             const usuarioResponse = await axios.get(`${API_URL}/usuarios/${userData.carnet}`);
             const usuarioData = usuarioResponse.data;
 
-            console.log("📋 Datos del usuario:", usuarioData);
 
             // Carrera
             if (usuarioData.carrera && carreras.length > 0) {
@@ -403,14 +384,12 @@ export default function EditarPerfil() {
                 );
                 if (carreraEncontrada) {
                     setCarrera(carreraEncontrada.idCarrera.toString());
-                    console.log("✅ Carrera precargada:", carreraEncontrada.nombre);
                 }
             }
 
             // Departamento - AHORA ESPERAMOS A QUE SE CARGUEN LOS MUNICIPIOS
             if (usuarioData.idDepartamento) {
                 setDepartamento(usuarioData.idDepartamento.toString());
-                console.log("✅ Departamento precargado por ID:", usuarioData.idDepartamento);
 
                 // Cargar municipios del departamento
                 const municipiosCargados = await cargarMunicipios(usuarioData.idDepartamento);
@@ -422,7 +401,6 @@ export default function EditarPerfil() {
                     );
                     if (existeMunicipio) {
                         setMunicipio(usuarioData.idMunicipio.toString());
-                        console.log("✅ Municipio precargado por ID:", existeMunicipio.nombre);
                     } else {
                         console.warn("⚠️ Municipio del usuario no encontrado en la lista");
                     }
@@ -436,7 +414,6 @@ export default function EditarPerfil() {
                 );
                 if (dispEncontrada) {
                     setDisponibilidad(dispEncontrada.idDisponibilidad.toString());
-                    console.log("✅ Disponibilidad precargada:", dispEncontrada.nombre);
                 }
             }
         } catch (error) {
@@ -531,6 +508,38 @@ export default function EditarPerfil() {
         }
     };
 
+    // NUEVA FUNCIÓN para crear y agregar habilidad
+    const crearYAgregarHabilidad = async (tipo: "Técnica" | "Blanda") => {
+        const nombreHabilidad = tipo === "Técnica" ? inputHabilidadTecnica : inputHabilidadBlanda;
+
+        if (!nombreHabilidad.trim()) return;
+
+        try {
+            setCreandoHabilidad(tipo);
+
+            const response = await axios.post(`${API_URL}/habilidades`, {
+                nombre: nombreHabilidad,
+                tipo: tipo
+            });
+
+            const nuevaHabilidad = response.data;
+
+            // Agregar a la lista de habilidades global
+            setHabilidades(prev => [...prev, nuevaHabilidad]);
+
+            // Agregar a las habilidades seleccionadas
+            agregarHabilidad(nuevaHabilidad, tipo);
+
+            showToast(`✅ Habilidad "${nombreHabilidad}" creada y agregada`, true);
+
+        } catch (error) {
+            console.error("Error creando habilidad:", error);
+            showToast("❌ Error al crear la habilidad");
+        } finally {
+            setCreandoHabilidad(null);
+        }
+    };
+
     const eliminarHabilidad = (id: number, tipo: "Técnica" | "Blanda") => {
         if (tipo === "Técnica")
             setHabilidadesTecnicas(habilidadesTecnicas.filter(h => h.idHabilidad !== id));
@@ -571,6 +580,34 @@ export default function EditarPerfil() {
             } else {
                 setTelefono(text);
             }
+        }
+    };
+
+    // Función para procesar fecha desde texto
+    const procesarFechaDesdeTexto = (text: string) => {
+        setFechaTexto(text);
+
+        // Intentar parsear la fecha mientras se escribe
+        if (text.length === 10) { // DD/MM/AAAA
+            const parts = text.split('/');
+            if (parts.length === 3) {
+                const day = parseInt(parts[0]);
+                const month = parseInt(parts[1]) - 1; // Meses son 0-indexed
+                const year = parseInt(parts[2]);
+
+                if (!isNaN(day) && !isNaN(month) && !isNaN(year)) {
+                    const newDate = new Date(year, month, day);
+                    if (!isNaN(newDate.getTime())) {
+                        setCumple(newDate);
+                        return;
+                    }
+                }
+            }
+        }
+
+        // Si no se pudo parsear, limpiar la fecha
+        if (text.length === 0) {
+            setCumple(null);
         }
     };
 
@@ -631,7 +668,7 @@ export default function EditarPerfil() {
             const idIdiomas = idiomasSeleccionados.map(item => item.idIdioma);
             const idNiveles = idiomasSeleccionados.map(item => item.idINivel);
 
-            // 3️⃣ Preparar datos para actualizar
+            // 3️⃣ Preparar datos para actualizar - INCLUYENDO EL NUEVO CARNET
             const datosActualizacion = {
                 nombre,
                 genero: userData?.genero || "O",
@@ -642,22 +679,42 @@ export default function EditarPerfil() {
                 municipio: Number(municipio),
                 idCarrera: Number(carrera),
                 uvs: parseInt(unidades),
-                idIdioma: idIdiomas, // Ahora es un array
-                idNivel: idNiveles,  // Ahora es un array
+                idIdioma: idIdiomas,
+                idNivel: idNiveles,
                 idHorario: Number(disponibilidad),
                 habilidadesTecnicas: habilidadesTecnicas.map(h => h.idHabilidad).join(","),
                 habilidadesBlandas: habilidadesBlandas.map(h => h.idHabilidad).join(","),
                 transportarse: transporte,
                 urlCv: urlCvFinal,
+                carnet: carnet // <-- AÑADIR ESTO para enviar el nuevo carnet
             };
 
-            console.log("📤 Enviando datos:", datosActualizacion);
+            console.log("📤 Enviando datos de actualización:", datosActualizacion);
 
             // 4️⃣ Actualizar usuario en backend
-            await axios.put(`${API_URL}/usuarios/${carnet}`, datosActualizacion);
+            const respuesta = await axios.put(
+                `${API_URL}/usuarios/${userData?.carnet}`,
+                datosActualizacion
+            );
 
-            showToast("✅ Perfil actualizado correctamente", true);
-            setTimeout(() => router.back(), 1500);
+            console.log("✅ Respuesta del servidor:", respuesta.data);
+
+            // 5️⃣ VERIFICAR SI SE CAMBIÓ EL CARNET
+            if (respuesta.data.carnetActualizado || carnet !== userData?.carnet) {
+                // Si cambió el carnet, cerrar sesión y redirigir al login
+                showToast("✅ Perfil actualizado. Inicia sesión nuevamente con tu nuevo carnet", true);
+
+                // Esperar un poco para que se vea el toast
+                setTimeout(() => {
+                    // Limpiar datos de sesión y redirigir al login
+                    SecureStore.deleteItemAsync("userData");
+                    router.replace('/(auth)/LoginScreen');
+                }, 2000);
+            } else {
+                // Si no cambió el carnet, comportamiento normal
+                showToast("✅ Perfil actualizado correctamente", true);
+                setTimeout(() => router.back(), 1500);
+            }
 
         } catch (error) {
             console.error("❌ Error actualizando perfil:", error);
@@ -742,7 +799,7 @@ export default function EditarPerfil() {
                     />
                 </View>
 
-                {/* Fila carnet y cumpleaños */}
+                {/* Fila carnet y cumpleaños MEJORADA */}
                 <View style={styles.row}>
                     <View style={[styles.inputContainer2, styles.half]}>
                         <TextInput
@@ -751,26 +808,37 @@ export default function EditarPerfil() {
                             placeholderTextColor="#666"
                             value={carnet}
                             onChangeText={setCarnet}
-                            editable={false}
                         />
                     </View>
-                    <TouchableOpacity
-                        style={[styles.inputContainer2, styles.half, { justifyContent: "space-between" }]}
-                        onPress={() => setShowCumple(true)}
-                    >
-                        <Text style={[styles.input, { color: cumple ? "#000" : "#666" }]}>
-                            {cumple ? cumple.toLocaleDateString() : "Cumple"}
-                        </Text>
-                        <Ionicons name="calendar-outline" size={22} color="#213A8E" style={styles.iconCalendar} />
-                    </TouchableOpacity>
+
+                    {/* FECHA MEJORADA - CON INPUT DE TEXTO Y PICKER */}
+                    <View style={[styles.inputContainer2, styles.half]}>
+                        <TextInput
+                            style={[styles.input, { flex: 1 }]}
+                            placeholder="DD/MM/AAAA"
+                            placeholderTextColor="#666"
+                            value={fechaTexto}
+                            onChangeText={procesarFechaDesdeTexto}
+                            keyboardType="numeric"
+                        />
+                        <TouchableOpacity
+                            onPress={() => setShowCumple(true)}
+                            style={{ padding: 5 }}
+                        >
+                            <Ionicons name="calendar-outline" size={22} color="#213A8E" />
+                        </TouchableOpacity>
+                    </View>
+
                     {showCumple && (
                         <DateTimePicker
                             value={cumple || new Date()}
                             mode="date"
-                            display="calendar"
+                            display="spinner"
                             onChange={(event, selectedDate) => {
                                 setShowCumple(false);
-                                if (selectedDate) setCumple(selectedDate);
+                                if (selectedDate) {
+                                    setCumple(selectedDate);
+                                }
                             }}
                         />
                     )}
@@ -852,12 +920,12 @@ export default function EditarPerfil() {
                     </Text>
                     <Ionicons name="chevron-down" size={20} color="#213A8E" />
                 </TouchableOpacity>
-
-                {/* Habilidades técnicas */}
+                        
+                {/* Habilidades técnicas MEJORADAS */}
                 <View style={{ zIndex: 1000 }}>
                     <View style={styles.chipsInputContainer} onLayout={(event) => {
                         const { y, width } = event.nativeEvent.layout;
-                        setLayoutTecnicas({ y: y + 60, width: width });
+                        setLayoutTecnicas({ y: y + 40, width: width });
                     }}>
                         <View style={styles.chipsContainer}>
                             {habilidadesTecnicas.map(h => (
@@ -877,32 +945,49 @@ export default function EditarPerfil() {
                             />
                         </View>
                     </View>
-                    {inputHabilidadTecnica.length > 0 && sugerenciasTecnicas.length > 0 && (
+                    {inputHabilidadTecnica.length > 0 && (
                         <View style={[styles.suggestionsList, {
-                            top: layoutTecnicas.y,
+                            top: layoutTecnicas.y + 40,
                             width: layoutTecnicas.width,
                             left: 20
                         }]}>
                             <ScrollView style={styles.suggestionsScroll} nestedScrollEnabled={true}>
-                                {sugerenciasTecnicas.map(item => (
+                                {sugerenciasTecnicas.length > 0 ? (
+                                    // Mostrar sugerencias existentes
+                                    sugerenciasTecnicas.map(item => (
+                                        <TouchableOpacity
+                                            key={item.idHabilidad}
+                                            onPress={() => agregarHabilidad(item, "Técnica")}
+                                            style={styles.suggestionItem}
+                                        >
+                                            <Text style={styles.suggestionText}>{item.nombre}</Text>
+                                        </TouchableOpacity>
+                                    ))
+                                ) : (
+                                    // Mostrar opción para crear nueva habilidad
                                     <TouchableOpacity
-                                        key={item.idHabilidad}
-                                        onPress={() => agregarHabilidad(item, "Técnica")}
+                                        onPress={() => crearYAgregarHabilidad("Técnica")}
                                         style={styles.suggestionItem}
+                                        disabled={creandoHabilidad === "Técnica"}
                                     >
-                                        <Text style={styles.suggestionText}>{item.nombre}</Text>
+                                        <Ionicons name="add-circle-outline" size={20} color="#2666DE" />
+                                        <Text style={[styles.suggestionText, { marginLeft: 8 }]}>
+                                            {creandoHabilidad === "Técnica"
+                                                ? "Creando..."
+                                                : `Crear "${inputHabilidadTecnica}" como habilidad técnica`}
+                                        </Text>
                                     </TouchableOpacity>
-                                ))}
+                                )}
                             </ScrollView>
                         </View>
                     )}
                 </View>
 
-                {/* Habilidades blandas */}
+                {/* Habilidades blandas MEJORADAS */}
                 <View style={{ zIndex: 900 }}>
                     <View style={styles.chipsInputContainer} onLayout={(event) => {
                         const { y, width } = event.nativeEvent.layout;
-                        setLayoutBlandas({ y: y + 60, width: width });
+                        setLayoutBlandas({ y: y + 40, width: width });
                     }}>
                         <View style={styles.chipsContainer}>
                             {habilidadesBlandas.map(h => (
@@ -922,22 +1007,37 @@ export default function EditarPerfil() {
                             />
                         </View>
                     </View>
-                    {inputHabilidadBlanda.length > 0 && sugerenciasBlandas.length > 0 && (
+                    {inputHabilidadBlanda.length > 0 && (
                         <View style={[styles.suggestionsList, {
-                            top: layoutBlandas.y,
+                            top: layoutBlandas.y + 40,
                             width: layoutBlandas.width,
                             left: 20
                         }]}>
                             <ScrollView style={styles.suggestionsScroll} nestedScrollEnabled={true}>
-                                {sugerenciasBlandas.map(item => (
+                                {sugerenciasBlandas.length > 0 ? (
+                                    sugerenciasBlandas.map(item => (
+                                        <TouchableOpacity
+                                            key={item.idHabilidad}
+                                            onPress={() => agregarHabilidad(item, "Blanda")}
+                                            style={styles.suggestionItem}
+                                        >
+                                            <Text style={styles.suggestionText}>{item.nombre}</Text>
+                                        </TouchableOpacity>
+                                    ))
+                                ) : (
                                     <TouchableOpacity
-                                        key={item.idHabilidad}
-                                        onPress={() => agregarHabilidad(item, "Blanda")}
+                                        onPress={() => crearYAgregarHabilidad("Blanda")}
                                         style={styles.suggestionItem}
+                                        disabled={creandoHabilidad === "Blanda"}
                                     >
-                                        <Text style={styles.suggestionText}>{item.nombre}</Text>
+                                        <Ionicons name="add-circle-outline" size={20} color="#2666DE" />
+                                        <Text style={[styles.suggestionText, { marginLeft: 8 }]}>
+                                            {creandoHabilidad === "Blanda"
+                                                ? "Creando..."
+                                                : `Crear "${inputHabilidadBlanda}" como habilidad blanda`}
+                                        </Text>
                                     </TouchableOpacity>
-                                ))}
+                                )}
                             </ScrollView>
                         </View>
                     )}
@@ -972,7 +1072,7 @@ export default function EditarPerfil() {
                         thumbColor={transporte ? "#fff" : "#fff"}
                     />
                 </View>
-                        
+
                 {/* Subir CV */}
                 <TouchableOpacity style={styles.inputContainer} onPress={pickDocument}>
                     <Text style={[styles.input, { color: cv ? "#000" : "#666" }]}>
@@ -1285,7 +1385,7 @@ const styles = StyleSheet.create({
         borderColor: '#2666DE',
         borderRadius: 12,
         zIndex: 2000,
-        elevation: 20,
+        elevation: 50,
         maxHeight: 200,
         shadowColor: "#000",
         shadowOffset: { width: 0, height: 4 },
@@ -1294,13 +1394,15 @@ const styles = StyleSheet.create({
         overflow: 'hidden',
     },
     suggestionsScroll: {
-        maxHeight: 200,
+        maxHeight: 400,
     },
     suggestionItem: {
         padding: 12,
         borderBottomWidth: 1,
         borderBottomColor: '#f0f0f0',
         backgroundColor: '#fff',
+        flexDirection: 'row',
+        alignItems: 'center',
     },
     suggestionText: {
         fontSize: 14,

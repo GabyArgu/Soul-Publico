@@ -1,17 +1,17 @@
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ImageBackground, Platform } from "react-native";
-import { useRouter } from "expo-router";
-import { useState, useEffect } from "react";
-import { Picker } from "@react-native-picker/picker";
-import DateTimePicker from "@react-native-community/datetimepicker";
 import { Ionicons } from "@expo/vector-icons";
-import Toast from "react-native-root-toast";
-import axios from "axios";
-import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import DateTimePicker from "@react-native-community/datetimepicker";
+import { Picker } from "@react-native-picker/picker";
+import axios from "axios";
+import { useRouter } from "expo-router";
+import { useEffect, useState } from "react";
+import { ImageBackground, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
+import Toast from "react-native-root-toast";
 
 export default function Crear() {
     const router = useRouter();
-    const API_URL = "https://d06a6c5dfc30.ngrok-free.app/api";
+    const API_URL = "https://888f4c9ee1eb.ngrok-free.app/api";
 
     // Estados del formulario
     const [nombre, setNombre] = useState("");

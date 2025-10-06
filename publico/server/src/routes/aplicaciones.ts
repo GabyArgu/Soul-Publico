@@ -8,9 +8,21 @@ import fs from "fs";
 
 const router = Router();
 
-// GET /api/aplicaciones?search=&minHoras=&maxHoras=&institucion=&estado=&carnet=
+// GET /api/aplicaciones?search=&minHoras=&maxHoras=&institucion=&estado=&carnet=&idioma=&carrera=&habilidad=
+
 router.get("/", async (req, res) => {
-    const { search, minHoras, maxHoras, institucion, estado, carnet } = req.query;
+    const { 
+        search, 
+        minHoras, 
+        maxHoras, 
+        institucion, 
+        estado, 
+        carnet,
+        idioma,
+        carrera,
+        habilidad,
+        modalidad // ✅ AGREGAR ESTE PARÁMETRO
+    } = req.query;
 
     if (!carnet) {
         return res.status(400).json({ error: "Debe proporcionar el carnet del usuario" });
@@ -25,18 +37,45 @@ router.get("/", async (req, res) => {
                 idAplicacion AS idAplicacion,
                 nombreProyecto AS titulo,
                 descripcion,
+                modalidad,
                 nombreInstitucion AS institucion,
                 horasServicio AS horas,
-                nombreEstadoAplicacion AS estado
+                nombreEstadoAplicacion AS estado,
+                carrerasRelacionadas,
+                habilidadesRelacionadas,
+                idiomasRelacionados
             FROM vAplicacionesUsuarioResumen
             WHERE carnetUsuario = @carnet
         `;
 
-        if (search) query += ` AND (nombreProyecto LIKE '%' + @search + '%' OR descripcion LIKE '%' + @search + '%')`;
-        if (minHoras) query += ` AND horasServicio >= @minHoras`;
-        if (maxHoras) query += ` AND horasServicio <= @maxHoras`;
-        if (institucion) query += ` AND nombreInstitucion = @institucion`;
-        if (estado) query += ` AND nombreEstadoAplicacion = @estado`;
+        // Aplicar filtros
+        if (search) {
+            query += ` AND (nombreProyecto LIKE '%' + @search + '%' OR descripcion LIKE '%' + @search + '%')`;
+        }
+        if (minHoras) {
+            query += ` AND horasServicio >= @minHoras`;
+        }
+        if (maxHoras) {
+            query += ` AND horasServicio <= @maxHoras`;
+        }
+        if (institucion) {
+            query += ` AND nombreInstitucion LIKE '%' + @institucion + '%'`;
+        }
+        if (estado) {
+            query += ` AND nombreEstadoAplicacion LIKE '%' + @estado + '%'`;
+        }
+        if (idioma) {
+            query += ` AND idiomasRelacionados LIKE '%' + @idioma + '%'`;
+        }
+        if (carrera) {
+            query += ` AND carrerasRelacionadas LIKE '%' + @carrera + '%'`;
+        }
+        if (habilidad) {
+            query += ` AND habilidadesRelacionadas LIKE '%' + @habilidad + '%'`;
+        }
+        if (modalidad) { // ✅ AGREGAR ESTE FILTRO
+            query += ` AND modalidad LIKE '%' + @modalidad + '%'`;
+        }
 
         query += " ORDER BY nombreProyecto";
 
@@ -46,7 +85,11 @@ router.get("/", async (req, res) => {
             .input("minHoras", sql.Int, parseInt(minHoras as string) || 0)
             .input("maxHoras", sql.Int, parseInt(maxHoras as string) || 1000)
             .input("institucion", sql.NVarChar(100), institucion || "")
-            .input("estado", sql.NVarChar(50), estado || "");
+            .input("estado", sql.NVarChar(50), estado || "")
+            .input("idioma", sql.NVarChar(100), idioma || "")
+            .input("carrera", sql.NVarChar(100), carrera || "")
+            .input("habilidad", sql.NVarChar(100), habilidad || "")
+            .input("modalidad", sql.NVarChar(100), modalidad || ""); // ✅ AGREGAR ESTE INPUT
 
         const result = await request.query(query);
 
@@ -57,8 +100,6 @@ router.get("/", async (req, res) => {
         res.status(500).json({ error: "Error obteniendo aplicaciones", detalles: error });
     }
 });
-
-// Agregar esta ruta al archivo aplicaciones.ts (después de las rutas existentes)
 
 // GET /api/aplicaciones/detalle/:idAplicacion
 router.get("/detalle/:idAplicacion", async (req, res) => {
@@ -304,8 +345,5 @@ router.post("/aplicar", async (req, res) => {
         res.status(500).json({ error: "Error procesando aplicación" });
     }
 });
-
-
-
 
 export default router;

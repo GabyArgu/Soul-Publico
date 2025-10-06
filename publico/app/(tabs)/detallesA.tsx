@@ -1,9 +1,9 @@
 // app/(tabs)/detallesA.tsx
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Linking } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter, useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useEffect, useState } from "react";
+import { ActivityIndicator, Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Toast from "react-native-root-toast";
-import { useState, useEffect } from "react";
 import { getUserData, UserData } from '../utils/session';
 
 interface AplicacionDetalle {
@@ -17,6 +17,7 @@ interface AplicacionDetalle {
     habilidadesRelacionadas: string;
     idiomasRelacionados: string;
     institucion: string;
+    modalidad: string;
     fechaInicio: string;
     fechaFin: string;
     telefonoContacto: string;
@@ -44,7 +45,7 @@ export default function DetalleAplicacion() {
     const router = useRouter();
     const params = useLocalSearchParams();
 
-    const API_URL = "https://d06a6c5dfc30.ngrok-free.app/api";
+    const API_URL = "https://888f4c9ee1eb.ngrok-free.app/api";
 
     const [userData, setUserData] = useState<UserData | null>(null);
     const [aplicacion, setAplicacion] = useState<AplicacionDetalle | null>(null);
@@ -380,6 +381,13 @@ export default function DetalleAplicacion() {
                         </View>
                         <View style={styles.col}>
                             <Text style={styles.info}><Text style={styles.bold}>Fin: </Text>{formatearFecha(aplicacion.fechaFin)}</Text>
+                        </View>
+                    </View>
+
+                    {/* Nueva fila para Modalidad */}
+                    <View style={styles.infoRow}>
+                        <View style={styles.col}>
+                            <Text style={styles.info}><Text style={styles.bold}>Modalidad: </Text>{aplicacion.modalidad || 'No especificada'}</Text>
                         </View>
                     </View>
 

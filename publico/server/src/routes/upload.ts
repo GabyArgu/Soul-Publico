@@ -40,7 +40,7 @@ router.post("/cv", upload.single("cv"), (req, res) => {
         return res.status(400).json({ error: "No se subió ningún archivo" });
     }
     // Devolver la ruta del archivo para guardarla en la base de datos
-    const serverUrl = "https://d06a6c5dfc30.ngrok-free.app"; // Asegúrate de que esta es la IP correcta
+    const serverUrl = "https://888f4c9ee1eb.ngrok-free.app"; // Asegúrate de que esta es la IP correcta
 const fileUrl = `${serverUrl}/uploads/${req.file.filename}`;
 res.json({ url: fileUrl, message: "Archivo subido con éxito" });
 });

@@ -1,9 +1,9 @@
 // app/(tabs)/detalles.tsx
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter, useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useEffect, useState } from "react";
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from "react-native";
 import Toast from "react-native-root-toast";
-import { useState, useEffect } from "react";
 import { getUserData, UserData } from '../utils/session';
 
 interface ProyectoDetalle {
@@ -29,7 +29,7 @@ export default function DetalleProyecto() {
     const router = useRouter();
     const params = useLocalSearchParams();
 
-    const API_URL = "https://d06a6c5dfc30.ngrok-free.app/api";
+    const API_URL = "https://888f4c9ee1eb.ngrok-free.app/api";
 
     const [proyecto, setProyecto] = useState<ProyectoDetalle | null>(null);
     const [loading, setLoading] = useState(true);
@@ -379,7 +379,6 @@ export default function DetalleProyecto() {
                     </View>
                 </View>
 
-
                 {/* Contacto y Teléfono en la misma fila */}
                 {(proyecto.nombreContacto || proyecto.telefono || proyecto.emailContacto) && (
                     <View style={[styles.infoRow]}>
@@ -402,6 +401,13 @@ export default function DetalleProyecto() {
                         <Text style={styles.bold}>Email: </Text>{proyecto.emailContacto}
                     </Text>
                 )}
+
+                {/* Nueva fila para Modalidad */}
+                <View style={styles.infoRow}>
+                    <View style={styles.col}>
+                        <Text style={styles.info}><Text style={styles.bold}>Modalidad: </Text>{proyecto.modalidad || 'No especificada'}</Text>
+                    </View>
+                </View>
 
                 {/* Carreras Relacionadas */}
                 {carrerasArray.length > 0 && (
@@ -591,6 +597,4 @@ const styles = StyleSheet.create({
         textShadowOffset: { width: 0, height: 0 },
         textShadowRadius: 6,
     },
-
-
 });

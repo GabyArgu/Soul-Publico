@@ -1,13 +1,13 @@
 // app/(auth)/Crear2.tsx
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ImageBackground, Dimensions, Modal, ScrollView } from "react-native";
-import { useRouter, useLocalSearchParams } from "expo-router";
-import { useState, useEffect } from "react";
-import { Picker } from "@react-native-picker/picker";
 import { Ionicons } from "@expo/vector-icons";
-import Toast from "react-native-root-toast";
-import axios from "axios";
-import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Picker } from "@react-native-picker/picker";
+import axios from "axios";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useEffect, useState } from "react";
+import { ImageBackground, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
+import Toast from "react-native-root-toast";
 
 interface Habilidad { idHabilidad: number; nombre: string; tipo: string; }
 interface Idioma { idIdioma: number; nombre: string; }
@@ -15,7 +15,7 @@ interface Nivel { idINivel: number; nombre: string; }
 
 export default function Crear2() {
     const router = useRouter();
-    const API_URL = "https://d06a6c5dfc30.ngrok-free.app/api";
+    const API_URL = "https://888f4c9ee1eb.ngrok-free.app/api";
     const params = useLocalSearchParams();
     const userData = params.userData ? JSON.parse(params.userData as string) : {};
 
@@ -241,11 +241,11 @@ export default function Crear2() {
                             <Ionicons name="chevron-down" size={20} color="#213A8E" />
                         </TouchableOpacity>
 
-                        {/* Habilidades técnicas */}
-                        <View style={{ zIndex: 20 }}>
+                        {/* Habilidades técnicas - DISEÑO MEJORADO COMO EN PROYECTOS */}
+                        <View style={{ zIndex: 1000 }}>
                             <View style={styles.chipsInputContainer} onLayout={(event) => {
                                 const { y, width } = event.nativeEvent.layout;
-                                setLayoutTecnicas({ y: y, width: width });
+                                setLayoutTecnicas({ y: y + 60, width: width });
                             }}>
                                 <View style={styles.chipsContainer}>
                                     {habilidadesTecnicas.map(h => (
@@ -266,21 +266,31 @@ export default function Crear2() {
                                 </View>
                             </View>
                             {inputHabilidadTecnica.length > 0 && sugerenciasTecnicas.length > 0 && (
-                                <View style={[styles.suggestionsList, { top: layoutTecnicas.y, width: layoutTecnicas.width }]}>
-                                    {sugerenciasTecnicas.map(item => (
-                                        <TouchableOpacity key={item.idHabilidad} onPress={() => agregarHabilidad(item, "Técnica")} style={styles.suggestionItem}>
-                                            <Text style={styles.suggestionText}>{item.nombre}</Text>
-                                        </TouchableOpacity>
-                                    ))}
+                                <View style={[styles.suggestionsList, { 
+                                    top: layoutTecnicas.y, 
+                                    width: layoutTecnicas.width,
+                                    left: 0
+                                }]}>
+                                    <ScrollView style={styles.suggestionsScroll} nestedScrollEnabled={true}>
+                                        {sugerenciasTecnicas.map(item => (
+                                            <TouchableOpacity 
+                                                key={item.idHabilidad} 
+                                                onPress={() => agregarHabilidad(item, "Técnica")} 
+                                                style={styles.suggestionItem}
+                                            >
+                                                <Text style={styles.suggestionText}>{item.nombre}</Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </ScrollView>
                                 </View>
                             )}
                         </View>
 
-                        {/* Habilidades blandas */}
-                        <View style={{ zIndex: 10 }}>
+                        {/* Habilidades blandas - DISEÑO MEJORADO COMO EN PROYECTOS */}
+                        <View style={{ zIndex: 900 }}>
                             <View style={styles.chipsInputContainer} onLayout={(event) => {
                                 const { y, width } = event.nativeEvent.layout;
-                                setLayoutBlandas({ y: y, width: width });
+                                setLayoutBlandas({ y: y + 60, width: width });
                             }}>
                                 <View style={styles.chipsContainer}>
                                     {habilidadesBlandas.map(h => (
@@ -301,12 +311,22 @@ export default function Crear2() {
                                 </View>
                             </View>
                             {inputHabilidadBlanda.length > 0 && sugerenciasBlandas.length > 0 && (
-                                <View style={[styles.suggestionsList, { top: layoutBlandas.y, width: layoutBlandas.width }]}>
-                                    {sugerenciasBlandas.map(item => (
-                                        <TouchableOpacity key={item.idHabilidad} onPress={() => agregarHabilidad(item, "Blanda")} style={styles.suggestionItem}>
-                                            <Text style={styles.suggestionText}>{item.nombre}</Text>
-                                        </TouchableOpacity>
-                                    ))}
+                                <View style={[styles.suggestionsList, { 
+                                    top: layoutBlandas.y, 
+                                    width: layoutBlandas.width,
+                                    left: 0
+                                }]}>
+                                    <ScrollView style={styles.suggestionsScroll} nestedScrollEnabled={true}>
+                                        {sugerenciasBlandas.map(item => (
+                                            <TouchableOpacity 
+                                                key={item.idHabilidad} 
+                                                onPress={() => agregarHabilidad(item, "Blanda")} 
+                                                style={styles.suggestionItem}
+                                            >
+                                                <Text style={styles.suggestionText}>{item.nombre}</Text>
+                                            </TouchableOpacity>
+                                        ))}
+                                    </ScrollView>
                                 </View>
                             )}
                         </View>
@@ -412,7 +432,6 @@ export default function Crear2() {
     );
 }
 
-// AÑADIR ESTOS ESTILOS AL FINAL DEL STYLESHEET EXISTENTE
 const styles = StyleSheet.create({
     background: { flex: 1, width: "100%", height: "100%" },
     mainContainer: { flex: 1, marginTop: 220 },
@@ -420,7 +439,22 @@ const styles = StyleSheet.create({
     scrollContainer: { alignItems: "center", paddingBottom: 40 },
     formContainer: { width: "85%", borderRadius: 15, padding: 8, backgroundColor: "transparent" },
     title: { fontSize: 23, fontWeight: "bold", color: "#213A8E", marginBottom: 18, fontFamily: "Inter-Bold" },
-    inputContainer: { flexDirection: "row", alignItems: "center", backgroundColor: "#EFF1F8", borderRadius: 12, paddingHorizontal: 10, marginBottom: 15, borderLeftWidth: 15, borderLeftColor: "#2666DE", height: 52 },
+    inputContainer: { 
+        flexDirection: "row", 
+        alignItems: "center", 
+        backgroundColor: "#EFF1F8", 
+        borderRadius: 12, 
+        paddingHorizontal: 10, 
+        marginBottom: 15, 
+        borderLeftWidth: 15, 
+        borderLeftColor: "#2666DE", 
+        height: 52,
+        shadowColor: "#2666DE",
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.6,
+        shadowRadius: 6,
+        elevation: 8,
+    },
     input: { flex: 1, fontSize: 15, fontFamily: "Inter-Medium", color: "#000" },
 
     picker: { 
@@ -446,6 +480,11 @@ const styles = StyleSheet.create({
         minHeight: 52, 
         paddingHorizontal: 5, 
         justifyContent: 'center',
+        shadowColor: "#2666DE",
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.6,
+        shadowRadius: 6,
+        elevation: 8,
     },
     
     chipsContainer: { 
@@ -489,27 +528,34 @@ const styles = StyleSheet.create({
     suggestionsList: { 
         position: 'absolute', 
         backgroundColor: '#fff', 
-        borderWidth: 1, 
-        borderColor: '#ddd', 
-        borderRadius: 8, 
-        zIndex: 100, 
-        elevation: 5,
-        maxHeight: 150,
+        borderWidth: 2, 
+        borderColor: '#2666DE',
+        borderRadius: 12, 
+        zIndex: 2000, 
+        elevation: 20,
+        maxHeight: 200,
         shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        overflow: 'hidden',
     },
     
+    suggestionsScroll: {
+        maxHeight: 200,
+    },
+
     suggestionItem: { 
-        padding: 10, 
+        padding: 12, 
         borderBottomWidth: 1, 
-        borderBottomColor: '#eee' 
+        borderBottomColor: '#f0f0f0',
+        backgroundColor: '#fff',
     },
     
     suggestionText: { 
         fontSize: 14, 
-        fontFamily: 'Inter-Medium' 
+        fontFamily: 'Inter-Medium',
+        color: '#333',
     },
 
     buttonsRow: { 

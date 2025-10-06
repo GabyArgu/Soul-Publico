@@ -1,12 +1,12 @@
 // app/(main)/AgregarProyecto.tsx
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Modal, Dimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import { useState, useEffect } from "react";
-import { Picker } from "@react-native-picker/picker";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import Toast from "react-native-root-toast";
+import { Picker } from "@react-native-picker/picker";
 import axios from "axios";
+import { useRouter } from "expo-router";
+import { useEffect, useState } from "react";
+import { Dimensions, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import Toast from "react-native-root-toast";
 import { getUserData, UserData } from '../utils/session';
 
 interface Habilidad {
@@ -51,7 +51,7 @@ const { width: screenWidth } = Dimensions.get('window');
 
 export default function AgregarProyecto() {
     const router = useRouter();
-    const API_URL = "https://d06a6c5dfc30.ngrok-free.app/api";
+    const API_URL = "https://888f4c9ee1eb.ngrok-free.app/api";
 
     // Estados para datos de usuario
     const [userData, setUserData] = useState<UserData | null>(null);
@@ -82,13 +82,14 @@ export default function AgregarProyecto() {
     const [idiomasSeleccionados, setIdiomasSeleccionados] = useState<{ idIdioma: number, idINivel: number }[]>([]);
     const [modalidad, setModalidad] = useState<string | number>("");
 
-    // Estados para habilidades
+    // Estados para habilidades (SOLO AGREGAMOS EL ESTADO PARA CREAR HABILIDAD)
     const [inputHabilidadTecnica, setInputHabilidadTecnica] = useState("");
     const [inputHabilidadBlanda, setInputHabilidadBlanda] = useState("");
     const [habilidadesTecnicas, setHabilidadesTecnicas] = useState<Habilidad[]>([]);
     const [habilidadesBlandas, setHabilidadesBlandas] = useState<Habilidad[]>([]);
     const [sugerenciasTecnicas, setSugerenciasTecnicas] = useState<Habilidad[]>([]);
     const [sugerenciasBlandas, setSugerenciasBlandas] = useState<Habilidad[]>([]);
+    const [creandoHabilidad, setCreandoHabilidad] = useState<"Técnica" | "Blanda" | null>(null); // NUEVO: estado para crear habilidades
 
     // Estados para modales
     const [modalEspecialidadesVisible, setModalEspecialidadesVisible] = useState(false);
@@ -209,7 +210,7 @@ export default function AgregarProyecto() {
         );
     }, [inputHabilidadBlanda, habilidadesBlandas, habilidades]);
 
-    // Funciones para habilidades
+    // Funciones para habilidades (MANTENEMOS LAS ORIGINALES Y AGREGAMOS LA NUEVA)
     const agregarHabilidad = (h: Habilidad, tipo: "Técnica" | "Blanda") => {
         if (tipo === "Técnica") {
             setHabilidadesTecnicas([...habilidadesTecnicas, h]);
@@ -217,6 +218,38 @@ export default function AgregarProyecto() {
         } else {
             setHabilidadesBlandas([...habilidadesBlandas, h]);
             setInputHabilidadBlanda("");
+        }
+    };
+
+    // NUEVA FUNCIÓN para crear y agregar habilidad (IGUAL QUE EDITAR PERFIL)
+    const crearYAgregarHabilidad = async (tipo: "Técnica" | "Blanda") => {
+        const nombreHabilidad = tipo === "Técnica" ? inputHabilidadTecnica : inputHabilidadBlanda;
+
+        if (!nombreHabilidad.trim()) return;
+
+        try {
+            setCreandoHabilidad(tipo);
+
+            const response = await axios.post(`${API_URL}/habilidades`, {
+                nombre: nombreHabilidad,
+                tipo: tipo
+            });
+
+            const nuevaHabilidad = response.data;
+
+            // Agregar a la lista de habilidades global
+            setHabilidades(prev => [...prev, nuevaHabilidad]);
+
+            // Agregar a las habilidades seleccionadas
+            agregarHabilidad(nuevaHabilidad, tipo);
+
+            showToast(`✅ Habilidad "${nombreHabilidad}" creada y agregada`, true);
+
+        } catch (error) {
+            console.error("Error creando habilidad:", error);
+            showToast("❌ Error al crear la habilidad");
+        } finally {
+            setCreandoHabilidad(null);
         }
     };
 
@@ -764,7 +797,26 @@ export default function AgregarProyecto() {
                     <Ionicons name="chevron-down" size={20} color="#213A8E" />
                 </TouchableOpacity>
 
-                {/* Habilidades técnicas */}
+                {/* Modalidad */}
+                <View style={styles.inputContainer}>
+                    <Picker
+                        selectedValue={modalidad}
+                        onValueChange={setModalidad}
+                        style={styles.picker}
+                        dropdownIconColor="#213A8E"
+                    >
+                        <Picker.Item label="Selecciona la modalidad" value={""} />
+                        {modalidades.map(mod => (
+                            <Picker.Item
+                                key={mod.idModalidad}
+                                label={mod.nombre}
+                                value={mod.idModalidad}
+                            />
+                        ))}
+                    </Picker>
+                </View>
+
+                {/* Habilidades técnicas - SOLO ACTUALIZAMOS LA PARTE DE SUGERENCIAS */}
                 <View style={{ zIndex: 1000 }}>
                     <View style={styles.chipsInputContainer} onLayout={(event) => {
                         const { y, width } = event.nativeEvent.layout;
@@ -807,9 +859,30 @@ export default function AgregarProyecto() {
                             </ScrollView>
                         </View>
                     )}
+                    {/* AGREGAMOS LA OPCIÓN PARA CREAR NUEVA HABILIDAD CUANDO NO HAY SUGERENCIAS */}
+                    {inputHabilidadTecnica.length > 0 && sugerenciasTecnicas.length === 0 && (
+                        <View style={[styles.suggestionsList, { 
+                            top: layoutTecnicas.y, 
+                            width: layoutTecnicas.width,
+                            left: 20
+                        }]}>
+                            <TouchableOpacity
+                                onPress={() => crearYAgregarHabilidad("Técnica")}
+                                style={styles.suggestionItem}
+                                disabled={creandoHabilidad === "Técnica"}
+                            >
+                                <Ionicons name="add-circle-outline" size={20} color="#2666DE" />
+                                <Text style={[styles.suggestionText, { marginLeft: 8 }]}>
+                                    {creandoHabilidad === "Técnica"
+                                        ? "Creando..."
+                                        : `Crear "${inputHabilidadTecnica}" como habilidad técnica`}
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+                    )}
                 </View>
 
-                {/* Habilidades blandas */}
+                {/* Habilidades blandas - SOLO ACTUALIZAMOS LA PARTE DE SUGERENCIAS */}
                 <View style={{ zIndex: 900 }}>
                     <View style={styles.chipsInputContainer} onLayout={(event) => {
                         const { y, width } = event.nativeEvent.layout;
@@ -852,25 +925,27 @@ export default function AgregarProyecto() {
                             </ScrollView>
                         </View>
                     )}
-                </View>
-
-                {/* Modalidad */}
-                <View style={styles.inputContainer}>
-                    <Picker
-                        selectedValue={modalidad}
-                        onValueChange={(v) => setModalidad(v)}
-                        style={styles.picker}
-                        dropdownIconColor="#213A8E"
-                    >
-                        <Picker.Item label="Selecciona la modalidad" value={""} />
-                        {modalidades.map(mod => (
-                            <Picker.Item
-                                key={mod.idModalidad}
-                                label={mod.nombre}
-                                value={mod.idModalidad}
-                            />
-                        ))}
-                    </Picker>
+                    {/* AGREGAMOS LA OPCIÓN PARA CREAR NUEVA HABILIDAD CUANDO NO HAY SUGERENCIAS */}
+                    {inputHabilidadBlanda.length > 0 && sugerenciasBlandas.length === 0 && (
+                        <View style={[styles.suggestionsList, { 
+                            top: layoutBlandas.y, 
+                            width: layoutBlandas.width,
+                            left: 20
+                        }]}>
+                            <TouchableOpacity
+                                onPress={() => crearYAgregarHabilidad("Blanda")}
+                                style={styles.suggestionItem}
+                                disabled={creandoHabilidad === "Blanda"}
+                            >
+                                <Ionicons name="add-circle-outline" size={20} color="#2666DE" />
+                                <Text style={[styles.suggestionText, { marginLeft: 8 }]}>
+                                    {creandoHabilidad === "Blanda"
+                                        ? "Creando..."
+                                        : `Crear "${inputHabilidadBlanda}" como habilidad blanda`}
+                                </Text>
+                            </TouchableOpacity>
+                        </View>
+                    )}
                 </View>
 
                 {/* Botón guardar - SIEMPRE HABILITADO */}
@@ -1062,7 +1137,7 @@ export default function AgregarProyecto() {
     );
 }
 
-// ESTILOS ACTUALIZADOS
+// ESTILOS ACTUALIZADOS - MANTENIENDO EXACTAMENTE LOS MISMOS ESTILOS ORIGINALES
 const styles = StyleSheet.create({
     container: { flex: 1, backgroundColor: "#fff" },
     header: {
@@ -1251,6 +1326,8 @@ const styles = StyleSheet.create({
         borderBottomWidth: 1,
         borderBottomColor: '#f0f0f0',
         backgroundColor: '#fff',
+        flexDirection: 'row',
+        alignItems: 'center',
     },
     suggestionText: {
         fontSize: 14,

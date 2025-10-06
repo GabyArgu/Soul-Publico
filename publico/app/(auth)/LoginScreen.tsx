@@ -1,17 +1,18 @@
-import { View, Text, TextInput, TouchableOpacity, StyleSheet, ImageBackground, Platform } from "react-native";
-import { useRouter } from "expo-router";
-import { useState, useEffect } from "react";
 import axios from "axios";
-import Toast from "react-native-root-toast";
-import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
+import { useRouter } from "expo-router";
 import * as SecureStore from 'expo-secure-store';
-import { AppState } from "react-native";
+import { useEffect, useState } from "react";
+import { AppState, ImageBackground, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
+import Toast from "react-native-root-toast";
+import { Ionicons } from "@expo/vector-icons";
 
 export default function Login() {
     const router = useRouter();
     const [carnet, setCarnet] = useState("");
     const [password, setPassword] = useState("");
-    const API_URL = "https://d06a6c5dfc30.ngrok-free.app/api/auth";
+    const [showPassword, setShowPassword] = useState(false); // Nuevo estado para mostrar/ocultar contraseña
+    const API_URL = "https://888f4c9ee1eb.ngrok-free.app/api/auth";
 
     // Detectar cierre de app / background → eliminar sesión
     useEffect(() => {
@@ -27,6 +28,11 @@ export default function Login() {
         if (/^[A-Za-z]{0,2}[0-9]{0,6}$/.test(text)) {
             setCarnet(text.toUpperCase());
         }
+    };
+
+    // Función para alternar entre mostrar y ocultar contraseña
+    const toggleShowPassword = () => {
+        setShowPassword(!showPassword);
     };
 
     const showToast = (message: string, success: boolean = false) => {
@@ -111,14 +117,30 @@ export default function Login() {
                             onChangeText={validarCarnet}
                             keyboardType="default"
                         />
-                        <TextInput
-                            style={[styles.input, styles.inputPassword]}
-                            placeholder="Ingresa tu contraseña"
-                            placeholderTextColor="#666"
-                            value={password}
-                            onChangeText={setPassword}
-                            secureTextEntry
-                        />
+                        
+                        {/* Input de contraseña con icono de ojito */}
+                        <View style={[styles.input, styles.inputPassword, styles.passwordContainer]}>
+                            <TextInput
+                                style={styles.passwordInput}
+                                placeholder="Ingresa tu contraseña"
+                                placeholderTextColor="#666"
+                                value={password}
+                                onChangeText={setPassword}
+                                secureTextEntry={!showPassword}
+                            />
+                            <TouchableOpacity 
+                                onPress={toggleShowPassword} 
+                                style={styles.eyeIcon}
+                                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                            >
+                                <Ionicons 
+                                    name={showPassword ? "eye" : "eye-off"} 
+                                    size={22} 
+                                    color="#1942BF" 
+                                />
+                            </TouchableOpacity>
+                        </View>
+                        
                         <TouchableOpacity onPress={handleLogin} style={styles.loginButton}>
                             <Text style={styles.loginButtonText}>Ingresar</Text>
                         </TouchableOpacity>
@@ -137,11 +159,66 @@ const styles = StyleSheet.create({
     background: { flex: 1, width: '100%', height: '100%', justifyContent: 'flex-end', alignItems: 'center' },
     container: { flex: 1, justifyContent: 'flex-end', alignItems: 'center', marginBottom: 45 },
     formContainer: { width: 300, borderRadius: 15, padding: 8, backgroundColor: 'transparent' },
-    input: { backgroundColor: '#EFF1F8', borderRadius: 12, padding: 15, marginBottom: 20, fontSize: 16, fontFamily: 'Inter-Bold',fontWeight: "bold" },
-    inputCarnet: { borderLeftWidth: 15, borderLeftColor: '#F9DC50' },
-    inputPassword: { borderLeftWidth: 15, borderLeftColor: '#2666DE' },
-    loginButton: { backgroundColor: '#2666DE', borderRadius: 25, paddingVertical: 16, alignItems: 'center', marginBottom: 12 },
-    loginButtonText: { color: 'white', fontSize: 16, fontFamily: 'Inter-Bold',fontWeight: "bold" },
-    registerButton: { padding: 12, alignItems: 'center' },
-    registerButtonText: { color: '#1942BF', fontSize: 16, fontFamily: 'Inter-Bold' ,fontWeight: "bold"},
+    input: { 
+        backgroundColor: '#EFF1F8', 
+        borderRadius: 12, 
+        padding: 15, 
+        marginBottom: 20, 
+        fontSize: 16, 
+        fontFamily: 'Inter-Bold',
+        fontWeight: "bold" 
+    },
+    inputCarnet: { 
+        borderLeftWidth: 15, 
+        borderLeftColor: '#F9DC50' 
+    },
+    inputPassword: { 
+        borderLeftWidth: 15, 
+        borderLeftColor: '#2666DE', 
+        color: 'black',
+        paddingRight: 50, // Espacio para el icono
+    },
+    // Nuevos estilos para el contenedor de contraseña
+    passwordContainer: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        position: 'relative',
+    },
+    passwordInput: {
+        flex: 1,
+        fontSize: 16,
+        fontFamily: 'Inter-Bold',
+        fontWeight: "bold",
+        color: 'black',
+        paddingRight: 10,
+    },
+    eyeIcon: {
+        position: 'absolute',
+        right: 15,
+        padding: 4,
+    },
+    loginButton: { 
+        backgroundColor: '#2666DE', 
+        borderRadius: 25, 
+        paddingVertical: 16, 
+        alignItems: 'center', 
+        marginBottom: 12 
+    },
+    loginButtonText: { 
+        color: 'white', 
+        fontSize: 16, 
+        fontFamily: 'Inter-Bold',
+        fontWeight: "bold" 
+    },
+    registerButton: { 
+        padding: 12, 
+        alignItems: 'center' 
+    },
+    registerButtonText: { 
+        color: '#1942BF', 
+        fontSize: 16, 
+        fontFamily: 'Inter-Bold',
+        fontWeight: "bold"
+    },
 });

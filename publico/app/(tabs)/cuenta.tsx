@@ -1,11 +1,11 @@
 // app/(main)/Perfil.tsx
-import { View, Text, StyleSheet, Image, TouchableOpacity, Linking } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import { useState, useEffect } from "react";
 import axios from "axios";
-import { Dialog, Portal, Button, Paragraph } from 'react-native-paper';
-import { getUserData, UserData, clearUserData } from '../utils/session';
+import { useRouter } from "expo-router";
+import { useEffect, useState } from "react";
+import { Image, Linking, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { Button, Dialog, Paragraph, Portal } from 'react-native-paper';
+import { clearUserData, getUserData, UserData } from '../utils/session';
 
 // Interface para los datos del usuario
 interface Usuario {
@@ -33,7 +33,7 @@ export default function Perfil() {
     const [logoutVisible, setLogoutVisible] = useState(false);
     const [cvErrorVisible, setCvErrorVisible] = useState(false);
     const [cvErrorMessage, setCvErrorMessage] = useState("");
-    const API_URL = "https://d06a6c5dfc30.ngrok-free.app/api";
+    const API_URL = "https://888f4c9ee1eb.ngrok-free.app/api";
 
     // Cargar datos del usuario logeado
     useEffect(() => {
@@ -283,7 +283,7 @@ export default function Perfil() {
                         pathname: "/(tabs)/editar",
                         params: {
                             usuario: JSON.stringify(usuario),
-                            carnetUsuario: userData?.carnet,
+                            carnetOriginal: userData?.carnet, // IMPORTANTE: Pasar carnet actual
                             nombreUsuario: userData?.nombreCompleto,
                             generoUsuario: userData?.genero
                         }
@@ -302,7 +302,7 @@ export default function Perfil() {
                     onPress={() => router.push("/")}
                 />
                 <Ionicons
-                    name="cloud-outline"
+                    name="star-outline"
                     size={28}
                     color="#fff"
                     onPress={() => router.push("/(tabs)/guardados")}

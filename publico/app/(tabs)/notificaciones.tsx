@@ -1,11 +1,10 @@
 // app/(main)/Notificaciones.tsx
-import { View, Text, TouchableOpacity, StyleSheet, FlatList } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import type { IconProps } from "@expo/vector-icons/build/createIconSet";
-import { useRouter } from "expo-router";
-import { useState, useEffect } from "react";
 import axios from "axios";
-import { getUserData, UserData, checkAuthStatus  } from '../utils/session';
+import { useRouter } from "expo-router";
+import { useEffect, useState } from "react";
+import { FlatList, StyleSheet, Text, TouchableOpacity, View } from "react-native";
+import { getUserData, UserData } from '../utils/session';
 
 interface Notificacion {
     idNotificacion: number;
@@ -22,7 +21,7 @@ interface Notificacion {
 
 export default function Notificaciones() {
     const router = useRouter();
-    const API_URL = "https://d06a6c5dfc30.ngrok-free.app/api";
+    const API_URL = "https://888f4c9ee1eb.ngrok-free.app/api";
 
     const [userData, setUserData] = useState<UserData | null>(null);
     const [notificaciones, setNotificaciones] = useState<Notificacion[]>([]);
