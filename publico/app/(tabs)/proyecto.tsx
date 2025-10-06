@@ -270,7 +270,7 @@ export default function AgregarProyecto() {
     };
 
     const getEspecialidadesTexto = () => {
-        if (especialidades.length === 0) return "Selecciona las especialidades";
+        if (especialidades.length === 0) return "Carreras requeridas (opcional)";
         if (especialidades.length === 1) {
             const carrera = carreras.find(c => c.idCarrera === especialidades[0]);
             return carrera ? carrera.nombre : "1 especialidad seleccionada";
@@ -382,7 +382,7 @@ export default function AgregarProyecto() {
         const nuevosErrores: string[] = [];
 
         if (!nombreProyecto) nuevosErrores.push("Nombre del proyecto");
-        if (especialidades.length === 0) nuevosErrores.push("Especialidades");
+        //if (especialidades.length === 0) nuevosErrores.push("Especialidades");
         
         // Validar institución
         if (crearNuevaInstitucion) {
@@ -969,7 +969,7 @@ export default function AgregarProyecto() {
                 <View style={styles.modalOverlay}>
                     <View style={styles.modalContainer}>
                         <View style={styles.modalHeader}>
-                            <Text style={styles.modalTitle}>Seleccionar Especialidades</Text>
+                            <Text style={styles.modalTitle}>Carreras requeridas (opcional)</Text>
                             <TouchableOpacity
                                 style={styles.closeButton}
                                 onPress={() => setModalEspecialidadesVisible(false)}

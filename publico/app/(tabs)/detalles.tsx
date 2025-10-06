@@ -410,18 +410,22 @@ export default function DetalleProyecto() {
                 </View>
 
                 {/* Carreras Relacionadas */}
-                {carrerasArray.length > 0 && (
-                    <>
-                        <Text style={[styles.bold, { marginTop: 15 }]}>Carreras Relacionadas</Text>
-                        <View style={styles.habilidadesContainer}>
-                            {carrerasArray.map((carrera, idx) => (
-                                <View key={idx} style={[styles.habilidad, { backgroundColor: '#E5EDFB' }]}>
-                                    <Text style={[styles.habilidadText, { color: '#213A8E' }]}>{carrera}</Text>
-                                </View>
-                            ))}
-                        </View>
-                    </>
-                )}
+                <Text style={[styles.bold, { marginTop: 15 }]}>Carreras Requeridas</Text>
+
+<View style={styles.habilidadesContainer}>
+    {carrerasArray.length > 0 ? (
+        carrerasArray.map((carrera, idx) => (
+            <View key={idx} style={[styles.habilidad, { backgroundColor: '#E5EDFB' }]}>
+                <Text style={[styles.habilidadText, { color: '#213A8E' }]}>{carrera}</Text>
+            </View>
+        ))
+    ) : (
+        <View style={[styles.habilidad, { backgroundColor: '#E5EDFB' }]}>
+            <Text style={[styles.habilidadText, { color: '#213A8E' }]}>Indiferente</Text>
+        </View>
+    )}
+</View>
+
 
                 {/* Habilidades */}
                 {habilidadesArray.length > 0 && (
@@ -437,19 +441,22 @@ export default function DetalleProyecto() {
                     </>
                 )}
 
-                {/* Idiomas */}
-                {idiomasArray.length > 0 && (
-                    <>
-                        <Text style={[styles.bold, { marginTop: 15 }]}>Idiomas Requeridos</Text>
-                        <View style={styles.habilidadesContainer}>
-                            {idiomasArray.map((idioma, idx) => (
-                                <View key={idx} style={[styles.habilidad, { backgroundColor: '#f9dd5048' }]}>
-                                    <Text style={[styles.habilidadText, { color: '#B78800' }]}>{idioma}</Text>
-                                </View>
-                            ))}
-                        </View>
-                    </>
-                )}
+                <Text style={[styles.bold, { marginTop: 15 }]}>Idiomas Requeridos</Text>
+
+<View style={styles.habilidadesContainer}>
+    {idiomasArray.length > 0 ? (
+        idiomasArray.map((idioma, idx) => (
+            <View key={idx} style={[styles.habilidad, { backgroundColor: '#f9dd5048' }]}>
+                <Text style={[styles.habilidadText, { color: '#B78800' }]}>{idioma}</Text>
+            </View>
+        ))
+    ) : (
+        <View style={[styles.habilidad, { backgroundColor: '#f9dd5048' }]}>
+            <Text style={[styles.habilidadText, { color: '#B78800' }]}>Indiferente</Text>
+        </View>
+    )}
+</View>
+
 
                 {/* Fecha de Aplicación */}
                 {proyecto.fechaAplicacion && (
