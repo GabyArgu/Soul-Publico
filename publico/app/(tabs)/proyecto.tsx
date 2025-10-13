@@ -51,7 +51,7 @@ const { width: screenWidth } = Dimensions.get('window');
 
 export default function AgregarProyecto() {
     const router = useRouter();
-    const API_URL = "https://888f4c9ee1eb.ngrok-free.app/api";
+    const API_URL = "https://c545b1fef4d5.ngrok-free.app/api";
 
     // Estados para datos de usuario
     const [userData, setUserData] = useState<UserData | null>(null);
@@ -487,8 +487,6 @@ export default function AgregarProyecto() {
                     emailContacto: nuevaInstitucion.emailContacto
                 });
             }
-
-            console.log("Enviando datos:", proyectoData);
 
             const response = await axios.post(`${API_URL}/proyectos`, proyectoData);
 

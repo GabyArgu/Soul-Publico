@@ -21,7 +21,7 @@ interface Notificacion {
 
 export default function Notificaciones() {
     const router = useRouter();
-    const API_URL = "https://888f4c9ee1eb.ngrok-free.app/api";
+    const API_URL = "https://c545b1fef4d5.ngrok-free.app/api";
 
     const [userData, setUserData] = useState<UserData | null>(null);
     const [notificaciones, setNotificaciones] = useState<Notificacion[]>([]);
@@ -53,7 +53,6 @@ export default function Notificaciones() {
             setCargando(true);
             
             if (!userData?.carnet) {
-                console.log("No se pudo obtener el carnet");
                 setCargando(false);
                 return;
             }

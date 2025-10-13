@@ -4,7 +4,6 @@ import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, Dimensions, FlatList, Image, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { getUserData, UserData } from '../utils/session';
-import { RecommendationService } from "../../server/src/routes/recommendationService";
 
 interface Proyecto {
     idProyecto: number;
@@ -28,7 +27,7 @@ export default function Index() {
     const [filterModalVisible, setFilterModalVisible] = useState(false);
     const [searchTimeout, setSearchTimeout] = useState<any>();
 
-    const API_URL = "https://888f4c9ee1eb.ngrok-free.app/api";
+    const API_URL = "https://c545b1fef4d5.ngrok-free.app/api";
 
     const [idiomasDisponibles, setIdiomasDisponibles] = useState<string[]>([]);
     const [carrerasDisponibles, setCarrerasDisponibles] = useState<string[]>([]);
@@ -64,7 +63,6 @@ export default function Index() {
             const data = await getUserData();
             if (data) {
                 setUserData(data);
-                console.log("✅ Usuario cargado:", data.carnet);
             } else {
                 router.replace('/(auth)/Login');
             }
@@ -121,34 +119,28 @@ export default function Index() {
             let url = `${API_URL}/proyectos`;
             if (userData?.carnet) {
                 url = `${API_URL}/proyectos/recomendados/${userData.carnet}`;
-                console.log(`🎯 USANDO RECOMENDACIONES para: ${userData.carnet}`);
             } else {
                 console.log(`🔍 Usando endpoint normal (sin usuario)`);
             }
 
-            console.log(`📡 Fetching: ${url}?${params.toString()}`);
             
             const response = await fetch(`${url}?${params.toString()}`);
             
-            console.log(`📊 Response status:`, response.status);
             
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
             
             const responseText = await response.text();
-            console.log(`📊 Response recibido, longitud:`, responseText.length);
             
             let data;
             try {
                 data = JSON.parse(responseText);
-                console.log(`✅ JSON parseado correctamente`);
             } catch (parseError) {
                 console.error(`❌ Error parseando JSON:`, parseError);
                 throw new Error(`Error en formato de respuesta`);
             }
 
-            console.log(`✅ Proyectos recibidos:`, data.length);
             if (data.length > 0) {
                 console.log(`📋 Primer proyecto:`, data[0].titulo);
             }
@@ -160,7 +152,6 @@ export default function Index() {
             
             // Fallback robusto
             try {
-                console.log(`🔄 Intentando fallback sin recomendaciones...`);
                 const params = new URLSearchParams();
                 if (searchQuery) params.append("search", searchQuery);
                 selectedIdiomas.forEach(i => params.append("idioma", i));
@@ -213,9 +204,7 @@ export default function Index() {
     // MODIFICAR: Recargar cuando userData cambie o la pantalla reciba foco
     useFocusEffect(
         useCallback(() => {
-            console.log("🔄 useFocusEffect ejecutado");
             if (userData) {
-                console.log("👤 UserData disponible, cargando proyectos...");
                 cargarProyectos();
                 cargarFiltrosDisponibles();
             } else {
@@ -227,7 +216,6 @@ export default function Index() {
     // MODIFICAR: También cargar cuando userData se establezca por primera vez
     useEffect(() => {
         if (userData) {
-            console.log("👤 UserData actualizado, cargando proyectos...");
             cargarProyectos();
             cargarFiltrosDisponibles();
         }
@@ -246,7 +234,6 @@ export default function Index() {
     const proyectosInstitucionales = proyectos.filter(p => p.tipoProyecto === "Institucional");
     const proyectosExternos = proyectos.filter(p => p.tipoProyecto === "Externo");
 
-    console.log(`📊 Institucionales: ${proyectosInstitucionales.length}, Externos: ${proyectosExternos.length}`);
 
     const toggleSelection = (item: string, selected: string[], setSelected: (arr: string[]) => void) => {
         if (selected.includes(item)) {

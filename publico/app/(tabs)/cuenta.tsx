@@ -33,7 +33,7 @@ export default function Perfil() {
     const [logoutVisible, setLogoutVisible] = useState(false);
     const [cvErrorVisible, setCvErrorVisible] = useState(false);
     const [cvErrorMessage, setCvErrorMessage] = useState("");
-    const API_URL = "https://888f4c9ee1eb.ngrok-free.app/api";
+    const API_URL = "https://c545b1fef4d5.ngrok-free.app/api";
 
     // Cargar datos del usuario logeado
     useEffect(() => {

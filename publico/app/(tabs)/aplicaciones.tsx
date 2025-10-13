@@ -57,7 +57,7 @@ export default function Aplicaciones() {
         )
     };
 
-    const API_URL = "https://888f4c9ee1eb.ngrok-free.app/api";
+    const API_URL = "https://c545b1fef4d5.ngrok-free.app/api";
 
     // Cargar datos del usuario
     useEffect(() => {

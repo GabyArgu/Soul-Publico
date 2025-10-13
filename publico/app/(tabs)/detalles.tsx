@@ -29,7 +29,7 @@ export default function DetalleProyecto() {
     const router = useRouter();
     const params = useLocalSearchParams();
 
-    const API_URL = "https://888f4c9ee1eb.ngrok-free.app/api";
+    const API_URL = "https://c545b1fef4d5.ngrok-free.app/api";
 
     const [proyecto, setProyecto] = useState<ProyectoDetalle | null>(null);
     const [loading, setLoading] = useState(true);
@@ -61,7 +61,6 @@ export default function DetalleProyecto() {
             if (!response.ok) throw new Error(`Error HTTP: ${response.status}`);
 
             const usuario = await response.json();
-            console.log("Datos completos del usuario:", usuario);
             setIdUsuario(usuario.idUsuario || null);
             return usuario.idUsuario || null;
         } catch (error) {
@@ -102,13 +101,11 @@ export default function DetalleProyecto() {
 
     const verificarProyectoGuardado = async () => {
         try {
-            console.log("Verificando guardado - Usuario:", idUsuario, "Proyecto:", idProyecto);
 
             const response = await fetch(`${API_URL}/proyectos-guardados/verificar?userId=${idUsuario}&proyectoId=${idProyecto}`);
             if (!response.ok) throw new Error(`Error HTTP: ${response.status}`);
 
             const data = await response.json();
-            console.log("Resultado verificación:", data);
             setIsGuardado(data.estaGuardado);
         } catch (error) {
             console.error('Error al verificar proyecto guardado:', error);

@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import axios from "axios";
 import { useRouter } from "expo-router";
 import * as SecureStore from 'expo-secure-store';
@@ -5,14 +6,13 @@ import { useEffect, useState } from "react";
 import { AppState, ImageBackground, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
 import Toast from "react-native-root-toast";
-import { Ionicons } from "@expo/vector-icons";
 
 export default function Login() {
     const router = useRouter();
     const [carnet, setCarnet] = useState("");
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false); // Nuevo estado para mostrar/ocultar contraseña
-    const API_URL = "https://888f4c9ee1eb.ngrok-free.app/api/auth";
+    const API_URL = "https://c545b1fef4d5.ngrok-free.app/api/auth";
 
     // Detectar cierre de app / background → eliminar sesión
     useEffect(() => {

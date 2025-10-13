@@ -38,7 +38,7 @@ export default function Guardados() {
     const [proyectos, setProyectos] = useState<Proyecto[]>([]);
     const [loading, setLoading] = useState(true);
 
-    const API_URL = "https://888f4c9ee1eb.ngrok-free.app/api";
+    const API_URL = "https://c545b1fef4d5.ngrok-free.app/api";
 
     const [searchQuery, setSearchQuery] = useState("");
     const [filterModalVisible, setFilterModalVisible] = useState(false);

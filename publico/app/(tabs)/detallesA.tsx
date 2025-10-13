@@ -45,7 +45,7 @@ export default function DetalleAplicacion() {
     const router = useRouter();
     const params = useLocalSearchParams();
 
-    const API_URL = "https://888f4c9ee1eb.ngrok-free.app/api";
+    const API_URL = "https://c545b1fef4d5.ngrok-free.app/api";
 
     const [userData, setUserData] = useState<UserData | null>(null);
     const [aplicacion, setAplicacion] = useState<AplicacionDetalle | null>(null);

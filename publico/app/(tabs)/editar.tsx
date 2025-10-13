@@ -4,8 +4,8 @@ import DateTimePicker from "@react-native-community/datetimepicker";
 import { Picker } from "@react-native-picker/picker";
 import axios from "axios";
 import * as DocumentPicker from "expo-document-picker";
-import * as SecureStore from 'expo-secure-store';
 import { useRouter } from "expo-router";
+import * as SecureStore from 'expo-secure-store';
 import { useEffect, useState } from "react";
 import { Modal, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from "react-native";
 import Toast from "react-native-root-toast";
@@ -67,7 +67,7 @@ interface Disponibilidad {
 
 export default function EditarPerfil() {
     const router = useRouter();
-    const API_URL = "https://888f4c9ee1eb.ngrok-free.app/api";
+    const API_URL = "https://c545b1fef4d5.ngrok-free.app/api";
 
     // Estados para datos de usuario
     const [userData, setUserData] = useState<UserData | null>(null);

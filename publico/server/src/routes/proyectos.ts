@@ -396,9 +396,7 @@ router.get("/recomendados/:carnet", async (req, res) => {
 // GET /proyectos/debug/:carnet
 router.get("/debug/:carnet", async (req, res) => {
     try {
-        const { carnet } = req.params;
-        console.log(`🔧 DEBUG Endpoint llamado para carnet: ${carnet}`);
-        
+        const { carnet } = req.params;        
         const pool = await getConnection();
         const result = await pool.request()
             .input("carnet", carnet)

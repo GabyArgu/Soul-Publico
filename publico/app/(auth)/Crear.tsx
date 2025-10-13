@@ -11,7 +11,7 @@ import Toast from "react-native-root-toast";
 
 export default function Crear() {
     const router = useRouter();
-    const API_URL = "https://888f4c9ee1eb.ngrok-free.app/api";
+    const API_URL = "https://c545b1fef4d5.ngrok-free.app/api";
 
     // Estados del formulario
     const [nombre, setNombre] = useState("");
