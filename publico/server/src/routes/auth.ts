@@ -42,7 +42,7 @@ router.post("/login", async (req, res) => {
     }
 
     const token = jwt.sign(
-      { id: user.id, carnet: user.carnet },
+      { idUsuario: user.idUsuario, carnet: user.carnet },
       process.env.JWT_SECRET || "secret",
       { expiresIn: "1h" }
     );
@@ -51,7 +51,7 @@ router.post("/login", async (req, res) => {
       message: "Login exitoso",
       token,
       user: {
-        id: user.id,
+        idUsuario: user.idUsuario,
         nombreCompleto: user.nombreCompleto,
         genero: user.genero, 
         carnet: user.carnet,

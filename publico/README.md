@@ -10,7 +10,7 @@
 ## 📋 Descripción
 
 **SOUL** es la **aplicación pública** para que los estudiantes gestionen y sigan sus proyectos universitarios desde dispositivos móviles.  
-Incluye frontend en **React Native (Expo)** y backend en **Node.js (Express)**, con base de datos **SQL Server** y API propia en `server/`.  
+Incluye frontend en **React Native (Expo)** y backend en **Node.js (Express)**, con base de datos **SQL Server** y API propia en `server/`.
 
 La comunicación con el backend se realiza vía **API REST**, configurada dinámicamente usando **ngrok**.
 
@@ -18,10 +18,10 @@ La comunicación con el backend se realiza vía **API REST**, configurada dinám
 
 ## 🚀 Características Principales
 
-- Registro y envío de proyectos.  
-- Seguimiento del estado y retroalimentación.  
-- Perfil de usuario editable.  
-- Notificaciones automáticas.  
+- Registro y envío de proyectos.
+- Seguimiento del estado y retroalimentación.
+- Perfil de usuario editable.
+- Notificaciones automáticas.
 - Seguridad mediante JWT y validaciones.
 
 ---
@@ -29,17 +29,19 @@ La comunicación con el backend se realiza vía **API REST**, configurada dinám
 ## 🛠️ Tecnologías Utilizadas
 
 ### **Frontend (React Native)**
-- React Native + Expo  
-- React Navigation  
-- Axios  
-- Context API / Estado global  
-- Estilos con Tailwind / NativeWind  
+
+- React Native + Expo
+- React Navigation
+- Axios
+- Context API / Estado global
+- Estilos con Tailwind / NativeWind
 
 ### **Backend (Node.js / Express)**
-- Node.js + Express  
-- SQL Server (mssql)  
-- JWT para autenticación  
-- Validaciones y seguridad  
+
+- Node.js + Express
+- SQL Server (mssql)
+- JWT para autenticación
+- Validaciones y seguridad
 
 ---
 
@@ -60,17 +62,19 @@ Base de Datos (SQL Server)
 ## 📦 Instalación y Ejecución
 
 ### 🧾 Prerrequisitos
+
 Asegúrate de tener instalado:
 
-- Node.js 18+  
-- npm o yarn  
-- Expo CLI (`npm install -g expo-cli`)  
-- SQL Server  
+- Node.js 18+
+- npm o yarn
+- Expo CLI (`npm install -g expo-cli`)
+- SQL Server
 - ngrok (para exponer localmente la API)
 
 ---
 
 ### 🔹 1. Clonar el Repositorio
+
 ```bash
 git clone https://github.com/GabyArgu/Soul-Publico
 cd soul-app
@@ -94,11 +98,12 @@ npm run dev
 ngrok http 4000
 ```
 
-3. Copia la URL que ngrok te da (ej: `https://c545b1fef4d5.ngrok-free.app`) y reemplaza en:
+3. Copia la URL que ngrok te da (ej: `https://3cc5-2800-b20-111a-4f8d-7d2c-aa82-594c-722c.ngrok-free.app`) y reemplaza en:
 
 ```javascript
- API_URL = "AQUI/api"; 
+API_URL = "AQUI/api";
 ```
+
 ```text
 recomendado usar la funcion de buscar y remplazar de visual
 ```
@@ -135,10 +140,10 @@ Contraseña: 1234
 
 ## 🔐 Seguridad
 
-- Autenticación JWT  
-- Validación de entradas en frontend y backend  
-- Hash de contraseñas con **bcrypt**  
-- Protección contra inyección SQL  
+- Autenticación JWT
+- Validación de entradas en frontend y backend
+- Hash de contraseñas con **bcrypt**
+- Protección contra inyección SQL
 - Configuración de CORS segura
 
 ---
@@ -147,8 +152,8 @@ Contraseña: 1234
 
 - 🎯 Proyectos recomendado con machine learneing
 - 🎓 Gestión de perfil
-- 🔔 Sistema de Notificaciones  
-- 🔐 Aplicar a proyectos o crearlos 
+- 🔔 Sistema de Notificaciones
+- 🔐 Aplicar a proyectos o crearlos
 
 ---
 
@@ -160,18 +165,18 @@ Contraseña: 1234
 
 ## 👥 Equipo de Desarrollo
 
-| Integrante        | Rol        | Responsabilidad                            |
-|-------------------|------------|---------------------------------------------|
-| Gabriela Méndez   | Frontend   | Desarrollo móvil y diseño UI               |
-| Milton Flores     | Backend    | API REST, base de datos y Docker           |
+| Integrante      | Rol      | Responsabilidad                  |
+| --------------- | -------- | -------------------------------- |
+| Gabriela Méndez | Frontend | Desarrollo móvil y diseño UI     |
+| Milton Flores   | Backend  | API REST, base de datos y Docker |
 
 ---
 
 ## 🧠 Lecciones Aprendidas
 
-- Integración de React Native con APIs REST en Node.js.  
-- Uso de ngrok para exponer localmente la API a dispositivos móviles.  
-- Manejo de autenticación JWT y seguridad básica.  
+- Integración de React Native con APIs REST en Node.js.
+- Uso de ngrok para exponer localmente la API a dispositivos móviles.
+- Manejo de autenticación JWT y seguridad básica.
 - Buenas prácticas de documentación y organización de proyectos.
 
 ---
