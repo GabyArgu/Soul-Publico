@@ -17,6 +17,7 @@ import {
 } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import Toast from "react-native-root-toast";
+import { API_URL } from "../utils/config";
 
 interface Habilidad {
   idHabilidad: number;
@@ -34,8 +35,6 @@ interface Nivel {
 
 export default function Crear2() {
   const router = useRouter();
-  const API_URL =
-    "https://efb6-2800-b20-111a-4f8d-d970-1cf3-fd4b-9f52.ngrok-free.app/api";
   const params = useLocalSearchParams();
   const userData = params.userData ? JSON.parse(params.userData as string) : {};
 

@@ -16,6 +16,7 @@ import {
     View,
 } from "react-native";
 import { getUserData, UserData } from "../utils/session";
+import { API_URL } from "../utils/config";
 
 interface Proyecto {
   idProyecto: number;
@@ -38,9 +39,6 @@ export default function Index() {
   const [searchQuery, setSearchQuery] = useState("");
   const [filterModalVisible, setFilterModalVisible] = useState(false);
   const [searchTimeout, setSearchTimeout] = useState<any>();
-
-  const API_URL =
-    "https://efb6-2800-b20-111a-4f8d-d970-1cf3-fd4b-9f52.ngrok-free.app/api";
 
   const [idiomasDisponibles, setIdiomasDisponibles] = useState<string[]>([]);
   const [carrerasDisponibles, setCarrerasDisponibles] = useState<string[]>([]);

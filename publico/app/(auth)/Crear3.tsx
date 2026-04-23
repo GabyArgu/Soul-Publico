@@ -5,17 +5,10 @@ import axios from "axios";
 import * as DocumentPicker from "expo-document-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import {
-    ImageBackground,
-    StyleSheet,
-    Switch,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
-} from "react-native";
+import {ImageBackground, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View,} from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import Toast from "react-native-root-toast";
+import { API_URL } from "../utils/config";
 
 export default function Crear3() {
   const router = useRouter();
@@ -23,9 +16,6 @@ export default function Crear3() {
   const paso2Data = params.combinedData
     ? JSON.parse(params.combinedData as string)
     : {};
-
-  const API_URL =
-    "https://efb6-2800-b20-111a-4f8d-d970-1cf3-fd4b-9f52.ngrok-free.app/api";
 
   // Estados
   const [transportarse, setTransportarse] = useState(false);

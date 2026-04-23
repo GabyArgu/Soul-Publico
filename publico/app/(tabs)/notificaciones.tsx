@@ -11,6 +11,7 @@ import {
     View,
 } from "react-native";
 import { getUserData, UserData } from "../utils/session";
+import { API_URL } from "../utils/config";
 
 interface Notificacion {
   idNotificacion: number;
@@ -27,8 +28,6 @@ interface Notificacion {
 
 export default function Notificaciones() {
   const router = useRouter();
-  const API_URL =
-    "https://efb6-2800-b20-111a-4f8d-d970-1cf3-fd4b-9f52.ngrok-free.app/api";
 
   const [userData, setUserData] = useState<UserData | null>(null);
   const [notificaciones, setNotificaciones] = useState<Notificacion[]>([]);

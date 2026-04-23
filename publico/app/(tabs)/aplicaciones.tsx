@@ -15,6 +15,7 @@ import {
     View,
 } from "react-native";
 import { getUserData, UserData } from "../utils/session";
+import { API_URL } from "../utils/config";
 
 interface Aplicacion {
   idAplicacion: number;
@@ -80,9 +81,6 @@ export default function Aplicaciones() {
         !c.toLowerCase().includes("ingenieria"),
     ),
   };
-
-  const API_URL =
-    "https://efb6-2800-b20-111a-4f8d-d970-1cf3-fd4b-9f52.ngrok-free.app/api";
 
   // Cargar datos del usuario
   useEffect(() => {

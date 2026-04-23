@@ -3,25 +3,16 @@ import axios from "axios";
 import { useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { useEffect, useState } from "react";
-import {
-    AppState,
-    ImageBackground,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
-} from "react-native";
+import { AppState, ImageBackground, StyleSheet, Text, TextInput, TouchableOpacity, View,} from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import Toast from "react-native-root-toast";
+import { AUTH_API_URL } from "../utils/config";
 
 export default function Login() {
   const router = useRouter();
   const [carnet, setCarnet] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const API_URL =
-    "https://efb6-2800-b20-111a-4f8d-d970-1cf3-fd4b-9f52.ngrok-free.app/api/auth";
 
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (state) => {
@@ -70,7 +61,7 @@ export default function Login() {
     }
 
     try {
-      const res = await axios.post(`${API_URL}/login`, { carnet, password });
+      const res = await axios.post(`${AUTH_API_URL}/login`, { carnet, password });
       showToast("¡Login exitoso!", true);
 
       const fullName = res.data.user.nombreCompleto;

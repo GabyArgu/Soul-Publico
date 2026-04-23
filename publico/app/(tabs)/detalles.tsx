@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import Toast from "react-native-root-toast";
 import { getUserData, UserData } from "../utils/session";
+import { API_URL } from "../utils/config";
 
 interface ProyectoDetalle {
   idProyecto: number;
@@ -35,9 +36,6 @@ interface ProyectoDetalle {
 export default function DetalleProyecto() {
   const router = useRouter();
   const params = useLocalSearchParams();
-
-  const API_URL =
-    "https://efb6-2800-b20-111a-4f8d-d970-1cf3-fd4b-9f52.ngrok-free.app/api";
 
   const [proyecto, setProyecto] = useState<ProyectoDetalle | null>(null);
   const [loading, setLoading] = useState(true);

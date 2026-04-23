@@ -17,6 +17,7 @@ import {
 } from "react-native";
 import Toast from "react-native-root-toast";
 import { getUserData, UserData } from "../utils/session";
+import { API_URL } from "../utils/config";
 
 interface Habilidad {
   idHabilidad: number;
@@ -60,8 +61,6 @@ const { width: screenWidth } = Dimensions.get("window");
 
 export default function AgregarProyecto() {
   const router = useRouter();
-  const API_URL =
-    "https://efb6-2800-b20-111a-4f8d-d970-1cf3-fd4b-9f52.ngrok-free.app/api";
 
   // Estados para datos de usuario
   const [userData, setUserData] = useState<UserData | null>(null);
