@@ -338,6 +338,31 @@ router.post("/aplicar", async (req, res) => {
 
         await transporter.sendMail(mailOptions);
 
+        const mailOptionsUsuario = {
+            from: process.env.EMAIL_USER || '"SOUL" <tu-correo@gmail.com>',
+            to: usuario.email,
+            subject: `Confirmación de aplicación: ${proyecto.titulo}`,
+            html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; border: 1px solid #ddd; border-radius: 10px; overflow: hidden;">
+                    <div style="background-color: #2666DE; color: white; padding: 20px; text-align: center;">
+                        <h1 style="margin:0;">¡Aplicación Recibida!</h1>
+                    </div>
+                    <div style="padding: 20px; color: #333; line-height: 1.6;">
+                        <p>Hola <strong>${usuario.nombreCompleto}</strong>,</p>
+                        <p>Has aplicado correctamente al proyecto: <strong>${proyecto.titulo}</strong>.</p>
+                        <p>Tu currículum ha sido enviado al encargado del proyecto. Ahora, por favor ten paciencia mientras el encargado revisa tu perfil para aprobar o desaprobar tu solicitud.</p>
+                        <p><strong>Nota importante:</strong> Una vez que tu solicitud sea aprobada y recibas la carta de aceptación (por correo, WhatsApp o el medio que el encargado elija), deberás subir dicha carta al portal del estudiante para continuar con tu proceso.</p>
+                        <p>¡Mucho éxito!</p>
+                    </div>
+                    <div style="background-color: #F9DC50; text-align: center; padding: 15px; font-size: 12px; color: #333;">
+                        Este es un mensaje automático enviado desde <strong>SOUL</strong>
+                    </div>
+                </div>
+            `
+        };
+
+        await transporter.sendMail(mailOptionsUsuario);
+
         res.json({ ok: true, message: "Aplicación enviada y registrada correctamente" });
 
     } catch (error) {

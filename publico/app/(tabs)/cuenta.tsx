@@ -4,12 +4,12 @@ import axios from "axios";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
-  Image,
-  Linking,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    Image,
+    Linking,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { Button, Dialog, Paragraph, Portal } from "react-native-paper";
 import { clearUserData, getUserData, UserData } from "../utils/session";
@@ -41,7 +41,7 @@ export default function Perfil() {
   const [cvErrorVisible, setCvErrorVisible] = useState(false);
   const [cvErrorMessage, setCvErrorMessage] = useState("");
   const API_URL =
-    "https://3cc5-2800-b20-111a-4f8d-7d2c-aa82-594c-722c.ngrok-free.app/api";
+    "https://efb6-2800-b20-111a-4f8d-d970-1cf3-fd4b-9f52.ngrok-free.app/api";
 
   // Cargar datos del usuario logeado
   useEffect(() => {

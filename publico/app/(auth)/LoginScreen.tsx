@@ -4,14 +4,13 @@ import { useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { useEffect, useState } from "react";
 import {
-  AppState,
-  ImageBackground,
-  Platform,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    AppState,
+    ImageBackground,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import Toast from "react-native-root-toast";
@@ -20,11 +19,10 @@ export default function Login() {
   const router = useRouter();
   const [carnet, setCarnet] = useState("");
   const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false); // Nuevo estado para mostrar/ocultar contraseña
+  const [showPassword, setShowPassword] = useState(false);
   const API_URL =
-    "https://3cc5-2800-b20-111a-4f8d-7d2c-aa82-594c-722c.ngrok-free.app/api/auth";
+    "https://efb6-2800-b20-111a-4f8d-d970-1cf3-fd4b-9f52.ngrok-free.app/api/auth";
 
-  // Detectar cierre de app / background → eliminar sesión
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (state) => {
       if (state === "inactive" || state === "background") {
@@ -40,7 +38,6 @@ export default function Login() {
     }
   };
 
-  // Función para alternar entre mostrar y ocultar contraseña
   const toggleShowPassword = () => {
     setShowPassword(!showPassword);
   };
@@ -83,17 +80,6 @@ export default function Login() {
       const email = res.data.user.email;
       const urlCv = res.data.user.urlCv;
 
-      console.log(
-        "Datos del usuario:",
-        fullName,
-        genero,
-        userCarnet,
-        idUsuario,
-        email,
-        urlCv,
-      );
-
-      // Guardar en SecureStore para mantener sesión segura
       await SecureStore.setItemAsync(
         "userData",
         JSON.stringify({
@@ -106,14 +92,12 @@ export default function Login() {
         }),
       );
 
-      // Lógica de displayName
       const nameParts = fullName.split(" ");
       const displayName =
         nameParts.length >= 3
           ? `${nameParts[0]} ${nameParts[2]}`
           : nameParts[0];
 
-      // Navegar a Tabs
       router.replace({
         pathname: "/(tabs)",
         params: {
@@ -122,50 +106,44 @@ export default function Login() {
         },
       });
     } catch (err: any) {
-      // Capturar específicamente errores de credenciales incorrectas
       if (err.response?.status === 400) {
         showToast("❌ Carnet o contraseña incorrectos");
       } else {
-        // Para otros tipos de errores
-        console.error("Error login:", err.response?.data || err.message || err);
         showToast("❌ Error de conexión. Intenta nuevamente.");
       }
     }
   };
 
   return (
-    <KeyboardAwareScrollView
-      contentContainerStyle={styles.scrollContainer}
-      keyboardShouldPersistTaps="handled"
-      extraScrollHeight={Platform.select({ ios: 0, android: 20 })}
-      enableOnAndroid={true}
+    <ImageBackground
+      source={require("../../assets/images/fondo-l.png")}
+      style={styles.background}
+      resizeMode="cover"
     >
-      <ImageBackground
-        source={require("../../assets/images/fondo-l.png")}
-        style={styles.background}
-        resizeMode="cover"
+      <KeyboardAwareScrollView
+        contentContainerStyle={styles.scrollContainer}
+        keyboardShouldPersistTaps="handled"
+        extraScrollHeight={-190}
+        enableOnAndroid={true}
+        bounces={false}
       >
         <View style={styles.container}>
           <View style={styles.formContainer}>
-            <TextInput
-              style={[styles.input, styles.inputCarnet]}
-              placeholder="Ingresa tu carnet"
-              placeholderTextColor="#666"
-              value={carnet}
-              onChangeText={validarCarnet}
-              keyboardType="default"
-            />
-
-            {/* Input de contraseña con icono de ojito */}
-            <View
-              style={[
-                styles.input,
-                styles.inputPassword,
-                styles.passwordContainer,
-              ]}
-            >
+            <View style={[styles.input, styles.inputCarnet]}>
               <TextInput
-                style={styles.passwordInput}
+                style={styles.generalInput}
+                placeholder="Ingresa tu carnet"
+                placeholderTextColor="#666"
+                value={carnet}
+                onChangeText={validarCarnet}
+                keyboardType="default"
+                autoCapitalize="characters"
+              />
+            </View>
+
+            <View style={[styles.input, styles.inputPassword]}>
+              <TextInput
+                style={styles.generalInput}
                 placeholder="Ingresa tu contraseña"
                 placeholderTextColor="#666"
                 value={password}
@@ -188,6 +166,7 @@ export default function Login() {
             <TouchableOpacity onPress={handleLogin} style={styles.loginButton}>
               <Text style={styles.loginButtonText}>Ingresar</Text>
             </TouchableOpacity>
+
             <TouchableOpacity
               style={styles.registerButton}
               onPress={() => router.push("/(auth)/Crear")}
@@ -196,40 +175,39 @@ export default function Login() {
             </TouchableOpacity>
           </View>
         </View>
-      </ImageBackground>
-    </KeyboardAwareScrollView>
+      </KeyboardAwareScrollView>
+    </ImageBackground>
   );
 }
 
 const styles = StyleSheet.create({
-  scrollContainer: { flexGrow: 1 },
   background: {
     flex: 1,
     width: "100%",
     height: "100%",
+  },
+  scrollContainer: {
+    flexGrow: 1,
     justifyContent: "flex-end",
-    alignItems: "center",
   },
   container: {
     flex: 1,
     justifyContent: "flex-end",
     alignItems: "center",
-    marginBottom: 45,
+    width: "100%",
+    paddingBottom: 80,
   },
   formContainer: {
     width: 300,
-    borderRadius: 15,
-    padding: 8,
     backgroundColor: "transparent",
   },
   input: {
     backgroundColor: "#EFF1F8",
     borderRadius: 12,
-    padding: 15,
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 20,
-    fontSize: 16,
-    fontFamily: "Inter-Bold",
-    fontWeight: "bold",
+    height: 58,
   },
   inputCarnet: {
     borderLeftWidth: 15,
@@ -238,34 +216,27 @@ const styles = StyleSheet.create({
   inputPassword: {
     borderLeftWidth: 15,
     borderLeftColor: "#2666DE",
-    color: "black",
-    paddingRight: 50, // Espacio para el icono
   },
-  // Nuevos estilos para el contenedor de contraseña
-  passwordContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    position: "relative",
-  },
-  passwordInput: {
+  generalInput: {
     flex: 1,
+    height: "100%",
+    paddingHorizontal: 15,
     fontSize: 16,
     fontFamily: "Inter-Bold",
     fontWeight: "bold",
     color: "black",
-    paddingRight: 10,
   },
   eyeIcon: {
-    position: "absolute",
-    right: 15,
-    padding: 4,
+    paddingRight: 15,
+    justifyContent: "center",
+    height: "100%",
   },
   loginButton: {
     backgroundColor: "#2666DE",
     borderRadius: 25,
     paddingVertical: 16,
     alignItems: "center",
+    marginTop: 10,
     marginBottom: 12,
   },
   loginButtonText: {

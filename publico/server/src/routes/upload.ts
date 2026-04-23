@@ -41,7 +41,7 @@ router.post("/cv", upload.single("cv"), (req, res) => {
   }
   // Devolver la ruta del archivo para guardarla en la base de datos
   const serverUrl =
-    "https://3cc5-2800-b20-111a-4f8d-7d2c-aa82-594c-722c.ngrok-free.app"; // Asegúrate de que esta es la IP correcta
+    "https://efb6-2800-b20-111a-4f8d-d970-1cf3-fd4b-9f52.ngrok-free.app"; // Asegúrate de que esta es la IP correcta
   const fileUrl = `${serverUrl}/uploads/${req.file.filename}`;
   res.json({ url: fileUrl, message: "Archivo subido con éxito" });
 });

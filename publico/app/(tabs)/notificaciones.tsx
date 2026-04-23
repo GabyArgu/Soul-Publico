@@ -28,7 +28,7 @@ interface Notificacion {
 export default function Notificaciones() {
   const router = useRouter();
   const API_URL =
-    "https://3cc5-2800-b20-111a-4f8d-7d2c-aa82-594c-722c.ngrok-free.app/api";
+    "https://efb6-2800-b20-111a-4f8d-d970-1cf3-fd4b-9f52.ngrok-free.app/api";
 
   const [userData, setUserData] = useState<UserData | null>(null);
   const [notificaciones, setNotificaciones] = useState<Notificacion[]>([]);
