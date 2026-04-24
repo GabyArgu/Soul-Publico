@@ -1,3 +1,4 @@
+// server / src/routes/upload.ts
 import { Router } from "express";
 import fs from "fs";
 import multer from "multer";
@@ -5,17 +6,15 @@ import path from "path";
 
 const router = Router();
 
-// Configurar multer para guardar archivos en la carpeta 'uploads'
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     const uploadDir = path.join(__dirname, "../uploads");
     if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir);
+      fs.mkdirSync(uploadDir, { recursive: true });
     }
     cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
-    // Generar un nombre de archivo único para evitar colisiones
     const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
     const fileExtension = path.extname(file.originalname);
     cb(null, file.fieldname + "-" + uniqueSuffix + fileExtension);
@@ -24,7 +23,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage: storage,
-  limits: { fileSize: 10 * 1024 * 1024 }, // Límite de 10MB
+  limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
     if (file.mimetype === "application/pdf") {
       cb(null, true);
@@ -34,15 +33,16 @@ const upload = multer({
   },
 });
 
-// Endpoint para subir un solo archivo (ej. CV)
 router.post("/cv", upload.single("cv"), (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: "No se subió ningún archivo" });
   }
-  // Devolver la ruta del archivo para guardarla en la base de datos
-  const serverUrl =
-    "https://efb6-2800-b20-111a-4f8d-d970-1cf3-fd4b-9f52.ngrok-free.app"; // Asegúrate de que esta es la IP correcta
+
+  // USAMOS LA VARIABLE DE ENTORNO. Si no existe, por defecto usa localhost
+  const serverUrl = process.env.SERVER_URL || "http://localhost:4000";
+  
   const fileUrl = `${serverUrl}/uploads/${req.file.filename}`;
+  
   res.json({ url: fileUrl, message: "Archivo subido con éxito" });
 });
 
