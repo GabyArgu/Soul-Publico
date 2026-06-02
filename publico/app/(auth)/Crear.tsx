@@ -706,7 +706,7 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     paddingHorizontal: 20,
-    maxHeight: "70%",
+    maxHeight: "90%",
   },
   especialidadOption: {
     flexDirection: "row",

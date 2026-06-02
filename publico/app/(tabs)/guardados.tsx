@@ -106,7 +106,7 @@ export default function Guardados() {
       if (searchQuery) queryParams.append("search", searchQuery);
       selectedIdiomas.forEach((i) => queryParams.append("idioma", i));
       selectedCarreras.forEach((c) => queryParams.append("carrera", c));
-      selectedModalidades.forEach((m) => queryParams.append("modalidad", m)); 
+      selectedModalidades.forEach((m) => queryParams.append("modalidad", m));
       queryParams.append("minHoras", selectedHorasRange[0].toString());
       queryParams.append("maxHoras", selectedHorasRange[1].toString());
       queryParams.append("carnet", userData.carnet);
@@ -329,7 +329,10 @@ export default function Guardados() {
           </TouchableOpacity>
         </View>
 
-        <ScrollView>
+        <ScrollView
+          style={styles.contentBackground}
+          contentContainerStyle={{ paddingBottom: 80 }}
+        >
           <Text style={styles.sectionTitle}>Institucionales</Text>
           {proyectosInstitucionales.length > 0 ? (
             <View style={styles.carouselContainer}>
@@ -402,7 +405,7 @@ export default function Guardados() {
                     style={[
                       styles.filterOption,
                       selectedIdiomas.includes(idioma) &&
-                        styles.filterOptionSelected,
+                      styles.filterOptionSelected,
                     ]}
                     onPress={() =>
                       toggleSelection(
@@ -427,7 +430,7 @@ export default function Guardados() {
                       style={[
                         styles.filterOptionText,
                         selectedIdiomas.includes(idioma) &&
-                          styles.filterOptionTextSelected,
+                        styles.filterOptionTextSelected,
                       ]}
                     >
                       {idioma}
@@ -444,7 +447,7 @@ export default function Guardados() {
                     style={[
                       styles.filterOption,
                       selectedModalidades.includes(modalidad) &&
-                        styles.filterOptionSelected,
+                      styles.filterOptionSelected,
                     ]}
                     onPress={() =>
                       toggleSelection(
@@ -471,7 +474,7 @@ export default function Guardados() {
                       style={[
                         styles.filterOptionText,
                         selectedModalidades.includes(modalidad) &&
-                          styles.filterOptionTextSelected,
+                        styles.filterOptionTextSelected,
                       ]}
                     >
                       {modalidad}
@@ -503,7 +506,7 @@ export default function Guardados() {
                       style={[
                         styles.filterOption,
                         selectedCarreras.includes(carrera) &&
-                          styles.filterOptionSelected,
+                        styles.filterOptionSelected,
                       ]}
                       onPress={() =>
                         toggleSelection(
@@ -530,7 +533,7 @@ export default function Guardados() {
                         style={[
                           styles.filterOptionText,
                           selectedCarreras.includes(carrera) &&
-                            styles.filterOptionTextSelected,
+                          styles.filterOptionTextSelected,
                         ]}
                       >
                         {carrera}
@@ -563,7 +566,7 @@ export default function Guardados() {
                       style={[
                         styles.filterOption,
                         selectedCarreras.includes(carrera) &&
-                          styles.filterOptionSelected,
+                        styles.filterOptionSelected,
                       ]}
                       onPress={() =>
                         toggleSelection(
@@ -590,7 +593,7 @@ export default function Guardados() {
                         style={[
                           styles.filterOptionText,
                           selectedCarreras.includes(carrera) &&
-                            styles.filterOptionTextSelected,
+                          styles.filterOptionTextSelected,
                         ]}
                       >
                         {carrera}
@@ -623,7 +626,7 @@ export default function Guardados() {
                       style={[
                         styles.filterOption,
                         selectedCarreras.includes(carrera) &&
-                          styles.filterOptionSelected,
+                        styles.filterOptionSelected,
                       ]}
                       onPress={() =>
                         toggleSelection(
@@ -650,7 +653,7 @@ export default function Guardados() {
                         style={[
                           styles.filterOptionText,
                           selectedCarreras.includes(carrera) &&
-                            styles.filterOptionTextSelected,
+                          styles.filterOptionTextSelected,
                         ]}
                       >
                         {carrera}
@@ -957,6 +960,10 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   bottomNav: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
     flexDirection: "row",
     justifyContent: "space-around",
     alignItems: "center",
@@ -966,6 +973,8 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 30,
     paddingBottom: 30,
     paddingTop: 20,
+    borderWidth: 0,
+    elevation: 0,
   },
   modalOverlay: {
     flex: 1,

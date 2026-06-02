@@ -338,7 +338,7 @@ export default function DetalleAplicacion() {
 
       <ScrollView
         style={styles.contentBackground}
-        contentContainerStyle={{ paddingBottom: 30 }}
+        contentContainerStyle={{ paddingBottom: 80 }}
       >
         {/* Tracking de Estados */}
         <View style={styles.trackingContainer}>
@@ -886,6 +886,10 @@ const styles = StyleSheet.create({
   },
 
   bottomNav: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
     flexDirection: "row",
     justifyContent: "space-around",
     alignItems: "center",
@@ -895,6 +899,8 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 30,
     paddingBottom: 30,
     paddingTop: 20,
+    borderWidth: 0,
+    elevation: 0,
   },
   retryButton: {
     backgroundColor: "#2666DE",

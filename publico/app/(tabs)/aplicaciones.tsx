@@ -324,7 +324,7 @@ export default function Aplicaciones() {
             <Ionicons name="filter" size={22} color="#fff" />
           </TouchableOpacity>
         </View>
-
+        
         {aplicaciones.length === 0 ? (
           <Text style={styles.emptyText}>No hay aplicaciones para mostrar</Text>
         ) : (
@@ -333,7 +333,7 @@ export default function Aplicaciones() {
             renderItem={renderCard}
             keyExtractor={(item) => item.idAplicacion.toString()}
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 20 }}
+            contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 80 }}
           />
         )}
       </View>
@@ -839,6 +839,10 @@ const styles = StyleSheet.create({
   bold: { fontFamily: "MyriadPro-Bold", fontWeight: "bold" },
   regular: { fontFamily: "MyriadPro-Regular" },
   bottomNav: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
     flexDirection: "row",
     justifyContent: "space-around",
     alignItems: "center",
@@ -848,6 +852,8 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 30,
     paddingBottom: 30,
     paddingTop: 20,
+    borderWidth: 0,
+    elevation: 0,
   },
   emptyText: {
     textAlign: "center",

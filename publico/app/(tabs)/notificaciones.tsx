@@ -1,7 +1,7 @@
 // app/(main)/Notificaciones.tsx
 import { Ionicons } from "@expo/vector-icons";
 import axios from "axios";
-import { useRouter } from "expo-router";
+import { useRouter, usePathname } from "expo-router";
 import { useEffect, useState } from "react";
 import {
     FlatList,
@@ -10,25 +10,26 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
-import Toast from "react-native-root-toast"; // Alternativa visual perfecta y libre de crashes para desarrollo
+import Toast from "react-native-root-toast"; 
 import { getUserData, UserData } from "../utils/session";
 import { API_URL } from "../utils/config";
 
 interface Notificacion {
-  idNotificacion: number;
-  idUsuario: string;
-  idProyecto: number | null;
-  idAplicacion: number | null;
-  titulo: string;
-  cuerpo: string;
-  estaLeida: boolean;
-  fechaCreacion: string;
-  proyectoNombre: string | null;
-  aplicacionEstado: string | null;
+    idNotificacion: number;
+    idUsuario: string;
+    idProyecto: number | null;
+    idAplicacion: number | null;
+    titulo: string;
+    cuerpo: string;
+    estaLeida: boolean;
+    fechaCreacion: string;
+    proyectoNombre: string | null;
+    aplicacionEstado: string | null;
 }
 
 export default function Notificaciones() {
   const router = useRouter();
+  const currentPath = usePathname();
 
   const [userData, setUserData] = useState<UserData | null>(null);
   const [notificaciones, setNotificaciones] = useState<Notificacion[]>([]);
@@ -54,7 +55,39 @@ export default function Notificaciones() {
     }
   }, [userData]);
 
-  // Cargar notificaciones desde tu API (notificaciones.ts)
+  // Función idéntica a la que usas en detalles.tsx para mantener la consistencia visual
+  const showToast = (
+    message: string,
+    type: "success" | "error" | "warning" = "error",
+  ) => {
+    let backgroundColor = "#E53935";
+    if (type === "success") backgroundColor = "#4CAF50";
+    if (type === "warning") backgroundColor = "#F0C02A";
+
+    Toast.show(message, {
+      duration: 2000,
+      position: Toast.positions.TOP,
+      shadow: true,
+      animation: true,
+      hideOnPress: true,
+      backgroundColor,
+      textColor: "#fff",
+      opacity: 0.95,
+      containerStyle: {
+        borderRadius: 10,
+        paddingHorizontal: 15,
+        paddingVertical: 10,
+        marginTop: 60,
+        alignSelf: "center",
+      },
+      textStyle: {
+        fontFamily: "MyriadPro-Bold",
+        fontSize: 14,
+      },
+    });
+  };
+
+  // Cargar notificaciones desde la API
   const cargarNotificaciones = async () => {
     try {
       setCargando(true);
@@ -64,33 +97,22 @@ export default function Notificaciones() {
         return;
       }
 
-      // Tu endpoint dinámico funcional de Express
       const response = await axios.get(
         `${API_URL}/notificaciones/${userData.carnet}`,
       );
       
-      // Filtrar solo las no leídas según las reglas de tu negocio
       const notificacionesNoLeidas = response.data.filter(
         (notif: Notificacion) => !notif.estaLeida,
       );
 
-      // Si entran notificaciones nuevas a la lista en tiempo real, disparamos una alerta Toast elegante
+      // Listener para nuevas notificaciones entrantes en tiempo real
       if (notificacionesNoLeidas.length > notificaciones.length && notificaciones.length > 0) {
         const nuevasDiferencia = notificacionesNoLeidas.filter(
           (n: Notificacion) => !notificaciones.some((existing) => existing.idNotificacion === n.idNotificacion)
         );
 
         for (const nueva of nuevasDiferencia) {
-          Toast.show(`🔔 ${nueva.titulo}\n${nueva.cuerpo}`, {
-            duration: 4000,
-            position: Toast.positions.TOP,
-            backgroundColor: "#2666DE",
-            textColor: "#fff",
-            shadow: true,
-            animation: true,
-            hideOnPress: true,
-            containerStyle: { borderRadius: 12, marginTop: 40, paddingHorizontal: 20 }
-          });
+          showToast(`🔔 ${nueva.titulo}: ${nueva.cuerpo}`, "success");
         }
       }
 
@@ -104,14 +126,14 @@ export default function Notificaciones() {
 
   const marcarComoLeida = async (idNotificacion: number) => {
     try {
-      // Consume el método PUT de tu API
       await axios.put(`${API_URL}/notificaciones/${idNotificacion}/leer`);
-      // Quitar la notificación de la lista localmente de forma reactiva
       setNotificaciones((prev) =>
         prev.filter((notif) => notif.idNotificacion !== idNotificacion),
       );
+      showToast("✓ Notificación eliminada", "success");
     } catch (error) {
       console.error("Error marcando notificación como leída:", error);
+      showToast("Error al archivar la notificación", "error");
     }
   };
 
@@ -133,11 +155,7 @@ export default function Notificaciones() {
       return "briefcase-outline";
     if (titulo.includes("aplicación") || titulo.includes("aplicacion"))
       return "checkbox-outline";
-    if (
-      titulo.includes("éxito") ||
-      titulo.includes("exito") ||
-      titulo.includes("felicidades")
-    )
+    if (titulo.includes("éxito") || titulo.includes("exito") || titulo.includes("felicidades"))
       return "trophy-outline";
     if (titulo.includes("importante") || titulo.includes("urgente"))
       return "warning-outline";
@@ -205,9 +223,26 @@ export default function Notificaciones() {
     }
   };
 
-  const handleNotificacionPress = async (notificacion: Notificacion) => {
-    await marcarComoLeida(notificacion.idNotificacion);
+  // MANEJADOR DE DIRECCIONAMIENTO OPTIMIZADO
+  const handleNotificacionPress = (notificacion: Notificacion) => {
+    const titulo = notificacion.titulo.toLowerCase();
 
+    // 1. Validar notificaciones meramente informativas usando tu diseño de Toast original (Amarillo/Warning)
+    if (titulo.startsWith("solicitud") || titulo.includes("rechazado")) {
+      showToast("⚠️ Esta notificación es solo informativa", "warning");
+      return;
+    }
+
+    // 2. Redirección al detalle de la aplicación (pasando el ID correspondiente)
+    if (titulo.includes("revisa tu aplicación") && notificacion.idAplicacion) {
+      router.push({
+        pathname: "/(tabs)/aplicaciones",
+        params: { idAplicacion: notificacion.idAplicacion.toString() }
+      });
+      return;
+    }
+
+    // 3. Redirección estándar al detalle de proyecto
     if (notificacion.idProyecto) {
       router.push({
         pathname: "/(tabs)/detalles",
@@ -244,9 +279,14 @@ export default function Notificaciones() {
         onPress={() => handleNotificacionPress(item)}
         activeOpacity={0.7}
       >
-        <View style={styles.cardIcon}>
+        {/* El icono gestiona la acción de archivar */}
+        <TouchableOpacity 
+          style={styles.cardIcon}
+          onPress={() => marcarComoLeida(item.idNotificacion)}
+          hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+        >
           <Ionicons name={iconName} size={25} color={palette.border} />
-        </View>
+        </TouchableOpacity>
 
         <Text style={styles.cardTitle}>{item.titulo}</Text>
         <Text style={styles.cardDesc}>{item.cuerpo}</Text>
@@ -264,6 +304,14 @@ export default function Notificaciones() {
     notificaciones.length > 0 ? (
       <Text style={styles.footerDots}>...</Text>
     ) : null;
+
+  const handleNavigation = (route: string) => {
+    if (route === "/notificaciones") {
+      cargarNotificaciones();
+      return;
+    }
+    router.replace(route as any);
+  };
 
   if (cargando) {
     return (
@@ -312,44 +360,38 @@ export default function Notificaciones() {
             renderItem={renderNotificacion}
             keyExtractor={(item) => item.idNotificacion.toString()}
             showsVerticalScrollIndicator={false}
-            contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 20 }}
+            style={styles.listaScroll}
+            contentContainerStyle={{ 
+              paddingHorizontal: 20, 
+              paddingTop: 20,
+              paddingBottom: 40 
+            }}
             ListFooterComponent={footerComponent}
           />
         )}
       </View>
 
-      {/* Bottom nav vinculada correctamente */}
+      {/* Bottom Nav */}
       <View style={styles.bottomNav}>
-        <Ionicons
-          name="home-outline"
-          size={28}
-          color="#fff"
-          onPress={() => router.push("/")}
-        />
-        <Ionicons
-          name="star-outline"
-          size={28}
-          color="#fff"
-          onPress={() => router.push("/(tabs)/guardados")}
-        />
-        <Ionicons
-          name="file-tray-outline"
-          size={28}
-          color="#fff"
-          onPress={() => router.push("/(tabs)/aplicaciones")}
-        />
-        <Ionicons
-          name="notifications"
-          size={28}
-          color="#fff"
-          onPress={() => router.push("/Notificaciones")}
-        />
-        <Ionicons
-          name="person-outline"
-          size={28}
-          color="#fff"
-          onPress={() => router.push("/(tabs)/cuenta")}
-        />
+        <TouchableOpacity onPress={() => handleNavigation("/")} activeOpacity={0.7}>
+          <Ionicons name="home-outline" size={28} color="#fff" />
+        </TouchableOpacity>
+        
+        <TouchableOpacity onPress={() => handleNavigation("/(tabs)/guardados")} activeOpacity={0.7}>
+          <Ionicons name="star-outline" size={28} color="#fff" />
+        </TouchableOpacity>
+        
+        <TouchableOpacity onPress={() => handleNavigation("/(tabs)/aplicaciones")} activeOpacity={0.7}>
+          <Ionicons name="file-tray-outline" size={28} color="#fff" />
+        </TouchableOpacity>
+        
+        <TouchableOpacity onPress={() => handleNavigation("/notificaciones")} activeOpacity={0.7}>
+          <Ionicons name="notifications" size={28} color="#fff" />
+        </TouchableOpacity>
+        
+        <TouchableOpacity onPress={() => handleNavigation("/(tabs)/cuenta")} activeOpacity={0.7}>
+          <Ionicons name="person-outline" size={28} color="#fff" />
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -365,6 +407,7 @@ const styles = StyleSheet.create({
     paddingTop: 91,
     marginBottom: 20,
     backgroundColor: "#fff",
+    zIndex: 10,
   },
   headerTitle: {
     fontSize: 20,
@@ -375,8 +418,9 @@ const styles = StyleSheet.create({
   contentBackground: {
     flex: 1,
     backgroundColor: "#F2F6FC",
-    paddingBottom: 10,
-    paddingTop: 20,
+  },
+  listaScroll: {
+    marginBottom: 82, 
   },
   card: {
     width: "100%",
@@ -391,6 +435,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: 12,
     right: 12,
+    zIndex: 5,
   },
   cardTitle: {
     fontSize: 15,
@@ -398,6 +443,7 @@ const styles = StyleSheet.create({
     fontFamily: "MyriadPro-Bold",
     marginBottom: 6,
     color: "#000",
+    paddingRight: 30,
   },
   cardDesc: {
     fontSize: 14,
@@ -424,6 +470,10 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
   },
   bottomNav: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
     flexDirection: "row",
     justifyContent: "space-around",
     alignItems: "center",
@@ -433,6 +483,8 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 30,
     paddingBottom: 30,
     paddingTop: 20,
+    borderWidth: 0,
+    elevation: 0,
   },
   loadingContainer: {
     flex: 1,

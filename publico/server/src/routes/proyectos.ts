@@ -314,7 +314,7 @@ router.post("/", async (req, res) => {
         }
 
         // PASO 7: Insertar Notificación interna en la BD
-        const tituloNoti = "Solicitud de creación enviada 📝";
+        const tituloNoti = "Solicitud de creación enviada";
         const cuerpoNoti = `Se ha mandado tu solicitud de creación del proyecto "${titulo}". Te estaremos notificando si es aprobado o no.`;
 
         await transaction.request()

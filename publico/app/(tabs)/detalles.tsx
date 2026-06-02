@@ -2,14 +2,7 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import {
-    ActivityIndicator,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
-} from "react-native";
+import {ActivityIndicator, Modal, ScrollView,StyleSheet, Text, TouchableOpacity, View,} from "react-native";
 import Toast from "react-native-root-toast";
 import { getUserData, UserData } from "../utils/session";
 import { API_URL } from "../utils/config";
@@ -27,7 +20,7 @@ interface ProyectoDetalle {
   modalidad: string;
   fechaInicio: string;
   fechaFin: string;
-  fechaAplicacion: string; // NUEVO CAMPO
+  fechaAplicacion: string;
   telefono: string;
   emailContacto: string;
   nombreContacto: string;
@@ -45,6 +38,7 @@ export default function DetalleProyecto() {
   const [userData, setUserData] = useState<UserData | null>(null);
   const [yaAplico, setYaAplico] = useState(false);
   const [procesandoAplicacion, setProcesandoAplicacion] = useState(false);
+  const [modalConfirmacionVisible, setModalConfirmacionVisible] = useState(false);
 
   const idProyecto = params.idProyecto;
 
@@ -101,11 +95,11 @@ export default function DetalleProyecto() {
 
   // Verificar si el proyecto está guardado y si ya se aplicó
   useEffect(() => {
-    if (idUsuario && idProyecto) {
+    if (idUsuario && idProyecto && userData) {
       verificarProyectoGuardado();
       verificarAplicacion();
     }
-  }, [idUsuario, idProyecto]);
+  }, [idUsuario, idProyecto, userData]);
 
   const verificarProyectoGuardado = async () => {
     try {
@@ -241,7 +235,6 @@ export default function DetalleProyecto() {
     }
   };
 
-  // Manejar clic en la estrella
   const handleGuardarClick = () => {
     if (isGuardado) {
       desguardarProyecto();
@@ -250,39 +243,44 @@ export default function DetalleProyecto() {
     }
   };
 
-  const handleAplicarClick = async () => {
-    if (yaAplico) {
-      showToast("❌ Ya aplicaste a este proyecto", false);
-      return;
-    }
+  const handleAplicarClick = () => {
+    if (yaAplico) return; 
 
     if (!idUsuario || !proyecto || !userData?.urlCv) {
       showToast("Error: Usuario o CV no disponible", false);
       return;
     }
 
+    setModalConfirmacionVisible(true);
+  };
+
+  const confirmarAplicacion = async () => {
+    setModalConfirmacionVisible(false);
+
     try {
       setProcesandoAplicacion(true);
       const usuario = {
         idUsuario,
-        nombreCompleto: userData.nombreCompleto || "Sin nombre",
-        email: userData.email || "Sin email",
-        urlCv: userData.urlCv,
+        nombreCompleto: userData?.nombreCompleto || "Sin nombre",
+        email: userData?.email || "Sin email",
+        urlCv: userData?.urlCv,
       };
 
       const response = await fetch(`${API_URL}/aplicaciones/aplicar`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          idProyecto: proyecto.idProyecto,
+          idProyecto: proyecto?.idProyecto,
           usuario,
         }),
       });
 
       if (!response.ok) throw new Error("Error al enviar aplicación");
 
-      setYaAplico(true);
       showToast("✅ Aplicación enviada correctamente", true, "success");
+      
+      // Re-verificamos para que invoque la animación del Toast e intercepte la ruta hacia detallesA
+      verificarAplicacion();
     } catch (error) {
       console.error(error);
       showToast("Error al enviar la aplicación", false);
@@ -306,9 +304,8 @@ export default function DetalleProyecto() {
       .replace(/\bLicenciatura\b/gi, "Lic.");
   };
 
-  // Verificar si el proyecto aún está disponible para aplicar
   const estaDisponibleParaAplicar = () => {
-    if (!proyecto?.fechaAplicacion) return true; // Sin fecha límite, siempre disponible
+    if (!proyecto?.fechaAplicacion) return true;
 
     const fechaAplicacion = new Date(proyecto.fechaAplicacion);
     const hoy = new Date();
@@ -411,7 +408,7 @@ export default function DetalleProyecto() {
 
       <ScrollView
         style={styles.contentBackground}
-        contentContainerStyle={{ paddingBottom: 30 }}
+        contentContainerStyle={{ paddingBottom: 80 }}
       >
         <Text style={styles.titulo}>{proyecto.titulo}</Text>
 
@@ -452,7 +449,6 @@ export default function DetalleProyecto() {
           </View>
         </View>
 
-        {/* Contacto y Teléfono en la misma fila */}
         {(proyecto.nombreContacto ||
           proyecto.telefono ||
           proyecto.emailContacto) && (
@@ -476,7 +472,6 @@ export default function DetalleProyecto() {
           </View>
         )}
 
-        {/* Email debajo */}
         {proyecto.emailContacto && (
           <Text style={[styles.info, { marginTop: 5 }]}>
             <Text style={styles.bold}>Email: </Text>
@@ -484,7 +479,6 @@ export default function DetalleProyecto() {
           </Text>
         )}
 
-        {/* Nueva fila para Modalidad */}
         <View style={styles.infoRow}>
           <View style={styles.col}>
             <Text style={styles.info}>
@@ -494,7 +488,6 @@ export default function DetalleProyecto() {
           </View>
         </View>
 
-        {/* Carreras Relacionadas */}
         <Text style={[styles.bold, { marginTop: 15 }]}>
           Carreras Requeridas
         </Text>
@@ -520,7 +513,6 @@ export default function DetalleProyecto() {
           )}
         </View>
 
-        {/* Habilidades */}
         {habilidadesArray.length > 0 && (
           <>
             <Text style={[styles.bold, { marginTop: 15 }]}>Habilidades</Text>
@@ -557,7 +549,6 @@ export default function DetalleProyecto() {
           )}
         </View>
 
-        {/* Fecha de Aplicación */}
         {proyecto.fechaAplicacion && (
           <View style={styles.fechaContainer}>
             <Ionicons
@@ -578,7 +569,7 @@ export default function DetalleProyecto() {
           </View>
         )}
 
-        {/* Botones abajo */}
+        {/* Botones principales de la UI inferior */}
         <View style={styles.buttonContainer}>
           <TouchableOpacity
             style={styles.buttonLeft}
@@ -599,28 +590,24 @@ export default function DetalleProyecto() {
           <TouchableOpacity
             style={[
               styles.buttonRight,
-              (yaAplico || !disponibleParaAplicar || procesandoAplicacion) && {
-                backgroundColor: "#ccc",
-                shadowColor: "#999",
-              },
+              (!disponibleParaAplicar || yaAplico || procesandoAplicacion) && { backgroundColor: "#ccc", shadowColor: "#999" },
             ]}
             onPress={handleAplicarClick}
-            disabled={yaAplico || !disponibleParaAplicar || procesandoAplicacion}
+            disabled={!disponibleParaAplicar || yaAplico || procesandoAplicacion}
           >
             {procesandoAplicacion ? (
               <ActivityIndicator size="small" color="#fff" />
             ) : (
               <Ionicons
-                name={yaAplico ? "checkmark-circle" : "send-outline"}
+                name="send-outline"
                 size={26}
-                color="#fff"
+                color="white"
               />
             )}
           </TouchableOpacity>
         </View>
 
-        {/* Mensaje si no está disponible para aplicar */}
-        {!disponibleParaAplicar && !yaAplico && (
+        {!disponibleParaAplicar && (
           <Text
             style={[
               styles.info,
@@ -631,6 +618,39 @@ export default function DetalleProyecto() {
           </Text>
         )}
       </ScrollView>
+
+      {/* MODAL OPTIMIZADO CON TUS BOTONES AZULES (SOLID VS OUTLINE) */}
+      <Modal
+        animationType="fade"
+        transparent={true}
+        visible={modalConfirmacionVisible}
+        onRequestClose={() => setModalConfirmacionVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>¿Está seguro?</Text>
+            <Text style={styles.modalText}>
+              ¿Quieres mandar tu aplicación a este proyecto? Tu información y CV se enviarán por correo electrónico.
+            </Text>
+            
+            <View style={styles.modalActions}>
+              <TouchableOpacity 
+                style={styles.modalBtnCancelar} 
+                onPress={() => setModalConfirmacionVisible(false)}
+              >
+                <Text style={styles.modalBtnCancelarText}>Cancelar</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={styles.modalBtnConfirmar} 
+                onPress={confirmarAplicacion}
+              >
+                <Text style={styles.modalBtnConfirmarText}>Enviar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* Bottom nav */}
       <View style={styles.bottomNav}>
@@ -754,7 +774,7 @@ const styles = StyleSheet.create({
   },
   buttonRight: {
     backgroundColor: "#F9DC50",
-    width: 60,
+    minWidth: 60,
     height: 60,
     borderRadius: 30,
     justifyContent: "center",
@@ -766,6 +786,10 @@ const styles = StyleSheet.create({
     elevation: 10,
   },
   bottomNav: {
+    position: "absolute",
+    bottom: 0,
+    left: 0,
+    right: 0,
     flexDirection: "row",
     justifyContent: "space-around",
     alignItems: "center",
@@ -775,6 +799,8 @@ const styles = StyleSheet.create({
     borderTopRightRadius: 30,
     paddingBottom: 30,
     paddingTop: 20,
+    borderWidth: 0,
+    elevation: 0,
   },
   retryButton: {
     backgroundColor: "#2666DE",
@@ -806,5 +832,83 @@ const styles = StyleSheet.create({
     textShadowColor: "rgba(102, 163, 255, 0.4)",
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 6,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.4)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalContent: {
+    backgroundColor: "#fff",
+    width: "85%",
+    borderRadius: 20,
+    paddingTop: 26,
+    paddingBottom: 22,
+    paddingHorizontal: 24,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  modalTitle: {
+    fontSize: 19,
+    fontFamily: "MyriadPro-Bold",
+    fontWeight: "bold",
+    color: "#000",
+    marginBottom: 12,
+    textAlign: "center",
+  },
+  modalText: {
+    fontSize: 14,
+    fontFamily: "MyriadPro-Regular",
+    color: "#444",
+    textAlign: "center",
+    lineHeight: 20,
+    marginBottom: 26,
+  },
+  modalActions: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    width: "100%",
+    gap: 12,
+  },
+  modalBtnCancelar: {
+    flex: 1,
+    backgroundColor: "#fff",
+    borderColor: "#2666DE",
+    borderWidth: 2,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modalBtnCancelarText: {
+    fontSize: 14,
+    fontFamily: "MyriadPro-Bold",
+    fontWeight: "bold",
+    color: "#2666DE",
+  },
+  // BOTÓN MODAL ENVIAR: ESTILO SOLID (FONDO AZUL COMPLETO, TEXTO BLANCO)
+  modalBtnConfirmar: {
+    flex: 1,
+    backgroundColor: "#2666DE",
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#2666DE",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    elevation: 2,
+  },
+  modalBtnConfirmarText: {
+    fontSize: 14,
+    fontFamily: "MyriadPro-Bold",
+    fontWeight: "bold",
+    color: "#fff",
   },
 });
