@@ -1,6 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import DateTimePicker from "@react-native-community/datetimepicker";
 import axios from "axios";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
@@ -39,15 +38,21 @@ export default function Crear() {
   const [departamento, setDepartamento] = useState<number | "">("");
   const [municipio, setMunicipio] = useState<number | "">("");
 
-  // Estados para controlar la visibilidad de los Modales (Estilo exacto a tu ejemplo)
+  // Estados para controlar los Modales Estilizados
   const [modalGeneroVisible, setModalGeneroVisible] = useState(false);
   const [modalDeptoVisible, setModalDeptoVisible] = useState(false);
   const [modalMunicipioVisible, setModalMunicipioVisible] = useState(false);
 
-  // Estados para el flujo secuencial estricto del DatePicker (Año -> Mes -> Día)
-  const [dateStep, setDateStep] = useState<"none" | "year" | "month" | "day">("none");
-  const [tempYear, setTempYear] = useState<number>(new Date().getFullYear());
-  const [tempMonth, setTempMonth] = useState<number>(new Date().getMonth());
+  // Estados para el Flujo Guiado de Fecha (Año -> Mes -> Día)
+  const [modalFechaPaso, setModalFechaPaso] = useState<"none" | "year" | "month" | "day">("none");
+  const [añoSeleccionado, setAñoSeleccionado] = useState<number>(new Date().getFullYear());
+  const [mesSeleccionado, setMesSeleccionado] = useState<number>(new Date().getMonth());
+
+  // Arreglo de meses para el selector personalizado
+  const mesesAnio = [
+    "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
+    "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
+  ];
 
   // Obtener departamentos al cargar
   useEffect(() => {
@@ -69,6 +74,26 @@ export default function Crear() {
       .then((res) => setMunicipios(res.data))
       .catch((err) => console.error(err));
   }, [departamento]);
+
+  // Generar lista de años (desde 1950 hasta el año actual)
+  const generarAnios = () => {
+    const anioActual = new Date().getFullYear();
+    const lista = [];
+    for (let i = anioActual; i >= 1950; i--) {
+      lista.push(i);
+    }
+    return lista;
+  };
+
+  // Generar número de días adaptado según el año y mes seleccionado
+  const generarDias = (anio: number, mes: number) => {
+    const numDias = new Date(anio, mes + 1, 0).getDate();
+    const lista = [];
+    for (let i = 1; i <= numDias; i++) {
+      lista.push(i);
+    }
+    return lista;
+  };
 
   // Validaciones individuales
   const validarNombre = (text: string) => {
@@ -104,53 +129,7 @@ export default function Crear() {
     });
   };
 
-  // Lógica secuencial guiada por pasos para la fecha
-  const handleDateChange = (event: any, selectedDate?: Date) => {
-    if (event.type === "dismissed") {
-      setDateStep("none");
-      return;
-    }
-
-    if (selectedDate) {
-      if (dateStep === "year") {
-        setTempYear(selectedDate.getFullYear());
-        // Pasamos automáticamente al mes inmediatamente
-        setTimeout(() => setDateStep("month"), 150);
-      } else if (dateStep === "month") {
-        setTempMonth(selectedDate.getMonth());
-        // Pasamos automáticamente al día final
-        setTimeout(() => setDateStep("day"), 150);
-      } else if (dateStep === "day") {
-        const finalDate = new Date(tempYear, tempMonth, selectedDate.getDate());
-        setFechaNacimiento(finalDate);
-        setDateStep("none");
-      }
-    }
-  };
-
-  // Renderizador dinámico del selector nativo calendar
-  const renderDatePicker = () => {
-    if (dateStep === "none") return null;
-
-    let currentPickerValue = new Date();
-    if (dateStep === "month") {
-      currentPickerValue = new Date(tempYear, new Date().getMonth(), 1);
-    } else if (dateStep === "day") {
-      currentPickerValue = new Date(tempYear, tempMonth, 1);
-    }
-
-    return (
-      <DateTimePicker
-        value={currentPickerValue}
-        mode="date"
-        display="calendar"
-        maximumDate={new Date()}
-        onChange={handleDateChange}
-      />
-    );
-  };
-
-  // Validar formulario con retroalimentación específica
+  // Validar y enviar formulario
   const handleSubmit = async () => {
     if (!nombre.trim()) {
       showToast("⚠️ El nombre es obligatorio");
@@ -202,7 +181,6 @@ export default function Crear() {
       };
 
       await AsyncStorage.setItem("crearPaso1", JSON.stringify(paso1Data));
-      console.log("Datos del paso 1 guardados:", paso1Data);
       showToast("✅ Paso 1 completado", true);
       router.push("/(auth)/Crear2");
     } catch (error) {
@@ -211,7 +189,7 @@ export default function Crear() {
     }
   };
 
-  // Resolutores de etiquetas de texto
+  // Métodos informativos de etiquetas
   const getGeneroLabel = () => {
     if (genero === "M") return "Masculino";
     if (genero === "F") return "Femenino";
@@ -269,11 +247,11 @@ export default function Crear() {
               />
             </View>
 
-            {/* SELECTOR ESTILIZADO DE GÉNERO */}
+            {/* SELECCIÓN GÉNERO ESTILIZADA */}
             <TouchableOpacity
               style={styles.inputContainer}
               onPress={() => setModalGeneroVisible(true)}
-              activeOpacity={0.7}
+              activeOpacity={0.8}
             >
               <Text style={[styles.input, { color: genero ? "#000" : "#666" }]}>
                 {getGeneroLabel()}
@@ -281,11 +259,11 @@ export default function Crear() {
               <Ionicons name="chevron-down" size={20} color="#213A8E" />
             </TouchableOpacity>
 
-            {/* SELECCIÓN DE FECHA CON FLUJO SECUENCIAL ESTRICTO */}
+            {/* SELECCIÓN FECHA - PASO AÑO PRIMERO */}
             <TouchableOpacity
               style={styles.inputContainer}
-              onPress={() => setDateStep("year")}
-              activeOpacity={0.7}
+              onPress={() => setModalFechaPaso("year")}
+              activeOpacity={0.8}
             >
               <Text
                 style={[
@@ -316,11 +294,11 @@ export default function Crear() {
               />
             </View>
 
-            {/* SELECTOR ESTILIZADO DE DEPARTAMENTO */}
+            {/* SELECCIÓN DEPARTAMENTO ESTILIZADA */}
             <TouchableOpacity
               style={styles.inputContainer}
               onPress={() => setModalDeptoVisible(true)}
-              activeOpacity={0.7}
+              activeOpacity={0.8}
             >
               <Text style={[styles.input, { color: departamento ? "#000" : "#666" }]}>
                 {getDepartamentoLabel()}
@@ -328,15 +306,15 @@ export default function Crear() {
               <Ionicons name="chevron-down" size={20} color="#213A8E" />
             </TouchableOpacity>
 
-            {/* SELECTOR ESTILIZADO DE MUNICIPIO (DESHABILITADO SI NO HAY DEPTO) */}
+            {/* SELECCIÓN MUNICIPIO ESTILIZADA */}
             <TouchableOpacity
               style={[
                 styles.inputContainer,
-                !departamento && styles.disabledContainer,
+                !departamento && styles.disabledInput,
               ]}
               onPress={() => departamento && setModalMunicipioVisible(true)}
               disabled={!departamento}
-              activeOpacity={0.7}
+              activeOpacity={0.8}
             >
               <Text style={[styles.input, { color: municipio ? "#000" : "#666" }]}>
                 {getMunicipioLabel()}
@@ -361,13 +339,13 @@ export default function Crear() {
 
             <View style={styles.buttonsRow}>
               <TouchableOpacity
-                style={styles.buttonYellow}
+                style={styles.buttonYellowBack}
                 onPress={() => router.back()}
               >
                 <Ionicons name="arrow-back" size={28} color="#fff" />
               </TouchableOpacity>
               <TouchableOpacity
-                style={styles.buttonBlue}
+                style={styles.buttonBlueNext}
                 onPress={handleSubmit}
               >
                 <Ionicons name="arrow-forward" size={28} color="#fff" />
@@ -377,10 +355,9 @@ export default function Crear() {
         </KeyboardAwareScrollView>
       </View>
 
-      {/* RENDER NATIVO DEL PICKER SECUENCIAL */}
-      {renderDatePicker()}
+      {/* ================= MODALES DE CATÁLOGOS CON TUS ESTILOS PROPIOS ================= */}
 
-      {/* ================= MODAL GÉNERO (DISEÑO FIEL A TU ARCHIVO PROYECTO.TSX) ================= */}
+      {/* MODAL GÉNERO */}
       <Modal
         visible={modalGeneroVisible}
         animationType="slide"
@@ -391,7 +368,7 @@ export default function Crear() {
           <View style={styles.modalContainer}>
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Selecciona tu Género</Text>
-              <TouchableOpacity onPress={() => setModalGeneroVisible(false)}>
+              <TouchableOpacity style={styles.closeButton} onPress={() => setModalGeneroVisible(false)}>
                 <Ionicons name="close" size={24} color="#213A8E" />
               </TouchableOpacity>
             </View>
@@ -403,21 +380,18 @@ export default function Crear() {
               ].map((item) => (
                 <TouchableOpacity
                   key={item.value}
-                  style={[
-                    styles.optionItem,
-                    genero === item.value && styles.optionSelected,
-                  ]}
+                  style={[styles.especialidadOption, genero === item.value && styles.especialidadSelected]}
                   onPress={() => {
                     setGenero(item.value);
                     setModalGeneroVisible(false);
                   }}
                 >
                   <Ionicons 
-                    name={genero === item.value ? "checkbox" : "square-outline"} 
+                    name={genero === item.value ? "radio-button-on" : "radio-button-off"} 
                     size={22} 
                     color={genero === item.value ? "#2666DE" : "#666"} 
                   />
-                  <Text style={styles.optionText}>{item.label}</Text>
+                  <Text style={styles.especialidadText}>{item.label}</Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -425,7 +399,7 @@ export default function Crear() {
         </View>
       </Modal>
 
-      {/* ================= MODAL DEPARTAMENTOS (DISEÑO FIEL A TU ARCHIVO PROYECTO.TSX) ================= */}
+      {/* MODAL DEPARTAMENTOS */}
       <Modal
         visible={modalDeptoVisible}
         animationType="slide"
@@ -435,8 +409,8 @@ export default function Crear() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Selecciona Departamento</Text>
-              <TouchableOpacity onPress={() => setModalDeptoVisible(false)}>
+              <Text style={styles.modalTitle}>Selecciona el Departamento</Text>
+              <TouchableOpacity style={styles.closeButton} onPress={() => setModalDeptoVisible(false)}>
                 <Ionicons name="close" size={24} color="#213A8E" />
               </TouchableOpacity>
             </View>
@@ -444,21 +418,18 @@ export default function Crear() {
               {departamentos.map((dep) => (
                 <TouchableOpacity
                   key={dep.idDepartamento}
-                  style={[
-                    styles.optionItem,
-                    departamento === dep.idDepartamento && styles.optionSelected,
-                  ]}
+                  style={[styles.especialidadOption, departamento === dep.idDepartamento && styles.especialidadSelected]}
                   onPress={() => {
                     setDepartamento(dep.idDepartamento);
                     setModalDeptoVisible(false);
                   }}
                 >
                   <Ionicons 
-                    name={departamento === dep.idDepartamento ? "checkbox" : "square-outline"} 
+                    name={departamento === dep.idDepartamento ? "radio-button-on" : "radio-button-off"} 
                     size={22} 
                     color={departamento === dep.idDepartamento ? "#2666DE" : "#666"} 
                   />
-                  <Text style={styles.optionText}>{dep.nombre}</Text>
+                  <Text style={styles.especialidadText}>{dep.nombre}</Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -466,7 +437,7 @@ export default function Crear() {
         </View>
       </Modal>
 
-      {/* ================= MODAL MUNICIPIOS (DISEÑO FIEL A TU ARCHIVO PROYECTO.TSX) ================= */}
+      {/* MODAL MUNICIPIOS */}
       <Modal
         visible={modalMunicipioVisible}
         animationType="slide"
@@ -476,8 +447,8 @@ export default function Crear() {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Selecciona Municipio</Text>
-              <TouchableOpacity onPress={() => setModalMunicipioVisible(false)}>
+              <Text style={styles.modalTitle}>Selecciona el Municipio</Text>
+              <TouchableOpacity style={styles.closeButton} onPress={() => setModalMunicipioVisible(false)}>
                 <Ionicons name="close" size={24} color="#213A8E" />
               </TouchableOpacity>
             </View>
@@ -485,21 +456,131 @@ export default function Crear() {
               {municipios.map((mun) => (
                 <TouchableOpacity
                   key={mun.idMunicipio}
-                  style={[
-                    styles.optionItem,
-                    municipio === mun.idMunicipio && styles.optionSelected,
-                  ]}
+                  style={[styles.especialidadOption, municipio === mun.idMunicipio && styles.especialidadSelected]}
                   onPress={() => {
                     setMunicipio(mun.idMunicipio);
                     setModalMunicipioVisible(false);
                   }}
                 >
                   <Ionicons 
-                    name={municipio === mun.idMunicipio ? "checkbox" : "square-outline"} 
+                    name={municipio === mun.idMunicipio ? "radio-button-on" : "radio-button-off"} 
                     size={22} 
                     color={municipio === mun.idMunicipio ? "#2666DE" : "#666"} 
                   />
-                  <Text style={styles.optionText}>{mun.nombre}</Text>
+                  <Text style={styles.especialidadText}>{mun.nombre}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ================= MODALES DE FECHA SECUENCIAL (AÑO PRIMERO) ================= */}
+
+      {/* PASO 1: SELECCIONAR AÑO */}
+      <Modal
+        visible={modalFechaPaso === "year"}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setModalFechaPaso("none")}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Paso 1: Selecciona el Año</Text>
+              <TouchableOpacity style={styles.closeButton} onPress={() => setModalFechaPaso("none")}>
+                <Ionicons name="close" size={24} color="#213A8E" />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.modalContent}>
+              {generarAnios().map((anio) => (
+                <TouchableOpacity
+                  key={anio}
+                  style={[styles.especialidadOption, añoSeleccionado === anio && styles.especialidadSelected]}
+                  onPress={() => {
+                    setAñoSeleccionado(anio);
+                    setModalFechaPaso("month");
+                  }}
+                >
+                  <Ionicons 
+                    name={añoSeleccionado === anio ? "radio-button-on" : "radio-button-off"} 
+                    size={22} 
+                    color={añoSeleccionado === anio ? "#2666DE" : "#666"} 
+                  />
+                  <Text style={styles.especialidadText}>{anio}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* PASO 2: SELECCIONAR MES */}
+      <Modal
+        visible={modalFechaPaso === "month"}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setModalFechaPaso("none")}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Paso 2: Selecciona el Mes</Text>
+              <TouchableOpacity style={styles.closeButton} onPress={() => setModalFechaPaso("year")}>
+                <Ionicons name="arrow-back" size={24} color="#213A8E" />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.modalContent}>
+              {mesesAnio.map((mes, index) => (
+                <TouchableOpacity
+                  key={mes}
+                  style={[styles.especialidadOption, mesSeleccionado === index && styles.especialidadSelected]}
+                  onPress={() => {
+                    setMesSeleccionado(index);
+                    setModalFechaPaso("day");
+                  }}
+                >
+                  <Ionicons 
+                    name={mesSeleccionado === index ? "radio-button-on" : "radio-button-off"} 
+                    size={22} 
+                    color={mesSeleccionado === index ? "#2666DE" : "#666"} 
+                  />
+                  <Text style={styles.especialidadText}>{mes}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* PASO 3: SELECCIONAR DÍA */}
+      <Modal
+        visible={modalFechaPaso === "day"}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setModalFechaPaso("none")}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Paso 3: Selecciona el Día</Text>
+              <TouchableOpacity style={styles.closeButton} onPress={() => setModalFechaPaso("month")}>
+                <Ionicons name="arrow-back" size={24} color="#213A8E" />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.modalContent}>
+              {generarDias(añoSeleccionado, mesSeleccionado).map((dia) => (
+                <TouchableOpacity
+                  key={dia}
+                  style={styles.especialidadOption}
+                  onPress={() => {
+                    const fechaFinal = new Date(añoSeleccionado, mesSeleccionado, dia);
+                    setFechaNacimiento(fechaFinal);
+                    setModalFechaPaso("none");
+                  }}
+                >
+                  <Ionicons name="calendar-outline" size={22} color="#2666DE" />
+                  <Text style={styles.especialidadText}>Día {dia}</Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
@@ -528,18 +609,25 @@ const styles = StyleSheet.create({
     marginBottom: 18,
     fontFamily: "Inter-Bold",
   },
+  
+  // TUS ESTILOS ORIGINALES CON BORDES AZULES NEÓN PERFECTOS
   inputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#EFF1F8",
+    backgroundColor: "#fff",
     borderRadius: 12,
     paddingHorizontal: 15,
-    marginBottom: 15,
     borderLeftWidth: 15,
     borderLeftColor: "#2666DE",
-    height: 52,
+    height: 55,
+    marginBottom: 15,
+    shadowColor: "#2666DE",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 6,
+    elevation: 8,
   },
-  disabledContainer: {
+  disabledInput: {
     opacity: 0.5,
   },
   input: {
@@ -547,16 +635,18 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: "Inter-Medium",
     color: "#000",
+    height: 55,
+    textAlignVertical: "center",
   },
-  iconCalendar: {
-    marginRight: 0,
+  iconCalendar: { 
+    marginRight: 0 
   },
   buttonsRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     marginTop: 15,
   },
-  buttonYellow: {
+  buttonYellowBack: {
     backgroundColor: "#2666DE",
     width: 60,
     height: 60,
@@ -569,21 +659,21 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 5,
   },
-  buttonBlue: {
+  buttonBlueNext: {
     backgroundColor: "#F9DC50",
     width: 60,
     height: 60,
     borderRadius: 30,
     justifyContent: "center",
     alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 5,
+    shadowColor: "#FFD700",
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.7,
+    shadowRadius: 8,
+    elevation: 10,
   },
 
-  // ESTILOS DE ESTRUCTURA DE MODAL SACADOS DIRECTAMENTE DE PROYECTO.TSX
+  // ESTILOS DE LOS MODALES SACADOS DE TU EJEMPLO DE PROYECTOS
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0, 0, 0, 0.5)",
@@ -591,40 +681,48 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     backgroundColor: "#fff",
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 20,
+    borderTopLeftRadius: 25,
+    borderTopRightRadius: 25,
     maxHeight: "80%",
+    paddingBottom: 20,
   },
   modalHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 20,
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E7EB",
   },
   modalTitle: {
     fontSize: 18,
-    fontFamily: "Inter-Bold",
-    color: "#000",
     fontWeight: "bold",
+    color: "#213A8E",
+    fontFamily: "MyriadPro-Bold",
+  },
+  closeButton: {
+    padding: 4,
   },
   modalContent: {
-    marginBottom: 20,
+    paddingHorizontal: 20,
+    maxHeight: "70%",
   },
-  optionItem: {
+  especialidadOption: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 12,
+    paddingVertical: 15,
     borderBottomWidth: 1,
     borderBottomColor: "#f0f0f0",
   },
-  optionSelected: {
-    backgroundColor: "#f5f5f5",
+  especialidadSelected: {
+    backgroundColor: "#F2F6FC",
   },
-  optionText: {
-    fontSize: 16,
+  especialidadText: {
+    marginLeft: 12,
+    fontSize: 15,
     fontFamily: "Inter-Medium",
-    color: "#000",
-    marginLeft: 10,
+    color: "#333",
+    flex: 1,
   },
 });

@@ -1,7 +1,6 @@
 // app/(auth)/Crear2.tsx
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Picker } from "@react-native-picker/picker";
 import axios from "axios";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
@@ -53,6 +52,9 @@ export default function Crear2() {
     { idIdioma: number; idINivel: number }[]
   >([]);
   const [modalIdiomasVisible, setModalIdiomasVisible] = useState(false);
+  
+  // Estado para controlar el nuevo modal de carreras
+  const [modalCarrerasVisible, setModalCarrerasVisible] = useState(false);
 
   // Habilidades
   const [habilidades, setHabilidades] = useState<Habilidad[]>([]);
@@ -288,25 +290,25 @@ export default function Crear2() {
           <View style={styles.formContainer}>
             <Text style={styles.title}>Datos Académicos</Text>
 
-            {/* Carrera */}
-            <View style={styles.inputContainer}>
-              <Picker
-                selectedValue={carrera}
-                onValueChange={(val) => setCarrera(Number(val))}
-                style={styles.picker}
-                dropdownIconColor="#213A8E"
-                mode="dropdown"
+            {/* Carrera - CAMBIADO POR TOUCHABLE OPACITY PARA ACTIVAR MODAL */}
+            <TouchableOpacity
+              style={styles.inputContainer}
+              onPress={() => setModalCarrerasVisible(true)}
+            >
+              <Text
+                style={[
+                  styles.input,
+                  { color: carrera ? "#000" : "#666" },
+                ]}
+                numberOfLines={1}
+                ellipsizeMode="tail"
               >
-                <Picker.Item label="Selecciona tu carrera" value="" />
-                {carreras.map((c) => (
-                  <Picker.Item
-                    key={c.idCarrera}
-                    label={abreviarPalabrasProblematicas(c.nombre)}
-                    value={c.idCarrera}
-                  />
-                ))}
-              </Picker>
-            </View>
+                {carrera
+                  ? abreviarPalabrasProblematicas(carreraSeleccionada)
+                  : "Selecciona tu carrera"}
+              </Text>
+              <Ionicons name="chevron-down" size={20} color="#213A8E" />
+            </TouchableOpacity>
 
             {/* UV's */}
             <View style={styles.inputContainer}>
@@ -483,6 +485,61 @@ export default function Crear2() {
         </KeyboardAwareScrollView>
       </View>
 
+      {/* NUEVO MODAL DE SELECCIÓN DE CARRERAS */}
+      <Modal
+        visible={modalCarrerasVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setModalCarrerasVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Selecciona tu carrera</Text>
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => setModalCarrerasVisible(false)}
+              >
+                <Ionicons name="close" size={24} color="#213A8E" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modalContent}>
+              {carreras.map((c) => {
+                const esSeleccionada = carrera === c.idCarrera;
+                return (
+                  <TouchableOpacity
+                    key={c.idCarrera}
+                    style={[
+                      styles.idiomaOption,
+                      esSeleccionada && styles.idiomaSelected,
+                    ]}
+                    onPress={() => {
+                      setCarrera(c.idCarrera);
+                      setModalCarrerasVisible(false);
+                    }}
+                  >
+                    <Ionicons
+                      name={esSeleccionada ? "radio-button-on" : "radio-button-off"}
+                      size={22}
+                      color={esSeleccionada ? "#2666DE" : "#666"}
+                    />
+                    <Text 
+                      style={[
+                        styles.idiomaText, 
+                        { fontWeight: esSeleccionada ? "bold" : "normal" }
+                      ]}
+                    >
+                      {c.nombre}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
       {/* Modal de Idiomas (COPIADO DE EDITAR) */}
       <Modal
         visible={modalIdiomasVisible}
@@ -629,19 +686,12 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 8,
   },
-  input: { flex: 1, fontSize: 15, fontFamily: "Inter-Medium", color: "#000" },
-
-  picker: {
-    flex: 1,
-    fontSize: 15,
-    fontFamily: "Inter-Medium",
+  input: { 
+    flex: 1, 
+    fontSize: 15, 
+    fontFamily: "Inter-Medium", 
     color: "#000",
-    height: 52,
-    minHeight: 52,
-    includeFontPadding: false,
     textAlignVertical: "center",
-    marginVertical: 0,
-    paddingVertical: 0,
   },
 
   chipsInputContainer: {
@@ -814,7 +864,7 @@ const styles = StyleSheet.create({
   idiomaOption: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 10,
+    paddingVertical: 14,
   },
   idiomaSelected: {
     backgroundColor: "#F2F6FC",
@@ -825,7 +875,6 @@ const styles = StyleSheet.create({
     marginLeft: 10,
     fontSize: 15,
     fontFamily: "Inter-Medium",
-    fontWeight: "medium",
     color: "#333",
     flex: 1,
   },

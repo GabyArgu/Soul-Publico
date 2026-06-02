@@ -1,11 +1,21 @@
+// app/(auth)/Crear3.tsx
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Picker } from "@react-native-picker/picker";
 import axios from "axios";
 import * as DocumentPicker from "expo-document-picker";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useState } from "react";
-import {ImageBackground, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View,} from "react-native";
+import {
+  ImageBackground,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import Toast from "react-native-root-toast";
 import { API_URL } from "../utils/config";
@@ -26,6 +36,9 @@ export default function Crear3() {
   const [opcionesDisponibilidad, setOpcionesDisponibilidad] = useState<
     { idDisponibilidad: number; nombre: string }[]
   >([]);
+
+  // Estado para controlar la visibilidad del modal de disponibilidad
+  const [modalHorarioVisible, setModalHorarioVisible] = useState(false);
 
   useEffect(() => {
     axios
@@ -105,6 +118,7 @@ export default function Crear3() {
 
   const handleSubmit = async () => {
     if (!cv) return showToast("❌ Debes subir tu CV");
+    if (!horario) return showToast("❌ Debes seleccionar tu disponibilidad horaria");
     if (password !== confirmPassword)
       return showToast("⚠️ Las contraseñas no coinciden");
 
@@ -137,6 +151,14 @@ export default function Crear3() {
     }
   };
 
+  // Obtener el nombre del horario seleccionado para mostrarlo en el trigger
+  const getHorarioTexto = () => {
+    const seleccionado = opcionesDisponibilidad.find(
+      (opc) => opc.idDisponibilidad === horario
+    );
+    return seleccionado ? seleccionado.nombre : "Disponibilidad horaria";
+  };
+
   return (
     <ImageBackground
       source={require("../../assets/images/fondo-c.png")}
@@ -160,7 +182,7 @@ export default function Crear3() {
                 { justifyContent: "space-between" },
               ]}
             >
-              <Text style={styles.switchText}>Puedes transportarte</Text>
+              <Text style={styles.switchText}>Posees transporte</Text>
               <Switch
                 value={transportarse}
                 onValueChange={setTransportarse}
@@ -169,25 +191,23 @@ export default function Crear3() {
               />
             </View>
 
-            {/* ✅ HORARIO - MISMO DISEÑO CONSISTENTE */}
-            <View style={styles.inputContainer}>
-              <Picker
-                selectedValue={horario}
-                onValueChange={setHorario}
-                style={styles.picker}
-                dropdownIconColor="#213A8E"
-                mode="dropdown"
+            {/* HORARIO - CAMBIADO POR TOUCHABLE OPACITY PARA DETONAR EL BOTTOM-SHEET MODAL */}
+            <TouchableOpacity 
+              style={styles.inputContainer}
+              onPress={() => setModalHorarioVisible(true)}
+            >
+              <Text
+                style={[
+                  styles.input,
+                  { color: horario ? "#000" : "#666" },
+                ]}
+                numberOfLines={1}
+                ellipsizeMode="tail"
               >
-                <Picker.Item label="Disponibilidad horaria" value="" />
-                {opcionesDisponibilidad.map((opcion) => (
-                  <Picker.Item
-                    key={opcion.idDisponibilidad}
-                    label={opcion.nombre}
-                    value={opcion.idDisponibilidad}
-                  />
-                ))}
-              </Picker>
-            </View>
+                {getHorarioTexto()}
+              </Text>
+              <Ionicons name="chevron-down" size={20} color="#213A8E" />
+            </TouchableOpacity>
 
             {/* Subir CV */}
             <TouchableOpacity
@@ -241,6 +261,61 @@ export default function Crear3() {
           </View>
         </KeyboardAwareScrollView>
       </View>
+
+      {/* NUEVO MODAL DE DISPONIBILIDAD HORARIA */}
+      <Modal
+        visible={modalHorarioVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setModalHorarioVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Disponibilidad horaria</Text>
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => setModalHorarioVisible(false)}
+              >
+                <Ionicons name="close" size={24} color="#213A8E" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modalContent}>
+              {opcionesDisponibilidad.map((opcion) => {
+                const esSeleccionado = horario === opcion.idDisponibilidad;
+                return (
+                  <TouchableOpacity
+                    key={opcion.idDisponibilidad}
+                    style={[
+                      styles.horarioOption,
+                      esSeleccionado && styles.horarioSelected,
+                    ]}
+                    onPress={() => {
+                      setHorario(opcion.idDisponibilidad);
+                      setModalHorarioVisible(false);
+                    }}
+                  >
+                    <Ionicons
+                      name={esSeleccionado ? "radio-button-on" : "radio-button-off"}
+                      size={22}
+                      color={esSeleccionado ? "#2666DE" : "#666"}
+                    />
+                    <Text
+                      style={[
+                        styles.horarioText,
+                        { fontWeight: esSeleccionado ? "bold" : "normal" },
+                      ]}
+                    >
+                      {opcion.nombre}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </ImageBackground>
   );
 }
@@ -274,7 +349,13 @@ const styles = StyleSheet.create({
     borderLeftColor: "#2666DE",
     height: 52,
   },
-  input: { flex: 1, fontSize: 15, fontFamily: "Inter-Medium", color: "#000" },
+  input: { 
+    flex: 1, 
+    fontSize: 15, 
+    fontFamily: "Inter-Medium", 
+    color: "#000",
+    textAlignVertical: "center",
+  },
 
   switchText: {
     fontSize: 15,
@@ -282,21 +363,6 @@ const styles = StyleSheet.create({
     fontWeight: "medium",
     color: "#000",
     flex: 1,
-  },
-
-  // ✅ PICKER CON EL MISMO ESTILO CONSISTENTE
-  picker: {
-    flex: 1,
-    fontSize: 15,
-    fontFamily: "Inter-Medium",
-    fontWeight: "medium",
-    color: "#000",
-    height: 52,
-    minHeight: 52,
-    includeFontPadding: false,
-    textAlignVertical: "center",
-    marginVertical: 0,
-    paddingVertical: 0,
   },
 
   buttonsRow: {
@@ -331,5 +397,60 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 4,
     elevation: 5,
+  },
+
+  // ESTILOS DEL BOTTOM-SHEET MODAL (CONSISTENTE CON PASOS ANTERIORES)
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "flex-end",
+  },
+  modalContainer: {
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 25,
+    borderTopRightRadius: 25,
+    maxHeight: "80%",
+    paddingBottom: 20,
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 20,
+    paddingVertical: 15,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E5E7EB",
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#213A8E",
+    fontFamily: "MyriadPro-Bold",
+  },
+  closeButton: {
+    padding: 4,
+  },
+  modalContent: {
+    paddingHorizontal: 20,
+    maxHeight: "70%",
+  },
+  horarioOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+  },
+  horarioSelected: {
+    backgroundColor: "#F2F6FC",
+    borderRadius: 8,
+    paddingHorizontal: 10,
+  },
+  horarioText: {
+    marginLeft: 10,
+    fontSize: 15,
+    fontFamily: "Inter-Medium",
+    color: "#333",
+    flex: 1,
   },
 });
