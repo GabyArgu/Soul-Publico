@@ -46,7 +46,6 @@ export default function Index() {
     string[]
   >([]);
 
-  // Agrupar carreras por tipo
   const carrerasAgrupadas = {
     tecnicos: carrerasDisponibles.filter(
       (c) =>
@@ -74,14 +73,12 @@ export default function Index() {
     [number, number]
   >([0, 1000]);
 
-  // Estados para controlar qué grupos de carreras están expandidos
   const [carrerasExpandidas, setCarrerasExpandidas] = useState({
     tecnicos: false,
     ingenierias: false,
     licenciaturas: false,
   });
 
-  // Cargar usuario primero
   useEffect(() => {
     const loadUser = async () => {
       const data = await getUserData();
@@ -133,7 +130,6 @@ export default function Index() {
 
   const router = useRouter();
 
-  // MODIFICAR: cargarProyectos con dependencia de userData
   const cargarProyectos = async () => {
     setLoading(true);
     try {
@@ -145,7 +141,6 @@ export default function Index() {
       params.append("minHoras", selectedHorasRange[0].toString());
       params.append("maxHoras", selectedHorasRange[1].toString());
 
-      // DECISIÓN: Usar recomendaciones SOLO si hay usuario cargado
       let url = `${API_URL}/proyectos`;
       if (userData?.carnet) {
         url = `${API_URL}/proyectos/recomendados/${userData.carnet}`;
@@ -177,7 +172,6 @@ export default function Index() {
     } catch (err) {
       console.error("❌ Error al cargar proyectos:", err);
 
-      // Fallback robusto
       try {
         const params = new URLSearchParams();
         if (searchQuery) params.append("search", searchQuery);
@@ -209,7 +203,6 @@ export default function Index() {
     }
   };
 
-  // Cargar opciones de filtros
   const cargarFiltrosDisponibles = async () => {
     try {
       const [idiomasRes, carrerasRes, modalidadesRes] = await Promise.all([
@@ -233,7 +226,6 @@ export default function Index() {
     }
   };
 
-  // MODIFICAR: Recargar cuando userData cambie o la pantalla reciba foco
   useFocusEffect(
     useCallback(() => {
       if (userData) {
@@ -242,10 +234,9 @@ export default function Index() {
       } else {
         console.log("⏳ UserData no disponible aún...");
       }
-    }, [userData]), // ← AÑADIR userData como dependencia
+    }, [userData]),
   );
 
-  // MODIFICAR: También cargar cuando userData se establezca por primera vez
   useEffect(() => {
     if (userData) {
       cargarProyectos();
@@ -253,7 +244,6 @@ export default function Index() {
     }
   }, [userData]);
 
-  // Limpiar timeout al desmontar
   useEffect(() => {
     return () => {
       if (searchTimeout) {
@@ -262,7 +252,6 @@ export default function Index() {
     };
   }, [searchTimeout]);
 
-  // Filtrar proyectos por tipo para los carruseles
   const proyectosInstitucionales = proyectos.filter(
     (p) => p.tipoProyecto === "Institucional",
   );
@@ -332,11 +321,23 @@ export default function Index() {
     else palette = index % 2 === 0 ? blue : yellow;
 
     return (
-      <View
+      <TouchableOpacity
+        activeOpacity={0.8}
         style={[
           styles.card,
           { backgroundColor: palette.color, borderColor: palette.borderColor },
         ]}
+        onPress={() =>
+          router.push({
+            pathname: "/(tabs)/detalles",
+            params: {
+              idProyecto: item.idProyecto.toString(),
+              carnetUsuario: userData?.carnet,
+              nombreUsuario: userData?.nombreCompleto,
+              generoUsuario: userData?.genero,
+            },
+          })
+        }
       >
         <Ionicons
           name="book-outline"
@@ -358,25 +359,12 @@ export default function Index() {
             <Text style={styles.regular}>{item.horas}</Text>
           </Text>
         </View>
-        <TouchableOpacity
-          style={[styles.cardButton, { backgroundColor: palette.button }]}
-          onPress={() =>
-            router.push({
-              pathname: "/(tabs)/detalles",
-              params: {
-                idProyecto: item.idProyecto.toString(),
-                carnetUsuario: userData?.carnet,
-                nombreUsuario: userData?.nombreCompleto,
-                generoUsuario: userData?.genero,
-              },
-            })
-          }
-        >
+        <View style={[styles.cardButton, { backgroundColor: palette.button }]}>
           <Text style={[styles.cardButtonText, { color: palette.text }]}>
             Detalles
           </Text>
-        </TouchableOpacity>
-      </View>
+        </View>
+      </TouchableOpacity>
     );
   };
 
@@ -390,7 +378,6 @@ export default function Index() {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <View>
           <Text style={styles.hola}>{saludo},</Text>
@@ -399,9 +386,7 @@ export default function Index() {
         <Image source={avatar} style={styles.avatar} />
       </View>
 
-      {/* Fondo de todo lo demás */}
       <View style={styles.contentBackground}>
-        {/* Buscador + Botones */}
         <View style={styles.searchRow}>
           <View style={styles.searchBox}>
             <TextInput
@@ -451,7 +436,6 @@ export default function Index() {
         </View>
 
         <ScrollView>
-          {/* Institucionales */}
           <Text style={styles.sectionTitle}>Institucionales</Text>
           {proyectosInstitucionales.length > 0 ? (
             <View style={styles.carouselContainer}>
@@ -472,7 +456,6 @@ export default function Index() {
             </Text>
           )}
 
-          {/* Externas */}
           <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Externas</Text>
           {proyectosExternos.length > 0 ? (
             <View style={styles.carouselContainer}>
@@ -495,7 +478,6 @@ export default function Index() {
         </ScrollView>
       </View>
 
-      {/* Modal de Filtros Mejorado */}
       <Modal
         visible={filterModalVisible}
         animationType="slide"
@@ -504,7 +486,6 @@ export default function Index() {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
-            {/* Header del Modal */}
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Filtros</Text>
               <TouchableOpacity
@@ -519,7 +500,6 @@ export default function Index() {
               style={styles.modalContent}
               showsVerticalScrollIndicator={false}
             >
-              {/* Idiomas */}
               <Text style={styles.filterSectionTitle}>Idiomas</Text>
               <View style={styles.filterOptionsContainer}>
                 {idiomasDisponibles.map((idioma) => (
@@ -562,7 +542,6 @@ export default function Index() {
                 ))}
               </View>
 
-              {/* Modalidades - NUEVO FILTRO */}
               <Text style={styles.filterSectionTitle}>Modalidades</Text>
               <View style={styles.filterOptionsContainer}>
                 {modalidadesDisponibles.map((modalidad) => (
@@ -607,10 +586,8 @@ export default function Index() {
                 ))}
               </View>
 
-              {/* Carreras Agrupadas - MEJORADO */}
               <Text style={styles.filterSectionTitle}>Carreras</Text>
 
-              {/* Técnicos */}
               <TouchableOpacity
                 style={styles.carreraGroupHeader}
                 onPress={() => toggleCarreraGroup("tecnicos")}
@@ -669,7 +646,6 @@ export default function Index() {
                 </View>
               )}
 
-              {/* Ingenierías */}
               <TouchableOpacity
                 style={styles.carreraGroupHeader}
                 onPress={() => toggleCarreraGroup("ingenierias")}
@@ -730,7 +706,6 @@ export default function Index() {
                 </View>
               )}
 
-              {/* Licenciaturas */}
               <TouchableOpacity
                 style={styles.carreraGroupHeader}
                 onPress={() => toggleCarreraGroup("licenciaturas")}
@@ -791,7 +766,6 @@ export default function Index() {
                 </View>
               )}
 
-              {/* Rango de Horas */}
               <Text style={styles.filterSectionTitle}>Horas Mínimas</Text>
               <View style={styles.horasContainer}>
                 {[0, 25, 50, 75, 100].map((horas) => (
@@ -828,7 +802,6 @@ export default function Index() {
               </View>
             </ScrollView>
 
-            {/* Botones del Modal */}
             <View style={styles.modalButtons}>
               <TouchableOpacity
                 style={styles.limpiarButton}
@@ -853,7 +826,6 @@ export default function Index() {
         </View>
       </Modal>
 
-      {/* Bottom nav */}
       <View style={styles.bottomNav}>
         <Ionicons
           name="home"
@@ -947,7 +919,6 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginVertical: 10,
   },
-  // Header
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -973,15 +944,11 @@ const styles = StyleSheet.create({
     height: 55,
     borderRadius: 22,
   },
-
-  // Fondo de contenido
   contentBackground: {
     flex: 1,
     backgroundColor: "#F2F6FC",
     paddingBottom: 20,
   },
-
-  // Buscador + botones
   searchRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -1030,8 +997,6 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 6,
   },
-
-  // Secciones
   sectionTitle: {
     fontSize: 19,
     fontFamily: "MyriadPro-Bold",
@@ -1040,8 +1005,6 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginVertical: 10,
   },
-
-  // Carruseles
   carouselContainer: {
     height: 250,
     marginBottom: 10,
@@ -1050,8 +1013,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5,
   },
-
-  // Cards
   card: {
     width: 260,
     minHeight: 210,
@@ -1111,8 +1072,6 @@ const styles = StyleSheet.create({
     fontFamily: "MyriadPro-Bold",
     fontWeight: "bold",
   },
-
-  // Bottom nav
   bottomNav: {
     flexDirection: "row",
     justifyContent: "space-around",
@@ -1124,8 +1083,6 @@ const styles = StyleSheet.create({
     paddingBottom: 30,
     paddingTop: 20,
   },
-
-  // Modal Styles Mejorados
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0, 0, 0, 0.5)",
@@ -1276,7 +1233,6 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontFamily: "MyriadPro-Bold",
   },
-  // Nuevos estilos para grupos de carreras
   carreraGroupHeader: {
     flexDirection: "row",
     justifyContent: "space-between",

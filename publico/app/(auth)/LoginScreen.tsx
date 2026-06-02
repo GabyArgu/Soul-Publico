@@ -106,18 +106,18 @@ export default function Login() {
   };
 
   return (
-    <ImageBackground
-      source={require("../../assets/images/fondo-l.png")}
-      style={styles.background}
-      resizeMode="cover"
-    >
-      <KeyboardAwareScrollView
-        contentContainerStyle={styles.scrollContainer}
-        keyboardShouldPersistTaps="handled"
-        extraScrollHeight={-190}
-        enableOnAndroid={true}
-        bounces={false}
-      >
+    <KeyboardAwareScrollView
+  contentContainerStyle={{ flexGrow: 1 }}
+  keyboardShouldPersistTaps="handled"
+  extraScrollHeight={-130}
+  enableOnAndroid
+>
+  <ImageBackground
+    source={require("../../assets/images/fondo-l.png")}
+    style={styles.background}
+    resizeMode="cover"
+  >
+      
         <View style={styles.container}>
           <View style={styles.formContainer}>
             <View style={[styles.input, styles.inputCarnet]}>
@@ -166,8 +166,8 @@ export default function Login() {
             </TouchableOpacity>
           </View>
         </View>
+      </ImageBackground>
       </KeyboardAwareScrollView>
-    </ImageBackground>
   );
 }
 

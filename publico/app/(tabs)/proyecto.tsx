@@ -1,19 +1,20 @@
 // app/(main)/AgregarProyecto.tsx
 import { Ionicons } from "@expo/vector-icons";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { Picker } from "@react-native-picker/picker";
 import axios from "axios";
 import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import {
-    Dimensions,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Dimensions,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+  KeyboardAvoidingView,
+  Platform,
 } from "react-native";
 import Toast from "react-native-root-toast";
 import { getUserData, UserData } from "../utils/session";
@@ -61,6 +62,7 @@ const { width: screenWidth } = Dimensions.get("window");
 
 export default function AgregarProyecto() {
   const router = useRouter();
+  const scrollViewRef = useRef<ScrollView>(null);
 
   // Estados para datos de usuario
   const [userData, setUserData] = useState<UserData | null>(null);
@@ -97,7 +99,7 @@ export default function AgregarProyecto() {
   >([]);
   const [modalidad, setModalidad] = useState<string | number>("");
 
-  // Estados para habilidades (SOLO AGREGAMOS EL ESTADO PARA CREAR HABILIDAD)
+  // Estados para habilidades
   const [inputHabilidadTecnica, setInputHabilidadTecnica] = useState("");
   const [inputHabilidadBlanda, setInputHabilidadBlanda] = useState("");
   const [habilidadesTecnicas, setHabilidadesTecnicas] = useState<Habilidad[]>(
@@ -110,19 +112,18 @@ export default function AgregarProyecto() {
   const [sugerenciasBlandas, setSugerenciasBlandas] = useState<Habilidad[]>([]);
   const [creandoHabilidad, setCreandoHabilidad] = useState<
     "Técnica" | "Blanda" | null
-  >(null); // NUEVO: estado para crear habilidades
+  >(null);
 
-  // Estados para modales
-  const [modalEspecialidadesVisible, setModalEspecialidadesVisible] =
-    useState(false);
+  // Estados para modales (AÑADIDOS NUEVOS MODALES ESTILIZADOS)
+  const [modalEspecialidadesVisible, setModalEspecialidadesVisible] = useState(false);
   const [modalIdiomasVisible, setModalIdiomasVisible] = useState(false);
+  const [modalInstitucionesVisible, setModalInstitucionesVisible] = useState(false);
+  const [modalModalidadesVisible, setModalModalidadesVisible] = useState(false);
+  const [modalDeptosVisible, setModalDeptosVisible] = useState(false);
+  const [modalMunicipiosVisible, setModalMunicipiosVisible] = useState(false);
 
   // Estado para errores
   const [errores, setErrores] = useState<string[]>([]);
-
-  // Posición de sugerencias
-  const [layoutTecnicas, setLayoutTecnicas] = useState({ y: 0, width: 0 });
-  const [layoutBlandas, setLayoutBlandas] = useState({ y: 0, width: 0 });
 
   // Cargar datos del usuario logeado
   useEffect(() => {
@@ -241,7 +242,7 @@ export default function AgregarProyecto() {
     );
   }, [inputHabilidadBlanda, habilidadesBlandas, habilidades]);
 
-  // Funciones para habilidades (MANTENEMOS LAS ORIGINALES Y AGREGAMOS LA NUEVA)
+  // Funciones para habilidades
   const agregarHabilidad = (h: Habilidad, tipo: "Técnica" | "Blanda") => {
     if (tipo === "Técnica") {
       setHabilidadesTecnicas([...habilidadesTecnicas, h]);
@@ -252,7 +253,6 @@ export default function AgregarProyecto() {
     }
   };
 
-  // NUEVA FUNCIÓN para crear y agregar habilidad (IGUAL QUE EDITAR PERFIL)
   const crearYAgregarHabilidad = async (tipo: "Técnica" | "Blanda") => {
     const nombreHabilidad =
       tipo === "Técnica" ? inputHabilidadTecnica : inputHabilidadBlanda;
@@ -268,11 +268,7 @@ export default function AgregarProyecto() {
       });
 
       const nuevaHabilidad = response.data;
-
-      // Agregar a la lista de habilidades global
       setHabilidades((prev) => [...prev, nuevaHabilidad]);
-
-      // Agregar a las habilidades seleccionadas
       agregarHabilidad(nuevaHabilidad, tipo);
 
       showToast(`✅ Habilidad "${nombreHabilidad}" creada y agregada`, true);
@@ -295,7 +291,7 @@ export default function AgregarProyecto() {
       );
   };
 
-  // Funciones para especialidades (selección múltiple)
+  // Funciones para especialidades
   const toggleEspecialidad = (idCarrera: number) => {
     setEspecialidades((prev) =>
       prev.includes(idCarrera)
@@ -365,12 +361,12 @@ export default function AgregarProyecto() {
     }
   };
 
-  // Cuando se selecciona una institución, desactivar el checkbox
   const handleInstitucionChange = (value: string | number) => {
     setInstitucion(value);
     if (value !== "") {
       setCrearNuevaInstitucion(false);
     }
+    setModalInstitucionesVisible(false);
   };
 
   // Validaciones
@@ -403,7 +399,6 @@ export default function AgregarProyecto() {
       return false;
     }
 
-    // Validar fecha de aplicación
     if (fechaAplicacion && fechaAplicacion < hoy) {
       showToast("❌ La fecha de aplicación no puede ser anterior a hoy");
       setFechaAplicacion(null);
@@ -421,57 +416,45 @@ export default function AgregarProyecto() {
     return true;
   };
 
-  // NUEVA LÓGICA DE VALIDACIÓN
   const validarFormulario = () => {
     const hoy = new Date();
     hoy.setHours(0, 0, 0, 0);
     const nuevosErrores: string[] = [];
 
     if (!nombreProyecto) nuevosErrores.push("Nombre del proyecto");
-    //if (especialidades.length === 0) nuevosErrores.push("Especialidades");
 
-    // Validar institución
     if (crearNuevaInstitucion) {
       if (!nuevaInstitucion.nombre) nuevosErrores.push("Nombre de institución");
       if (!nuevaInstitucion.idDepartamento) nuevosErrores.push("Departamento");
       if (!nuevaInstitucion.idMunicipio) nuevosErrores.push("Municipio");
-      if (!nuevaInstitucion.nombreContacto)
-        nuevosErrores.push("Nombre de contacto");
+      if (!nuevaInstitucion.nombreContacto) nuevosErrores.push("Nombre de contacto");
       if (!nuevaInstitucion.telefonoContacto) nuevosErrores.push("Teléfono");
       if (!nuevaInstitucion.emailContacto) nuevosErrores.push("Email");
     } else {
       if (!institucion) nuevosErrores.push("Institución");
     }
 
-    // FECHAS EN ORDEN CORRECTO
     if (!fechaAplicacion) nuevosErrores.push("Fecha de aplicación");
-    else if (fechaAplicacion < hoy)
-      nuevosErrores.push("Fecha aplicación no puede ser anterior a hoy");
+    else if (fechaAplicacion < hoy) nuevosErrores.push("Fecha aplicación no puede ser anterior a hoy");
 
     if (!fechaInicio) nuevosErrores.push("Fecha de inicio");
-    else if (fechaInicio < hoy)
-      nuevosErrores.push("Fecha de inicio no puede ser anterior a hoy");
-    else if (fechaAplicacion && fechaInicio < fechaAplicacion)
-      nuevosErrores.push("Fecha inicio debe ser posterior a fecha aplicación");
+    else if (fechaInicio < hoy) nuevosErrores.push("Fecha de inicio no puede ser anterior a hoy");
+    else if (fechaAplicacion && fechaInicio < fechaAplicacion) nuevosErrores.push("Fecha inicio debe ser posterior a fecha aplicación");
 
     if (!fechaFin) nuevosErrores.push("Fecha de fin");
-    else if (fechaFin <= fechaInicio!)
-      nuevosErrores.push("Fecha fin debe ser posterior a inicio");
+    else if (fechaFin <= fechaInicio!) nuevosErrores.push("Fecha fin debe ser posterior a inicio");
 
     if (!descripcion) nuevosErrores.push("Descripción");
     if (!capacidad) nuevosErrores.push("Capacidad");
     if (!horas) nuevosErrores.push("Horas");
-    if (habilidadesTecnicas.length === 0)
-      nuevosErrores.push("Habilidades técnicas");
-    if (habilidadesBlandas.length === 0)
-      nuevosErrores.push("Habilidades blandas");
+    if (habilidadesTecnicas.length === 0) nuevosErrores.push("Habilidades técnicas");
+    if (habilidadesBlandas.length === 0) nuevosErrores.push("Habilidades blandas");
     if (!modalidad) nuevosErrores.push("Modalidad");
 
     setErrores(nuevosErrores);
     return nuevosErrores.length === 0;
   };
 
-  // Toast personalizado
   const showToast = (message: string, success: boolean = false) => {
     Toast.show(message, {
       duration: 3000,
@@ -497,7 +480,6 @@ export default function AgregarProyecto() {
   };
 
   const handleSubmit = async () => {
-    // Validar primero
     if (!validarFormulario()) {
       showToast(`⚠️ Completa los campos requeridos`);
       return;
@@ -509,7 +491,6 @@ export default function AgregarProyecto() {
     }
 
     try {
-      // Preparar datos para enviar
       const proyectoData = {
         titulo: nombreProyecto,
         descripcion,
@@ -527,11 +508,7 @@ export default function AgregarProyecto() {
           })),
         ],
         idiomasRelacionados: idiomasSeleccionados,
-        idInstitucion: crearNuevaInstitucion
-          ? null
-          : institucion
-            ? Number(institucion)
-            : null,
+        idInstitucion: crearNuevaInstitucion ? null : institucion ? Number(institucion) : null,
         fechaInicio: fechaInicio?.toISOString().split("T")[0],
         fechaFin: fechaFin?.toISOString().split("T")[0],
         fechaAplicacion: fechaAplicacion?.toISOString().split("T")[0],
@@ -541,7 +518,6 @@ export default function AgregarProyecto() {
         carnetUsuario: userData.carnet,
       };
 
-      // Si se está creando nueva institución, agregar datos
       if (crearNuevaInstitucion) {
         Object.assign(proyectoData, {
           nombreInstitucion: nuevaInstitucion.nombre,
@@ -554,18 +530,44 @@ export default function AgregarProyecto() {
       const response = await axios.post(`${API_URL}/proyectos`, proyectoData);
 
       if (response.status === 201) {
-        showToast("✅ Proyecto creado exitosamente", true);
+
+        showToast("✅ Solicitud mandada. Te notificaremos si es aprobado", true);
         setTimeout(() => router.back(), 1500);
       }
+
     } catch (error) {
       console.error("Error creando proyecto:", error);
       showToast("❌ Error al crear el proyecto");
     }
   };
 
+  // Helpers de texto para renderizar los valores actuales en los nuevos modales
+  const getInstitucionTexto = () => {
+    if (institucion === "") return "Selecciona la institución";
+    const inst = instituciones.find((i) => i.idInstitucion === Number(institucion));
+    return inst ? inst.nombre : "Selecciona la institución";
+  };
+
+  const getModalidadTexto = () => {
+    if (modalidad === "") return "Selecciona la modalidad";
+    const mod = modalidades.find((m) => m.idModalidad === Number(modalidad));
+    return mod ? mod.nombre : "Selecciona la modalidad";
+  };
+
+  const getDepartamentoTexto = () => {
+    if (nuevaInstitucion.idDepartamento === 0) return "Departamento";
+    const dep = departamentos.find((d) => d.idDepartamento === nuevaInstitucion.idDepartamento);
+    return dep ? dep.nombre : "Departamento";
+  };
+
+  const getMunicipioTexto = () => {
+    if (nuevaInstitucion.idMunicipio === 0) return "Municipio";
+    const mun = municipios.find((m) => m.idMunicipio === nuevaInstitucion.idMunicipio);
+    return mun ? mun.nombre : "Municipio";
+  };
+
   return (
     <View style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Agregar Proyecto</Text>
         <Ionicons
@@ -576,634 +578,449 @@ export default function AgregarProyecto() {
         />
       </View>
 
-      {/* Contenido */}
-      <ScrollView
-        style={styles.contentBackground}
-        contentContainerStyle={{ paddingBottom: 120 }}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 100 : 0}
       >
-        {/* Nombre del proyecto */}
-        <View style={[styles.inputContainer, { marginTop: 30 }]}>
-          <TextInput
-            style={styles.input}
-            placeholder="Nombre del proyecto"
-            placeholderTextColor="#666"
-            value={nombreProyecto}
-            onChangeText={setNombreProyecto}
-          />
-        </View>
-
-        {/* Especialidad - Modal de selección múltiple */}
-        <TouchableOpacity
-          style={styles.inputContainer}
-          onPress={() => setModalEspecialidadesVisible(true)}
+        <ScrollView
+          ref={scrollViewRef}
+          style={styles.contentBackground}
+          contentContainerStyle={{ paddingBottom: 160 }}
+          keyboardShouldPersistTaps="handled"
         >
-          <Text
-            style={[
-              styles.input,
-              { color: especialidades.length > 0 ? "#000" : "#666" },
-            ]}
-          >
-            {getEspecialidadesTexto()}
-          </Text>
-          <Ionicons name="chevron-down" size={20} color="#213A8E" />
-        </TouchableOpacity>
-
-        {/* Institución - Select único */}
-        <View
-          style={[
-            styles.inputContainer,
-            crearNuevaInstitucion && styles.disabledInput,
-          ]}
-        >
-          <Picker
-            selectedValue={institucion}
-            onValueChange={handleInstitucionChange}
-            style={styles.picker}
-            dropdownIconColor="#213A8E"
-            enabled={!crearNuevaInstitucion}
-          >
-            <Picker.Item label="Selecciona la institución" value={""} />
-            {instituciones.map((inst) => (
-              <Picker.Item
-                key={inst.idInstitucion}
-                label={inst.nombre}
-                value={inst.idInstitucion}
-              />
-            ))}
-          </Picker>
-        </View>
-
-        {/* Checkbox para crear nueva institución - LADO DERECHO */}
-        <View style={styles.checkboxRow}>
-          <View style={styles.checkboxContainer}>
-            <TouchableOpacity
-              style={styles.checkbox}
-              onPress={toggleCrearInstitucion}
-              disabled={!!institucion && institucion !== ""}
-            >
-              <Ionicons
-                name={crearNuevaInstitucion ? "checkbox" : "square-outline"}
-                size={22}
-                color={
-                  crearNuevaInstitucion
-                    ? "#2666DE"
-                    : institucion
-                      ? "#ccc"
-                      : "#666"
-                }
-              />
-              <Text
-                style={[
-                  styles.checkboxText,
-                  institucion ? styles.disabledText : null,
-                ]}
-              >
-                Crear nueva institución
-              </Text>
-            </TouchableOpacity>
+          {/* Nombre del proyecto */}
+          <View style={[styles.inputContainer, { marginTop: 30 }]}>
+            <TextInput
+              style={styles.input}
+              placeholder="Nombre del proyecto"
+              placeholderTextColor="#666"
+              value={nombreProyecto}
+              onChangeText={setNombreProyecto}
+            />
           </View>
-        </View>
 
-        {/* Campos para nueva institución - Solo visibles cuando crearNuevaInstitucion es true */}
-        {crearNuevaInstitucion && (
-          <>
-            {/* Nombre de nueva institución */}
-            <View style={styles.inputContainer}>
-              <TextInput
-                style={styles.input}
-                placeholder="Nombre de la nueva institución"
-                placeholderTextColor="#666"
-                value={nuevaInstitucion.nombre}
-                onChangeText={(text) =>
-                  setNuevaInstitucion({ ...nuevaInstitucion, nombre: text })
-                }
-              />
+          {/* Especialidad */}
+          <TouchableOpacity
+            style={styles.inputContainer}
+            onPress={() => setModalEspecialidadesVisible(true)}
+          >
+            <Text
+              style={[
+                styles.input,
+                { color: especialidades.length > 0 ? "#000" : "#666" },
+              ]}
+            >
+              {getEspecialidadesTexto()}
+            </Text>
+            <Ionicons name="chevron-down" size={20} color="#213A8E" />
+          </TouchableOpacity>
+
+          {/* NUEVA INSTITUCIÓN: Selector estilizado que abre Modal */}
+          <TouchableOpacity
+            style={[
+              styles.inputContainer,
+              crearNuevaInstitucion && styles.disabledInput,
+            ]}
+            onPress={() => !crearNuevaInstitucion && setModalInstitucionesVisible(true)}
+            disabled={crearNuevaInstitucion}
+          >
+            <Text
+              style={[
+                styles.input,
+                { color: institucion !== "" ? "#000" : "#666" },
+              ]}
+            >
+              {getInstitucionTexto()}
+            </Text>
+            <Ionicons name="chevron-down" size={20} color="#213A8E" />
+          </TouchableOpacity>
+
+          {/* Checkbox para crear nueva institución */}
+          <View style={styles.checkboxRow}>
+            <View style={styles.checkboxContainer}>
+              <TouchableOpacity
+                style={styles.checkbox}
+                onPress={toggleCrearInstitucion}
+                disabled={!!institucion && institucion !== ""}
+              >
+                <Ionicons
+                  name={crearNuevaInstitucion ? "checkbox" : "square-outline"}
+                  size={22}
+                  color={crearNuevaInstitucion ? "#2666DE" : institucion ? "#ccc" : "#666"}
+                />
+                <Text
+                  style={[
+                    styles.checkboxText,
+                    institucion ? styles.disabledText : null,
+                  ]}
+                >
+                  Crear nueva institución
+                </Text>
+              </TouchableOpacity>
             </View>
+          </View>
 
-            {/* Contacto y Teléfono para nueva institución */}
-            <View style={styles.row}>
-              <View style={[styles.inputContainer2, styles.half]}>
+          {/* Campos para nueva institución */}
+          {crearNuevaInstitucion && (
+            <>
+              <View style={styles.inputContainer}>
                 <TextInput
                   style={styles.input}
-                  placeholder="Contacto"
+                  placeholder="Nombre de la nueva institución"
                   placeholderTextColor="#666"
-                  value={nuevaInstitucion.nombreContacto}
+                  value={nuevaInstitucion.nombre}
+                  onChangeText={(text) =>
+                    setNuevaInstitucion({ ...nuevaInstitucion, nombre: text })
+                  }
+                />
+              </View>
+
+              <View style={styles.row}>
+                <View style={[styles.inputContainer2, styles.half]}>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Contacto"
+                    placeholderTextColor="#666"
+                    value={nuevaInstitucion.nombreContacto}
+                    onChangeText={(text) =>
+                      setNuevaInstitucion({
+                        ...nuevaInstitucion,
+                        nombreContacto: text,
+                      })
+                    }
+                  />
+                </View>
+                <View style={[styles.inputContainer2, styles.half]}>
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Teléfono"
+                    placeholderTextColor="#666"
+                    value={nuevaInstitucion.telefonoContacto}
+                    onChangeText={validarTelefono}
+                    keyboardType="numeric"
+                  />
+                </View>
+              </View>
+
+              <View style={styles.inputContainer}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Correo de contacto"
+                  placeholderTextColor="#666"
+                  value={nuevaInstitucion.emailContacto}
                   onChangeText={(text) =>
                     setNuevaInstitucion({
                       ...nuevaInstitucion,
-                      nombreContacto: text,
+                      emailContacto: text,
                     })
                   }
+                  keyboardType="email-address"
                 />
               </View>
-              <View style={[styles.inputContainer2, styles.half]}>
-                <TextInput
-                  style={styles.input}
-                  placeholder="Teléfono"
-                  placeholderTextColor="#666"
-                  value={nuevaInstitucion.telefonoContacto}
-                  onChangeText={validarTelefono}
-                  keyboardType="numeric"
-                />
-              </View>
-            </View>
 
-            {/* Correo para nueva institución */}
-            <View style={styles.inputContainer}>
+              {/* Selector departamento estilizado */}
+              <TouchableOpacity
+                style={styles.inputContainer}
+                onPress={() => setModalDeptosVisible(true)}
+              >
+                <Text style={[styles.input, { color: nuevaInstitucion.idDepartamento !== 0 ? "#000" : "#666" }]}>
+                  {getDepartamentoTexto()}
+                </Text>
+                <Ionicons name="chevron-down" size={20} color="#213A8E" />
+              </TouchableOpacity>
+
+              {/* Selector municipio estilizado */}
+              <TouchableOpacity
+                style={[styles.inputContainer, !nuevaInstitucion.idDepartamento && styles.disabledInput]}
+                onPress={() => nuevaInstitucion.idDepartamento !== 0 && setModalMunicipiosVisible(true)}
+                disabled={nuevaInstitucion.idDepartamento === 0}
+              >
+                <Text style={[styles.input, { color: nuevaInstitucion.idMunicipio !== 0 ? "#000" : "#666" }]}>
+                  {nuevaInstitucion.idDepartamento !== 0 ? getMunicipioTexto() : "Primero selecciona departamento"}
+                </Text>
+                <Ionicons name="chevron-down" size={20} color="#213A8E" />
+              </TouchableOpacity>
+            </>
+          )}
+
+          {/* FECHA DE APLICACIÓN */}
+          <TouchableOpacity
+            style={styles.inputContainer}
+            onPress={() => setShowAplicacion(true)}
+          >
+            <Text style={[styles.input, { color: fechaAplicacion ? "#000" : "#666" }]}>
+              {fechaAplicacion ? fechaAplicacion.toLocaleDateString() : "Fecha límite para aplicar"}
+            </Text>
+            <Ionicons name="calendar-outline" size={22} color="#213A8E" style={styles.iconCalendar} />
+          </TouchableOpacity>
+          {showAplicacion && (
+            <DateTimePicker
+              value={fechaAplicacion || new Date()}
+              mode="date"
+              display="calendar"
+              onChange={(event, selectedDate) => {
+                setShowAplicacion(false);
+                if (selectedDate) setFechaAplicacion(selectedDate);
+              }}
+            />
+          )}
+
+          {/* FECHAS DE INICIO Y FIN */}
+          <View style={styles.row}>
+            <TouchableOpacity
+              style={[styles.inputContainer2, styles.half, { opacity: fechaAplicacion ? 1 : 0.5 }]}
+              onPress={() => fechaAplicacion && setShowInicio(true)}
+              disabled={!fechaAplicacion}
+            >
+              <Text style={[styles.input, { color: fechaInicio ? "#000" : "#666" }]}>
+                {fechaInicio ? fechaInicio.toLocaleDateString() : "Inicio"}
+              </Text>
+              <Ionicons name="calendar-outline" size={22} color="#213A8E" style={styles.iconCalendar} />
+            </TouchableOpacity>
+            {showInicio && (
+              <DateTimePicker
+                value={fechaInicio || new Date()}
+                mode="date"
+                display="calendar"
+                onChange={(event, selectedDate) => {
+                  setShowInicio(false);
+                  if (selectedDate) {
+                    setFechaInicio(selectedDate);
+                    validarFechas();
+                  }
+                }}
+              />
+            )}
+            <TouchableOpacity
+              style={[styles.inputContainer2, styles.half, { opacity: fechaInicio ? 1 : 0.5 }]}
+              onPress={() => fechaInicio && setShowFin(true)}
+              disabled={!fechaInicio}
+            >
+              <Text style={[styles.input, { color: fechaFin ? "#000" : "#666" }]}>
+                {fechaFin ? fechaFin.toLocaleDateString() : "Fin"}
+              </Text>
+              <Ionicons name="calendar-outline" size={22} color="#213A8E" style={styles.iconCalendar} />
+            </TouchableOpacity>
+            {showFin && (
+              <DateTimePicker
+                value={fechaFin || new Date()}
+                mode="date"
+                display="calendar"
+                onChange={(event, selectedDate) => {
+                  setShowFin(false);
+                  if (selectedDate) {
+                    setFechaFin(selectedDate);
+                    setTimeout(validarFechas, 100);
+                  }
+                }}
+              />
+            )}
+          </View>
+
+          {/* Descripción */}
+          <View style={[styles.inputContainer, styles.textAreaContainer]}>
+            <TextInput
+              style={[styles.input, styles.textArea]}
+              placeholder="Descripción del proyecto"
+              placeholderTextColor="#666"
+              value={descripcion}
+              onChangeText={setDescripcion}
+              multiline
+              textAlignVertical="top"
+            />
+          </View>
+
+          {/* Capacidad y Horas */}
+          <View style={styles.row}>
+            <View style={[styles.inputContainer2, styles.half]}>
               <TextInput
                 style={styles.input}
-                placeholder="Correo de contacto"
+                placeholder="Capacidad"
                 placeholderTextColor="#666"
-                value={nuevaInstitucion.emailContacto}
-                onChangeText={(text) =>
-                  setNuevaInstitucion({
-                    ...nuevaInstitucion,
-                    emailContacto: text,
-                  })
-                }
-                keyboardType="email-address"
+                value={capacidad}
+                onChangeText={setCapacidad}
+                keyboardType="numeric"
               />
             </View>
-
-            {/* Departamento para nueva institución */}
-            <View style={styles.inputContainer}>
-              <Picker
-                selectedValue={nuevaInstitucion.idDepartamento}
-                onValueChange={(v) =>
-                  setNuevaInstitucion({
-                    ...nuevaInstitucion,
-                    idDepartamento: Number(v),
-                  })
-                }
-                style={styles.picker}
-                dropdownIconColor="#213A8E"
-              >
-                <Picker.Item label="Departamento" value={0} />
-                {departamentos.map((d) => (
-                  <Picker.Item
-                    key={d.idDepartamento}
-                    label={d.nombre}
-                    value={d.idDepartamento}
-                  />
-                ))}
-              </Picker>
-            </View>
-
-            {/* Municipio para nueva institución */}
-            <View style={styles.inputContainer}>
-              <Picker
-                selectedValue={nuevaInstitucion.idMunicipio}
-                onValueChange={(v) =>
-                  setNuevaInstitucion({
-                    ...nuevaInstitucion,
-                    idMunicipio: Number(v),
-                  })
-                }
-                style={styles.picker}
-                dropdownIconColor="#213A8E"
-                enabled={!!nuevaInstitucion.idDepartamento}
-              >
-                <Picker.Item
-                  label={
-                    nuevaInstitucion.idDepartamento
-                      ? "Municipio"
-                      : "Primero selecciona departamento"
-                  }
-                  value={0}
-                />
-                {municipios.map((m) => (
-                  <Picker.Item
-                    key={m.idMunicipio}
-                    label={m.nombre}
-                    value={m.idMunicipio}
-                  />
-                ))}
-              </Picker>
-            </View>
-          </>
-        )}
-
-        {/* FECHA DE APLICACIÓN PRIMERO */}
-        <TouchableOpacity
-          style={styles.inputContainer}
-          onPress={() => setShowAplicacion(true)}
-        >
-          <Text
-            style={[styles.input, { color: fechaAplicacion ? "#000" : "#666" }]}
-          >
-            {fechaAplicacion
-              ? fechaAplicacion.toLocaleDateString()
-              : "Fecha límite para aplicar"}
-          </Text>
-          <Ionicons
-            name="calendar-outline"
-            size={22}
-            color="#213A8E"
-            style={styles.iconCalendar}
-          />
-        </TouchableOpacity>
-        {showAplicacion && (
-          <DateTimePicker
-            value={fechaAplicacion || new Date()}
-            mode="date"
-            display="calendar"
-            onChange={(event, selectedDate) => {
-              setShowAplicacion(false);
-              if (selectedDate) {
-                setFechaAplicacion(selectedDate);
-              }
-            }}
-          />
-        )}
-
-        {/* FECHAS DE INICIO Y FIN DESPUÉS */}
-        <View style={styles.row}>
-          <TouchableOpacity
-            style={[
-              styles.inputContainer2,
-              styles.half,
-              { opacity: fechaAplicacion ? 1 : 0.5 },
-            ]}
-            onPress={() => fechaAplicacion && setShowInicio(true)}
-            disabled={!fechaAplicacion}
-          >
-            <Text
-              style={[styles.input, { color: fechaInicio ? "#000" : "#666" }]}
-            >
-              {fechaInicio ? fechaInicio.toLocaleDateString() : "Inicio"}
-            </Text>
-            <Ionicons
-              name="calendar-outline"
-              size={22}
-              color="#213A8E"
-              style={styles.iconCalendar}
-            />
-          </TouchableOpacity>
-          {showInicio && (
-            <DateTimePicker
-              value={fechaInicio || new Date()}
-              mode="date"
-              display="calendar"
-              onChange={(event, selectedDate) => {
-                setShowInicio(false);
-                if (selectedDate) {
-                  setFechaInicio(selectedDate);
-                  validarFechas();
-                }
-              }}
-            />
-          )}
-          <TouchableOpacity
-            style={[
-              styles.inputContainer2,
-              styles.half,
-              { opacity: fechaInicio ? 1 : 0.5 },
-            ]}
-            onPress={() => fechaInicio && setShowFin(true)}
-            disabled={!fechaInicio}
-          >
-            <Text style={[styles.input, { color: fechaFin ? "#000" : "#666" }]}>
-              {fechaFin ? fechaFin.toLocaleDateString() : "Fin"}
-            </Text>
-            <Ionicons
-              name="calendar-outline"
-              size={22}
-              color="#213A8E"
-              style={styles.iconCalendar}
-            />
-          </TouchableOpacity>
-          {showFin && (
-            <DateTimePicker
-              value={fechaFin || new Date()}
-              mode="date"
-              display="calendar"
-              onChange={(event, selectedDate) => {
-                setShowFin(false);
-                if (selectedDate) {
-                  setFechaFin(selectedDate);
-                  setTimeout(validarFechas, 100);
-                }
-              }}
-            />
-          )}
-        </View>
-
-        {/* Descripción */}
-        <View style={[styles.inputContainer, styles.textAreaContainer]}>
-          <TextInput
-            style={[styles.input, styles.textArea]}
-            placeholder="Descripción del proyecto"
-            placeholderTextColor="#666"
-            value={descripcion}
-            onChangeText={setDescripcion}
-            multiline
-            textAlignVertical="top"
-          />
-        </View>
-
-        {/* Capacidad y Horas */}
-        <View style={styles.row}>
-          <View style={[styles.inputContainer2, styles.half]}>
-            <TextInput
-              style={styles.input}
-              placeholder="Capacidad"
-              placeholderTextColor="#666"
-              value={capacidad}
-              onChangeText={setCapacidad}
-              keyboardType="numeric"
-            />
-          </View>
-          <View style={[styles.inputContainer2, styles.half]}>
-            <TextInput
-              style={styles.input}
-              placeholder="Horas"
-              placeholderTextColor="#666"
-              value={horas}
-              onChangeText={setHoras}
-              keyboardType="numeric"
-            />
-          </View>
-        </View>
-
-        {/* Idiomas y Niveles - Selección múltiple */}
-        <TouchableOpacity
-          style={styles.inputContainer}
-          onPress={() => setModalIdiomasVisible(true)}
-        >
-          <Text
-            style={[
-              styles.input,
-              { color: idiomasSeleccionados.length > 0 ? "#000" : "#666" },
-            ]}
-          >
-            {getIdiomasTexto()}
-          </Text>
-          <Ionicons name="chevron-down" size={20} color="#213A8E" />
-        </TouchableOpacity>
-
-        {/* Modalidad */}
-        <View style={styles.inputContainer}>
-          <Picker
-            selectedValue={modalidad}
-            onValueChange={setModalidad}
-            style={styles.picker}
-            dropdownIconColor="#213A8E"
-          >
-            <Picker.Item label="Selecciona la modalidad" value={""} />
-            {modalidades.map((mod) => (
-              <Picker.Item
-                key={mod.idModalidad}
-                label={mod.nombre}
-                value={mod.idModalidad}
-              />
-            ))}
-          </Picker>
-        </View>
-
-        {/* Habilidades técnicas - SOLO ACTUALIZAMOS LA PARTE DE SUGERENCIAS */}
-        <View style={{ zIndex: 1000 }}>
-          <View
-            style={styles.chipsInputContainer}
-            onLayout={(event) => {
-              const { y, width } = event.nativeEvent.layout;
-              setLayoutTecnicas({ y: y + 60, width: width });
-            }}
-          >
-            <View style={styles.chipsContainer}>
-              {habilidadesTecnicas.map((h) => (
-                <View key={h.idHabilidad} style={styles.chip}>
-                  <Text style={styles.chipText}>{h.nombre}</Text>
-                  <TouchableOpacity
-                    onPress={() => eliminarHabilidad(h.idHabilidad, "Técnica")}
-                    style={styles.chipClose}
-                  >
-                    <Ionicons name="close-circle" size={16} color="#fff" />
-                  </TouchableOpacity>
-                </View>
-              ))}
+            <View style={[styles.inputContainer2, styles.half]}>
               <TextInput
-                style={styles.chipTextInput}
-                placeholder="Habilidades técnicas requeridas"
+                style={styles.input}
+                placeholder="Horas"
                 placeholderTextColor="#666"
-                value={inputHabilidadTecnica}
-                onChangeText={setInputHabilidadTecnica}
+                value={horas}
+                onChangeText={setHoras}
+                keyboardType="numeric"
               />
             </View>
           </View>
-          {inputHabilidadTecnica.length > 0 &&
-            sugerenciasTecnicas.length > 0 && (
-              <View
-                style={[
-                  styles.suggestionsList,
-                  {
-                    top: layoutTecnicas.y,
-                    width: layoutTecnicas.width,
-                    left: 20,
-                  },
-                ]}
-              >
-                <ScrollView
-                  style={styles.suggestionsScroll}
-                  nestedScrollEnabled={true}
-                >
+
+          {/* Idiomas y Niveles */}
+          <TouchableOpacity
+            style={styles.inputContainer}
+            onPress={() => setModalIdiomasVisible(true)}
+          >
+            <Text style={[styles.input, { color: idiomasSeleccionados.length > 0 ? "#000" : "#666" }]}>
+              {getIdiomasTexto()}
+            </Text>
+            <Ionicons name="chevron-down" size={20} color="#213A8E" />
+          </TouchableOpacity>
+
+          {/* NUEVA MODALIDAD: Selector que abre modal estilizado */}
+          <TouchableOpacity
+            style={styles.inputContainer}
+            onPress={() => setModalModalidadesVisible(true)}
+          >
+            <Text style={[styles.input, { color: modalidad !== "" ? "#000" : "#666" }]}>
+              {getModalidadTexto()}
+            </Text>
+            <Ionicons name="chevron-down" size={20} color="#213A8E" />
+          </TouchableOpacity>
+
+          {/* Habilidades técnicas */}
+          <View style={{ zIndex: 1000 }}>
+            <View style={styles.chipsInputContainer}>
+              <View style={styles.chipsContainer}>
+                {habilidadesTecnicas.map((h) => (
+                  <View key={h.idHabilidad} style={styles.chip}>
+                    <Text style={styles.chipText}>{h.nombre}</Text>
+                    <TouchableOpacity onPress={() => eliminarHabilidad(h.idHabilidad, "Técnica")} style={styles.chipClose}>
+                      <Ionicons name="close-circle" size={16} color="#fff" />
+                    </TouchableOpacity>
+                  </View>
+                ))}
+                <TextInput
+                  style={styles.chipTextInput}
+                  placeholder="Habilidades técnicas requeridas"
+                  placeholderTextColor="#666"
+                  value={inputHabilidadTecnica}
+                  onChangeText={setInputHabilidadTecnica}
+                />
+              </View>
+            </View>
+
+            {inputHabilidadTecnica.length > 0 && sugerenciasTecnicas.length > 0 && (
+              <View style={styles.inlineSuggestionsList}>
+                <ScrollView style={styles.suggestionsScroll} nestedScrollEnabled={true}>
                   {sugerenciasTecnicas.map((item) => (
-                    <TouchableOpacity
-                      key={item.idHabilidad}
-                      onPress={() => agregarHabilidad(item, "Técnica")}
-                      style={styles.suggestionItem}
-                    >
+                    <TouchableOpacity key={item.idHabilidad} onPress={() => agregarHabilidad(item, "Técnica")} style={styles.suggestionItem}>
                       <Text style={styles.suggestionText}>{item.nombre}</Text>
                     </TouchableOpacity>
                   ))}
                 </ScrollView>
               </View>
             )}
-          {/* AGREGAMOS LA OPCIÓN PARA CREAR NUEVA HABILIDAD CUANDO NO HAY SUGERENCIAS */}
-          {inputHabilidadTecnica.length > 0 &&
-            sugerenciasTecnicas.length === 0 && (
-              <View
-                style={[
-                  styles.suggestionsList,
-                  {
-                    top: layoutTecnicas.y,
-                    width: layoutTecnicas.width,
-                    left: 20,
-                  },
-                ]}
-              >
+            {inputHabilidadTecnica.length > 0 && sugerenciasTecnicas.length === 0 && (
+              <View style={styles.inlineSuggestionsList}>
                 <TouchableOpacity
                   onPress={() => crearYAgregarHabilidad("Técnica")}
                   style={styles.suggestionItem}
                   disabled={creandoHabilidad === "Técnica"}
                 >
-                  <Ionicons
-                    name="add-circle-outline"
-                    size={20}
-                    color="#2666DE"
-                  />
+                  <Ionicons name="add-circle-outline" size={20} color="#2666DE" />
                   <Text style={[styles.suggestionText, { marginLeft: 8 }]}>
-                    {creandoHabilidad === "Técnica"
-                      ? "Creando..."
-                      : `Crear "${inputHabilidadTecnica}" como habilidad técnica`}
+                    {creandoHabilidad === "Técnica" ? "Creando..." : `Crear "${inputHabilidadTecnica}"`}
                   </Text>
                 </TouchableOpacity>
               </View>
             )}
-        </View>
-
-        {/* Habilidades blandas - SOLO ACTUALIZAMOS LA PARTE DE SUGERENCIAS */}
-        <View style={{ zIndex: 900 }}>
-          <View
-            style={styles.chipsInputContainer}
-            onLayout={(event) => {
-              const { y, width } = event.nativeEvent.layout;
-              setLayoutBlandas({ y: y + 60, width: width });
-            }}
-          >
-            <View style={styles.chipsContainer}>
-              {habilidadesBlandas.map((h) => (
-                <View key={h.idHabilidad} style={styles.chip}>
-                  <Text style={styles.chipText}>{h.nombre}</Text>
-                  <TouchableOpacity
-                    onPress={() => eliminarHabilidad(h.idHabilidad, "Blanda")}
-                    style={styles.chipClose}
-                  >
-                    <Ionicons name="close-circle" size={16} color="#fff" />
-                  </TouchableOpacity>
-                </View>
-              ))}
-              <TextInput
-                style={styles.chipTextInput}
-                placeholder="Habilidades blandas requeridas"
-                placeholderTextColor="#666"
-                value={inputHabilidadBlanda}
-                onChangeText={setInputHabilidadBlanda}
-              />
-            </View>
           </View>
-          {inputHabilidadBlanda.length > 0 && sugerenciasBlandas.length > 0 && (
-            <View
-              style={[
-                styles.suggestionsList,
-                {
-                  top: layoutBlandas.y,
-                  width: layoutBlandas.width,
-                  left: 20,
-                },
-              ]}
-            >
-              <ScrollView
-                style={styles.suggestionsScroll}
-                nestedScrollEnabled={true}
-              >
-                {sugerenciasBlandas.map((item) => (
-                  <TouchableOpacity
-                    key={item.idHabilidad}
-                    onPress={() => agregarHabilidad(item, "Blanda")}
-                    style={styles.suggestionItem}
-                  >
-                    <Text style={styles.suggestionText}>{item.nombre}</Text>
-                  </TouchableOpacity>
+
+          {/* Habilidades blandas */}
+          <View style={{ zIndex: 900 }}>
+            <View style={styles.chipsInputContainer}>
+              <View style={styles.chipsContainer}>
+                {habilidadesBlandas.map((h) => (
+                  <View key={h.idHabilidad} style={styles.chip}>
+                    <Text style={styles.chipText}>{h.nombre}</Text>
+                    <TouchableOpacity onPress={() => eliminarHabilidad(h.idHabilidad, "Blanda")} style={styles.chipClose}>
+                      <Ionicons name="close-circle" size={16} color="#fff" />
+                    </TouchableOpacity>
+                  </View>
                 ))}
-              </ScrollView>
+                <TextInput
+                  style={styles.chipTextInput}
+                  placeholder="Habilidades blandas requeridas"
+                  placeholderTextColor="#666"
+                  value={inputHabilidadBlanda}
+                  onChangeText={setInputHabilidadBlanda}
+                  onFocus={() => {
+                    setTimeout(() => {
+                      scrollViewRef.current?.scrollToEnd({ animated: true });
+                    }, 100);
+                  }}
+                />
+              </View>
             </View>
-          )}
-          {/* AGREGAMOS LA OPCIÓN PARA CREAR NUEVA HABILIDAD CUANDO NO HAY SUGERENCIAS */}
-          {inputHabilidadBlanda.length > 0 &&
-            sugerenciasBlandas.length === 0 && (
-              <View
-                style={[
-                  styles.suggestionsList,
-                  {
-                    top: layoutBlandas.y,
-                    width: layoutBlandas.width,
-                    left: 20,
-                  },
-                ]}
-              >
-                <TouchableOpacity
-                  onPress={() => crearYAgregarHabilidad("Blanda")}
-                  style={styles.suggestionItem}
-                  disabled={creandoHabilidad === "Blanda"}
-                >
-                  <Ionicons
-                    name="add-circle-outline"
-                    size={20}
-                    color="#2666DE"
-                  />
+
+            {inputHabilidadBlanda.length > 0 && sugerenciasBlandas.length > 0 && (
+              <View style={styles.inlineSuggestionsList}>
+                <ScrollView style={styles.suggestionsScroll} nestedScrollEnabled={true}>
+                  {sugerenciasBlandas.map((item) => (
+                    <TouchableOpacity key={item.idHabilidad} onPress={() => agregarHabilidad(item, "Blanda")} style={styles.suggestionItem}>
+                      <Text style={styles.suggestionText}>{item.nombre}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
+            {inputHabilidadBlanda.length > 0 && sugerenciasBlandas.length === 0 && (
+              <View style={styles.inlineSuggestionsList}>
+                <TouchableOpacity onPress={() => crearYAgregarHabilidad("Blanda")} style={styles.suggestionItem} disabled={creandoHabilidad === "Blanda"}>
+                  <Ionicons name="add-circle-outline" size={20} color="#2666DE" />
                   <Text style={[styles.suggestionText, { marginLeft: 8 }]}>
-                    {creandoHabilidad === "Blanda"
-                      ? "Creando..."
-                      : `Crear "${inputHabilidadBlanda}" como habilidad blanda`}
+                    {creandoHabilidad === "Blanda" ? "Creando..." : `Crear "${inputHabilidadBlanda}"`}
                   </Text>
                 </TouchableOpacity>
               </View>
             )}
-        </View>
+          </View>
 
-        {/* Botón guardar - SIEMPRE HABILITADO */}
-        <View style={{ alignItems: "flex-end", marginTop: 20 }}>
-          <TouchableOpacity style={styles.buttonYellow} onPress={handleSubmit}>
-            <Ionicons name="save-outline" size={28} color="#fff" />
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
+          {/* Botón guardar */}
+          <View style={{ alignItems: "flex-end", marginTop: 20 }}>
+            <TouchableOpacity style={styles.buttonYellow} onPress={handleSubmit}>
+              <Ionicons name="save-outline" size={28} color="#fff" />
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
 
-      {/* Los modales se mantienen igual */}
-      <Modal
-        visible={modalEspecialidadesVisible}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setModalEspecialidadesVisible(false)}
-      >
+      <View style={styles.bottomNav}>
+        <Ionicons name="home-outline" size={28} color="#fff" onPress={() => router.push("/")} />
+        <Ionicons name="star-outline" size={28} color="#fff" onPress={() => router.push("/(tabs)/guardados")} />
+        <Ionicons name="file-tray-outline" size={28} color="#fff" onPress={() => router.push("/(tabs)/aplicaciones")} />
+        <Ionicons name="notifications-outline" size={28} color="#fff" onPress={() => router.push("/(tabs)/notificaciones")} />
+        <Ionicons name="person-outline" size={28} color="#fff" onPress={() => router.push("/(tabs)/cuenta")} />
+      </View>
+
+      {/* --- MODALES INTACTOS ORIGINALES --- */}
+      <Modal visible={modalEspecialidadesVisible} animationType="slide" transparent={true} onRequestClose={() => setModalEspecialidadesVisible(false)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>
-                Carreras requeridas (opcional)
-              </Text>
-              <TouchableOpacity
-                style={styles.closeButton}
-                onPress={() => setModalEspecialidadesVisible(false)}
-              >
+              <Text style={styles.modalTitle}>Carreras requeridas (opcional)</Text>
+              <TouchableOpacity style={styles.closeButton} onPress={() => setModalEspecialidadesVisible(false)}>
                 <Ionicons name="close" size={24} color="#213A8E" />
               </TouchableOpacity>
             </View>
-
             <ScrollView style={styles.modalContent}>
               {carreras.map((carrera) => (
                 <TouchableOpacity
                   key={carrera.idCarrera}
-                  style={[
-                    styles.especialidadOption,
-                    especialidades.includes(carrera.idCarrera) &&
-                      styles.especialidadSelected,
-                  ]}
+                  style={[styles.especialidadOption, especialidades.includes(carrera.idCarrera) && styles.especialidadSelected]}
                   onPress={() => toggleEspecialidad(carrera.idCarrera)}
                 >
                   <Ionicons
-                    name={
-                      especialidades.includes(carrera.idCarrera)
-                        ? "checkbox"
-                        : "square-outline"
-                    }
+                    name={especialidades.includes(carrera.idCarrera) ? "checkbox" : "square-outline"}
                     size={22}
-                    color={
-                      especialidades.includes(carrera.idCarrera)
-                        ? "#2666DE"
-                        : "#666"
-                    }
+                    color={especialidades.includes(carrera.idCarrera) ? "#2666DE" : "#666"}
                   />
                   <Text style={styles.especialidadText}>{carrera.nombre}</Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
-
             <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={styles.aplicarButton}
-                onPress={() => setModalEspecialidadesVisible(false)}
-              >
+              <TouchableOpacity style={styles.aplicarButton} onPress={() => setModalEspecialidadesVisible(false)}>
                 <Text style={styles.aplicarButtonText}>Aceptar</Text>
               </TouchableOpacity>
             </View>
@@ -1211,90 +1028,39 @@ export default function AgregarProyecto() {
         </View>
       </Modal>
 
-      <Modal
-        visible={modalIdiomasVisible}
-        animationType="slide"
-        transparent={true}
-        onRequestClose={() => setModalIdiomasVisible(false)}
-      >
+      <Modal visible={modalIdiomasVisible} animationType="slide" transparent={true} onRequestClose={() => setModalIdiomasVisible(false)}>
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>
-                Idiomas y niveles (opcional)
-              </Text>
-              <TouchableOpacity
-                style={styles.closeButton}
-                onPress={() => setModalIdiomasVisible(false)}
-              >
+              <Text style={styles.modalTitle}>Idiomas y niveles (opcional)</Text>
+              <TouchableOpacity style={styles.closeButton} onPress={() => setModalIdiomasVisible(false)}>
                 <Ionicons name="close" size={24} color="#213A8E" />
               </TouchableOpacity>
             </View>
-
             <ScrollView style={styles.modalContent}>
               {idiomas.map((idiomaItem) => {
-                const estaSeleccionado = idiomasSeleccionados.some(
-                  (item) => item.idIdioma === idiomaItem.idIdioma,
-                );
-                const nivelSeleccionado = idiomasSeleccionados.find(
-                  (item) => item.idIdioma === idiomaItem.idIdioma,
-                )?.idINivel;
-
+                const estaSeleccionado = idiomasSeleccionados.some((item) => item.idIdioma === idiomaItem.idIdioma);
+                const nivelSeleccionado = idiomasSeleccionados.find((item) => item.idIdioma === idiomaItem.idIdioma)?.idINivel;
                 return (
-                  <View
-                    key={idiomaItem.idIdioma}
-                    style={styles.idiomaContainer}
-                  >
+                  <View key={idiomaItem.idIdioma} style={styles.idiomaContainer}>
                     <TouchableOpacity
-                      style={[
-                        styles.idiomaOption,
-                        estaSeleccionado && styles.idiomaSelected,
-                      ]}
-                      onPress={() => {
-                        if (niveles.length > 0) {
-                          const primerNivel = niveles[0].idINivel;
-                          toggleIdiomaNivel(idiomaItem.idIdioma, primerNivel);
-                        } else {
-                          showToast("⚠️ Aún no se han cargado los niveles");
-                        }
-                      }}
+                      style={[styles.idiomaOption, estaSeleccionado && styles.idiomaSelected]}
+                      onPress={() => niveles.length > 0 ? toggleIdiomaNivel(idiomaItem.idIdioma, niveles[0].idINivel) : showToast("⚠️ No hay niveles")}
                     >
-                      <Ionicons
-                        name={estaSeleccionado ? "checkbox" : "square-outline"}
-                        size={22}
-                        color={estaSeleccionado ? "#2666DE" : "#666"}
-                      />
+                      <Ionicons name={estaSeleccionado ? "checkbox" : "square-outline"} size={22} color={estaSeleccionado ? "#2666DE" : "#666"} />
                       <Text style={styles.idiomaText}>{idiomaItem.nombre}</Text>
                     </TouchableOpacity>
-
                     {estaSeleccionado && (
                       <View style={styles.nivelesContainer}>
-                        <Text style={styles.nivelesTitle}>
-                          Nivel requerido:
-                        </Text>
+                        <Text style={styles.nivelesTitle}>Nivel requerido:</Text>
                         <View style={styles.nivelesOptions}>
                           {niveles.map((nivelItem) => (
                             <TouchableOpacity
                               key={nivelItem.idINivel}
-                              style={[
-                                styles.nivelOption,
-                                nivelSeleccionado === nivelItem.idINivel &&
-                                  styles.nivelSelected,
-                              ]}
-                              onPress={() =>
-                                actualizarNivelIdioma(
-                                  idiomaItem.idIdioma,
-                                  nivelItem.idINivel,
-                                )
-                              }
+                              style={[styles.nivelOption, nivelSeleccionado === nivelItem.idINivel && styles.nivelSelected]}
+                              onPress={() => actualizarNivelIdioma(idiomaItem.idIdioma, nivelItem.idINivel)}
                             >
-                              <Text
-                                style={[
-                                  styles.nivelText,
-                                  nivelSeleccionado === nivelItem.idINivel &&
-                                    styles.nivelTextSelected,
-                                ]}
-                              >
+                              <Text style={[styles.nivelText, nivelSeleccionado === nivelItem.idINivel && styles.nivelTextSelected]}>
                                 {nivelItem.nombre}
                               </Text>
                             </TouchableOpacity>
@@ -1306,12 +1072,8 @@ export default function AgregarProyecto() {
                 );
               })}
             </ScrollView>
-
             <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={styles.aplicarButton}
-                onPress={() => setModalIdiomasVisible(false)}
-              >
+              <TouchableOpacity style={styles.aplicarButton} onPress={() => setModalIdiomasVisible(false)}>
                 <Text style={styles.aplicarButtonText}>Aceptar</Text>
               </TouchableOpacity>
             </View>
@@ -1319,44 +1081,133 @@ export default function AgregarProyecto() {
         </View>
       </Modal>
 
-      {/* Bottom nav */}
-      <View style={styles.bottomNav}>
-        <Ionicons
-          name="home-outline"
-          size={28}
-          color="#fff"
-          onPress={() => router.push("/")}
-        />
-        <Ionicons
-          name="star-outline"
-          size={28}
-          color="#fff"
-          onPress={() => router.push("/(tabs)/guardados")}
-        />
-        <Ionicons
-          name="file-tray-outline"
-          size={28}
-          color="#fff"
-          onPress={() => router.push("/(tabs)/aplicaciones")}
-        />
-        <Ionicons
-          name="notifications-outline"
-          size={28}
-          color="#fff"
-          onPress={() => router.push("/(tabs)/notificaciones")}
-        />
-        <Ionicons
-          name="person-outline"
-          size={28}
-          color="#fff"
-          onPress={() => router.push("/(tabs)/cuenta")}
-        />
-      </View>
+      {/* ========================================================================= */}
+      {/* NUEVOS MODALES ESTILIZADOS: REEMPLAZAN COMPLETAMENTE A LOS PICKERS NATIVOS */}
+      {/* ========================================================================= */}
+
+      {/* 1. Modal personalizado para Instituciones */}
+      <Modal visible={modalInstitucionesVisible} animationType="slide" transparent={true} onRequestClose={() => setModalInstitucionesVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Selecciona la institución</Text>
+              <TouchableOpacity style={styles.closeButton} onPress={() => setModalInstitucionesVisible(false)}>
+                <Ionicons name="close" size={24} color="#213A8E" />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.modalContent}>
+              <TouchableOpacity style={[styles.especialidadOption, institucion === "" && styles.especialidadSelected]} onPress={() => handleInstitucionChange("")}>
+                <Ionicons name={institucion === "" ? "radio-button-on" : "radio-button-off"} size={22} color={institucion === "" ? "#2666DE" : "#666"} />
+                <Text style={styles.especialidadText}>Ninguna / Selecciona la institución</Text>
+              </TouchableOpacity>
+              {instituciones.map((inst) => (
+                <TouchableOpacity
+                  key={inst.idInstitucion}
+                  style={[styles.especialidadOption, Number(institucion) === inst.idInstitucion && styles.especialidadSelected]}
+                  onPress={() => handleInstitucionChange(inst.idInstitucion)}
+                >
+                  <Ionicons name={Number(institucion) === inst.idInstitucion ? "radio-button-on" : "radio-button-off"} size={22} color={Number(institucion) === inst.idInstitucion ? "#2666DE" : "#666"} />
+                  <Text style={styles.especialidadText}>{inst.nombre}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* 2. Modal personalizado para Modalidades */}
+      <Modal visible={modalModalidadesVisible} animationType="slide" transparent={true} onRequestClose={() => setModalModalidadesVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Selecciona la modalidad</Text>
+              <TouchableOpacity style={styles.closeButton} onPress={() => setModalModalidadesVisible(false)}>
+                <Ionicons name="close" size={24} color="#213A8E" />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.modalContent}>
+              <TouchableOpacity style={[styles.especialidadOption, modalidad === "" && styles.especialidadSelected]} onPress={() => { setModalidad(""); setModalModalidadesVisible(false); }}>
+                <Ionicons name={modalidad === "" ? "radio-button-on" : "radio-button-off"} size={22} color={modalidad === "" ? "#2666DE" : "#666"} />
+                <Text style={styles.especialidadText}>Selecciona la modalidad</Text>
+              </TouchableOpacity>
+              {modalidades.map((mod) => (
+                <TouchableOpacity
+                  key={mod.idModalidad}
+                  style={[styles.especialidadOption, Number(modalidad) === mod.idModalidad && styles.especialidadSelected]}
+                  onPress={() => { setModalidad(mod.idModalidad); setModalModalidadesVisible(false); }}
+                >
+                  <Ionicons name={Number(modalidad) === mod.idModalidad ? "radio-button-on" : "radio-button-off"} size={22} color={Number(modalidad) === mod.idModalidad ? "#2666DE" : "#666"} />
+                  <Text style={styles.especialidadText}>{mod.nombre}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* 3. Modal personalizado para Departamentos */}
+      <Modal visible={modalDeptosVisible} animationType="slide" transparent={true} onRequestClose={() => setModalDeptosVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Selecciona el Departamento</Text>
+              <TouchableOpacity style={styles.closeButton} onPress={() => setModalDeptosVisible(false)}>
+                <Ionicons name="close" size={24} color="#213A8E" />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.modalContent}>
+              <TouchableOpacity style={[styles.especialidadOption, nuevaInstitucion.idDepartamento === 0 && styles.especialidadSelected]} onPress={() => { setNuevaInstitucion({ ...nuevaInstitucion, idDepartamento: 0, idMunicipio: 0 }); setModalDeptosVisible(false); }}>
+                <Ionicons name={nuevaInstitucion.idDepartamento === 0 ? "radio-button-on" : "radio-button-off"} size={22} color={nuevaInstitucion.idDepartamento === 0 ? "#2666DE" : "#666"} />
+                <Text style={styles.especialidadText}>Departamento</Text>
+              </TouchableOpacity>
+              {departamentos.map((d) => (
+                <TouchableOpacity
+                  key={d.idDepartamento}
+                  style={[styles.especialidadOption, nuevaInstitucion.idDepartamento === d.idDepartamento && styles.especialidadSelected]}
+                  onPress={() => { setNuevaInstitucion({ ...nuevaInstitucion, idDepartamento: d.idDepartamento, idMunicipio: 0 }); setModalDeptosVisible(false); }}
+                >
+                  <Ionicons name={nuevaInstitucion.idDepartamento === d.idDepartamento ? "radio-button-on" : "radio-button-off"} size={22} color={nuevaInstitucion.idDepartamento === d.idDepartamento ? "#2666DE" : "#666"} />
+                  <Text style={styles.especialidadText}>{d.nombre}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* 4. Modal personalizado para Municipios */}
+      <Modal visible={modalMunicipiosVisible} animationType="slide" transparent={true} onRequestClose={() => setModalMunicipiosVisible(false)}>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Selecciona el Municipio</Text>
+              <TouchableOpacity style={styles.closeButton} onPress={() => setModalMunicipiosVisible(false)}>
+                <Ionicons name="close" size={24} color="#213A8E" />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.modalContent}>
+              <TouchableOpacity style={[styles.especialidadOption, nuevaInstitucion.idMunicipio === 0 && styles.especialidadSelected]} onPress={() => { setNuevaInstitucion({ ...nuevaInstitucion, idMunicipio: 0 }); setModalMunicipiosVisible(false); }}>
+                <Ionicons name={nuevaInstitucion.idMunicipio === 0 ? "radio-button-on" : "radio-button-off"} size={22} color={nuevaInstitucion.idMunicipio === 0 ? "#2666DE" : "#666"} />
+                <Text style={styles.especialidadText}>Municipio</Text>
+              </TouchableOpacity>
+              {municipios.map((m) => (
+                <TouchableOpacity
+                  key={m.idMunicipio}
+                  style={[styles.especialidadOption, nuevaInstitucion.idMunicipio === m.idMunicipio && styles.especialidadSelected]}
+                  onPress={() => { setNuevaInstitucion({ ...nuevaInstitucion, idMunicipio: m.idMunicipio }); setModalMunicipiosVisible(false); }}
+                >
+                  <Ionicons name={nuevaInstitucion.idMunicipio === m.idMunicipio ? "radio-button-on" : "radio-button-off"} size={22} color={nuevaInstitucion.idMunicipio === m.idMunicipio ? "#2666DE" : "#666"} />
+                  <Text style={styles.especialidadText}>{m.nombre}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
 
-// ESTILOS ACTUALIZADOS - MANTENIENDO EXACTAMENTE LOS MISMOS ESTILOS ORIGINALES
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "#fff" },
   header: {
@@ -1391,7 +1242,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#fff",
     borderRadius: 12,
-    paddingHorizontal: 10,
+    paddingHorizontal: 15,
     borderLeftWidth: 15,
     borderLeftColor: "#2666DE",
     height: 55,
@@ -1407,7 +1258,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#fff",
     borderRadius: 12,
-    paddingHorizontal: 10,
+    paddingHorizontal: 15,
     borderLeftWidth: 15,
     borderLeftColor: "#2666DE",
     height: 55,
@@ -1435,18 +1286,6 @@ const styles = StyleSheet.create({
     paddingTop: 15,
     paddingBottom: 15,
     includeFontPadding: true,
-  },
-  picker: {
-    flex: 1,
-    fontSize: 15,
-    fontFamily: "Inter-Medium",
-    color: "#000",
-    height: 55,
-    minHeight: 55,
-    includeFontPadding: false,
-    textAlignVertical: "center",
-    marginVertical: 0,
-    paddingVertical: 0,
   },
   iconCalendar: { marginRight: 10 },
   buttonYellow: {
@@ -1522,23 +1361,23 @@ const styles = StyleSheet.create({
     paddingVertical: 0,
     marginVertical: 0,
   },
-  suggestionsList: {
-    position: "absolute",
+  inlineSuggestionsList: {
     backgroundColor: "#fff",
     borderWidth: 2,
     borderColor: "#2666DE",
     borderRadius: 12,
-    zIndex: 2000,
-    elevation: 20,
-    maxHeight: 200,
+    marginTop: -10,
+    marginBottom: 15,
+    maxHeight: 180,
+    elevation: 5,
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
     overflow: "hidden",
   },
   suggestionsScroll: {
-    maxHeight: 200,
+    maxHeight: 180,
   },
   suggestionItem: {
     padding: 12,
@@ -1594,7 +1433,7 @@ const styles = StyleSheet.create({
   especialidadOption: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 12,
+    paddingVertical: 15,
     borderBottomWidth: 1,
     borderBottomColor: "#f0f0f0",
   },
@@ -1602,7 +1441,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#F2F6FC",
   },
   especialidadText: {
-    marginLeft: 10,
+    marginLeft: 12,
     fontSize: 15,
     fontFamily: "Inter-Medium",
     color: "#333",
@@ -1704,26 +1543,5 @@ const styles = StyleSheet.create({
   },
   disabledInput: {
     opacity: 0.6,
-  },
-  // ESTILOS PARA ERRORES
-  erroresContainer: {
-    backgroundColor: "#FFEAA7",
-    padding: 15,
-    borderRadius: 10,
-    marginTop: 15,
-    borderLeftWidth: 4,
-    borderLeftColor: "#E53935",
-  },
-  erroresTitle: {
-    fontSize: 14,
-    fontFamily: "Inter-Bold",
-    color: "#D63031",
-    marginBottom: 5,
-  },
-  errorItem: {
-    fontSize: 12,
-    fontFamily: "Inter-Medium",
-    color: "#E17055",
-    marginLeft: 10,
   },
 });

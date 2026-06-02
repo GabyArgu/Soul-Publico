@@ -2,7 +2,7 @@
 import { useRouter } from "expo-router";
 import * as SecureStore from "expo-secure-store";
 import { useEffect, useRef } from "react";
-import { Animated, AppState, ImageBackground, StyleSheet, View } from "react-native";
+import { Animated, ImageBackground, StyleSheet, View } from "react-native";
 
 export default function index() {
     const router = useRouter();
@@ -10,15 +10,8 @@ export default function index() {
     const fade2 = useRef(new Animated.Value(0)).current;
 
     useEffect(() => {
-        // Detectar cierre/app en background → eliminar sesión
-        const subscription = AppState.addEventListener("change", (state) => {
-            if (state === "inactive" || state === "background") {
-                SecureStore.deleteItemAsync("userToken");
-            }
-        });
-
         const checkLogin = async () => {
-            const token = await SecureStore.getItemAsync("userToken");
+            const token = await SecureStore.getItemAsync("userData");
 
             Animated.sequence([
                 Animated.delay(1200),
@@ -38,7 +31,6 @@ export default function index() {
         };
 
         checkLogin();
-        return () => subscription.remove();
     }, []);
 
     return (

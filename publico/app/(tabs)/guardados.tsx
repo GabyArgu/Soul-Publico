@@ -3,19 +3,19 @@ import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect, useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    Dimensions,
-    FlatList,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Dimensions,
+  FlatList,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import { getUserData, UserData } from "../utils/session";
 import { API_URL } from "../utils/config";
+import { getUserData, UserData } from "../utils/session";
 
 interface Proyecto {
   idProyecto: number;
@@ -56,7 +56,6 @@ export default function Guardados() {
     string[]
   >([]);
 
-  // Agrupar carreras por tipo
   const carrerasAgrupadas = {
     tecnicos: carrerasDisponibles.filter(
       (c) =>
@@ -98,7 +97,6 @@ export default function Guardados() {
     }
   }, [userData]);
 
-  // Función corregida para cargar proyectos
   const cargarProyectosGuardados = async () => {
     if (!userData?.carnet) return;
 
@@ -108,7 +106,7 @@ export default function Guardados() {
       if (searchQuery) queryParams.append("search", searchQuery);
       selectedIdiomas.forEach((i) => queryParams.append("idioma", i));
       selectedCarreras.forEach((c) => queryParams.append("carrera", c));
-      selectedModalidades.forEach((m) => queryParams.append("modalidad", m)); // ✅ AGREGAR ESTA LÍNEA
+      selectedModalidades.forEach((m) => queryParams.append("modalidad", m)); 
       queryParams.append("minHoras", selectedHorasRange[0].toString());
       queryParams.append("maxHoras", selectedHorasRange[1].toString());
       queryParams.append("carnet", userData.carnet);
@@ -125,7 +123,6 @@ export default function Guardados() {
     }
   };
 
-  // Cargar opciones de filtros (misma función que en Index)
   const cargarFiltrosDisponibles = async () => {
     try {
       const [idiomasRes, carrerasRes, modalidadesRes] = await Promise.all([
@@ -149,7 +146,6 @@ export default function Guardados() {
     }
   };
 
-  // Recargar datos cuando la pantalla recibe foco
   useFocusEffect(
     useCallback(() => {
       cargarProyectosGuardados();
@@ -157,7 +153,6 @@ export default function Guardados() {
     }, []),
   );
 
-  // Limpiar timeout al desmontar
   useEffect(() => {
     return () => {
       if (searchTimeout) {
@@ -166,7 +161,6 @@ export default function Guardados() {
     };
   }, [searchTimeout]);
 
-  // Filtrar proyectos por tipo
   const proyectosInstitucionales = proyectos.filter(
     (p) => p.tipoProyecto === "Institucional",
   );
@@ -236,11 +230,23 @@ export default function Guardados() {
     else palette = index % 2 === 0 ? blue : yellow;
 
     return (
-      <View
+      <TouchableOpacity
+        activeOpacity={0.8}
         style={[
           styles.card,
           { backgroundColor: palette.color, borderColor: palette.borderColor },
         ]}
+        onPress={() =>
+          router.push({
+            pathname: "/(tabs)/detalles",
+            params: {
+              idProyecto: item.idProyecto.toString(),
+              carnetUsuario: userData?.carnet,
+              nombreUsuario: userData?.nombreCompleto,
+              generoUsuario: userData?.genero,
+            },
+          })
+        }
       >
         <Ionicons
           name="book-outline"
@@ -262,25 +268,12 @@ export default function Guardados() {
             <Text style={styles.regular}>{item.horas}</Text>
           </Text>
         </View>
-        <TouchableOpacity
-          style={[styles.cardButton, { backgroundColor: palette.button }]}
-          onPress={() =>
-            router.push({
-              pathname: "/(tabs)/detalles",
-              params: {
-                idProyecto: item.idProyecto.toString(),
-                carnetUsuario: userData?.carnet,
-                nombreUsuario: userData?.nombreCompleto,
-                generoUsuario: userData?.genero,
-              },
-            })
-          }
-        >
+        <View style={[styles.cardButton, { backgroundColor: palette.button }]}>
           <Text style={[styles.cardButtonText, { color: palette.text }]}>
             Detalles
           </Text>
-        </TouchableOpacity>
-      </View>
+        </View>
+      </TouchableOpacity>
     );
   };
 
@@ -294,7 +287,6 @@ export default function Guardados() {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Proyectos Guardados</Text>
         <Ionicons
@@ -305,9 +297,7 @@ export default function Guardados() {
         />
       </View>
 
-      {/* Fondo de todo lo demás */}
       <View style={styles.contentBackground}>
-        {/* Buscador + Botones */}
         <View style={styles.searchRow}>
           <View style={styles.searchBox}>
             <TextInput
@@ -340,7 +330,6 @@ export default function Guardados() {
         </View>
 
         <ScrollView>
-          {/* Institucionales */}
           <Text style={styles.sectionTitle}>Institucionales</Text>
           {proyectosInstitucionales.length > 0 ? (
             <View style={styles.carouselContainer}>
@@ -361,7 +350,6 @@ export default function Guardados() {
             </Text>
           )}
 
-          {/* Externas */}
           <Text style={[styles.sectionTitle, { marginTop: 20 }]}>Externas</Text>
           {proyectosExternos.length > 0 ? (
             <View style={styles.carouselContainer}>
@@ -384,8 +372,6 @@ export default function Guardados() {
         </ScrollView>
       </View>
 
-      {/* Modal de Filtros Mejorado */}
-      {/* Modal de Filtros Mejorado */}
       <Modal
         visible={filterModalVisible}
         animationType="slide"
@@ -394,7 +380,6 @@ export default function Guardados() {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
-            {/* Header del Modal */}
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Filtros</Text>
               <TouchableOpacity
@@ -409,7 +394,6 @@ export default function Guardados() {
               style={styles.modalContent}
               showsVerticalScrollIndicator={false}
             >
-              {/* Idiomas */}
               <Text style={styles.filterSectionTitle}>Idiomas</Text>
               <View style={styles.filterOptionsContainer}>
                 {idiomasDisponibles.map((idioma) => (
@@ -452,7 +436,6 @@ export default function Guardados() {
                 ))}
               </View>
 
-              {/* Modalidades - NUEVO FILTRO */}
               <Text style={styles.filterSectionTitle}>Modalidades</Text>
               <View style={styles.filterOptionsContainer}>
                 {modalidadesDisponibles.map((modalidad) => (
@@ -497,10 +480,8 @@ export default function Guardados() {
                 ))}
               </View>
 
-              {/* Carreras Agrupadas - MEJORADO */}
               <Text style={styles.filterSectionTitle}>Carreras</Text>
 
-              {/* Técnicos */}
               <TouchableOpacity
                 style={styles.carreraGroupHeader}
                 onPress={() => toggleCarreraGroup("tecnicos")}
@@ -559,7 +540,6 @@ export default function Guardados() {
                 </View>
               )}
 
-              {/* Ingenierías */}
               <TouchableOpacity
                 style={styles.carreraGroupHeader}
                 onPress={() => toggleCarreraGroup("ingenierias")}
@@ -620,7 +600,6 @@ export default function Guardados() {
                 </View>
               )}
 
-              {/* Licenciaturas */}
               <TouchableOpacity
                 style={styles.carreraGroupHeader}
                 onPress={() => toggleCarreraGroup("licenciaturas")}
@@ -681,7 +660,6 @@ export default function Guardados() {
                 </View>
               )}
 
-              {/* Rango de Horas */}
               <Text style={styles.filterSectionTitle}>Horas Mínimas</Text>
               <View style={styles.horasContainer}>
                 {[0, 25, 50, 75, 100].map((horas) => (
@@ -718,7 +696,6 @@ export default function Guardados() {
               </View>
             </ScrollView>
 
-            {/* Botones del Modal */}
             <View style={styles.modalButtons}>
               <TouchableOpacity
                 style={styles.limpiarButton}
@@ -743,7 +720,6 @@ export default function Guardados() {
         </View>
       </Modal>
 
-      {/* Bottom nav */}
       <View style={styles.bottomNav}>
         <Ionicons
           name="home-outline"
@@ -837,7 +813,6 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginVertical: 10,
   },
-  // Header
   header: {
     flexDirection: "row",
     alignItems: "center",
@@ -853,15 +828,11 @@ const styles = StyleSheet.create({
     color: "#000",
     fontFamily: "MyriadPro-Bold",
   },
-
-  // Fondo de contenido
   contentBackground: {
     flex: 1,
     backgroundColor: "#F2F6FC",
     paddingBottom: 20,
   },
-
-  // Buscador + botones
   searchRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -910,8 +881,6 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 6,
   },
-
-  // Secciones
   sectionTitle: {
     fontSize: 19,
     fontFamily: "MyriadPro-Bold",
@@ -920,8 +889,6 @@ const styles = StyleSheet.create({
     marginHorizontal: 20,
     marginVertical: 10,
   },
-
-  // Carruseles
   carouselContainer: {
     height: 250,
     marginBottom: 10,
@@ -930,8 +897,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5,
   },
-
-  // Cards
   card: {
     width: 260,
     minHeight: 210,
@@ -991,8 +956,6 @@ const styles = StyleSheet.create({
     fontFamily: "MyriadPro-Bold",
     fontWeight: "bold",
   },
-
-  // Bottom nav
   bottomNav: {
     flexDirection: "row",
     justifyContent: "space-around",
@@ -1004,8 +967,6 @@ const styles = StyleSheet.create({
     paddingBottom: 30,
     paddingTop: 20,
   },
-
-  // Modal Styles Mejorados
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0, 0, 0, 0.5)",

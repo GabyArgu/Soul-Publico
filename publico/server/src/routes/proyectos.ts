@@ -182,7 +182,7 @@ router.get("/:id", async (req, res) => {
     }
 });
 
-// POST /proyectos (Crear nuevo proyecto)
+// POST /proyectos (Crear nuevo proyecto + Notificación + Correo de confirmación)
 router.post("/", async (req, res) => {
     const transaction = await getConnection().then(pool => pool.transaction());
 
@@ -195,8 +195,8 @@ router.post("/", async (req, res) => {
             carrerasRelacionadas,
             habilidadesRelacionadas,
             idiomasRelacionados,
-            idInstitucion, 
-            nombreInstitucion, 
+            idInstitucion,
+            nombreInstitucion,
             idDepartamento,
             idMunicipio,
             nombreContacto,
@@ -206,7 +206,7 @@ router.post("/", async (req, res) => {
             fechaFin,
             fechaAplicacion,
             idModalidad,
-            carnetUsuario 
+            carnetUsuario
         } = req.body;
 
         await transaction.begin();
@@ -231,18 +231,20 @@ router.post("/", async (req, res) => {
             institucionId = institucionResult.recordset[0].idInstitucion;
         }
 
-        // PASO 2: Obtener ID del usuario por carnet
+        // PASO 2: Obtener ID, Correo y Nombre del usuario por carnet
         const usuarioResult = await transaction.request()
             .input("carnet", carnetUsuario)
-            .query("SELECT idUsuario FROM usuarios WHERE carnet = @carnet");
+            .query("SELECT idUsuario, email, nombreCompleto FROM usuarios WHERE carnet = @carnet");
 
         if (usuarioResult.recordset.length === 0) {
             throw new Error("Usuario no encontrado");
         }
 
         const idUsuario = usuarioResult.recordset[0].idUsuario;
+        const emailUsuario = usuarioResult.recordset[0].email;
+        const nombreUsuario = usuarioResult.recordset[0].nombreCompleto;
 
-        // PASO 3: Crear el proyecto
+        // PASO 3: Crear el proyecto (SE CAMBIA EL ESTADO A 0 PARA QUE SEA FALSO / OCULTO)
         const proyectoResult = await transaction.request()
             .input("titulo", titulo)
             .input("descripcion", descripcion)
@@ -257,14 +259,14 @@ router.post("/", async (req, res) => {
             .query(`
                 INSERT INTO proyectos (
                     nombre, descripcion, capacidad, horasServicio,
-                    idInstitucion, fechaInicio, fechaFin, fechaAplicacion, idModalidad, 
+                    idInstitucion, fechaInicio, fechaFin, fechaAplicacion, idModalidad,
                     idUsuario, estado
-                ) 
+                )
                 OUTPUT INSERTED.idProyecto
                 VALUES (
                     @titulo, @descripcion, @capacidad, @horasServicio,
                     @idInstitucion, @fechaInicio, @fechaFin, @fechaAplicacion, @idModalidad,
-                    @idUsuario, 1
+                    @idUsuario, 0
                 )
             `);
 
@@ -311,15 +313,92 @@ router.post("/", async (req, res) => {
             }
         }
 
+        // PASO 7: Insertar Notificación interna en la BD
+        const tituloNoti = "Solicitud de creación enviada 📝";
+        const cuerpoNoti = `Se ha mandado tu solicitud de creación del proyecto "${titulo}". Te estaremos notificando si es aprobado o no.`;
+
+        await transaction.request()
+            .input("idUsuario", idUsuario)
+            .input("idProyecto", idProyecto)
+            .input("tituloNoti", tituloNoti)
+            .input("cuerpoNoti", cuerpoNoti)
+            .query(`
+                INSERT INTO notificaciones (idUsuario, idProyecto, titulo, cuerpo, estaLeida, fechaCreación)
+                VALUES (@idUsuario, @idProyecto, @tituloNoti, @cuerpoNoti, 0, GETDATE())
+            `);
+
+        // Confirmamos la transacción
         await transaction.commit();
 
+        // PASO 8: Envío de Correo Electrónico en segundo plano
+        if (emailUsuario) {
+            try {
+                const nodemailer = require("nodemailer");
+                const transporter = nodemailer.createTransport({
+                    service: "Gmail",
+                    auth: {
+                        user: "gabmendez4869@gmail.com",
+                        pass: "hajkoattnekdfojv",
+                    },
+                });
+
+                const mailOptions = {
+                    from: '"Proyectos SOUL" <gabmendez4869@gmail.com>',
+                    to: emailUsuario,
+                    subject: `Confirmación de registro de proyecto: ${titulo}`,
+                    html: `
+                        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; border: 1px solid #ddd; border-radius: 10px; overflow: hidden;">
+                            <div style="background-color: #2666DE; color: white; padding: 20px; text-align: center;">
+                                <h1 style="margin:0; font-size: 22px;">¡Solicitud de Proyecto Recibida!</h1>
+                            </div>
+                            <div style="padding: 20px; color: #333; line-height: 1.6;">
+                                <p>Hola <strong>${nombreUsuario || "Usuario"}</strong>,</p>
+                                <p>Has enviado correctamente la propuesta para el proyecto: <strong>${titulo}</strong>.</p>
+                                <p>Tu solicitud ha entrado en el sistema de validación. Nuestro equipo revisará los detalles y te notificaremos mediante la app y este correo electrónico una vez sea evaluado (aprobado o rechazado).</p>
+                                
+                                <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;" />
+                                <h3 style="color: #2666DE; margin-top: 0;">Resumen del Proyecto Enviado:</h3>
+                                <ul style="list-style: none; padding-left: 0;">
+                                    <li>🔹 <strong>Título:</strong> ${titulo}</li>
+                                    <li>🔹 <strong>Capacidad:</strong> ${capacidad} estudiantes</li>
+                                    <li>🔹 <strong>Horas asignadas:</strong> ${horas} hrs</li>
+                                    <li>🔹 <strong>Fecha de Inicio:</strong> ${fechaInicio}</li>
+                                    <li>🔹 <strong>Fecha de Fin:</strong> ${fechaFin}</li>
+                                    <li>🔹 <strong>Descripción:</strong> ${descripcion}</li>
+                                </ul>
+                                <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;" />
+                                
+                                <p style="font-size: 13px; color: #666;">Si necesitas realizar alguna corrección urgente, ponte en contacto con soporte técnico o Proyección Social.</p>
+                                <p>¡Mucho éxito en tu gestión!</p>
+                            </div>
+                            <div style="background-color: #F9DC50; text-align: center; padding: 15px; font-size: 12px; color: #333; font-weight: bold;">
+                                Este es un mensaje automático enviado desde <strong>SOUL</strong>
+                            </div>
+                        </div>
+                    `
+                };
+
+                await transporter.sendMail(mailOptions);
+                console.log(`📧 Correo enviado con éxito a: ${emailUsuario}`);
+            } catch (mailError) {
+                console.error("❌ Error enviando el correo electrónico resumen:", mailError);
+            }
+        }
+
+        // Respuesta Exitosa limpia al Front
         res.status(201).json({
             idProyecto: idProyecto,
             message: "Proyecto creado exitosamente"
         });
 
     } catch (error) {
-        await transaction.rollback();
+        if (transaction) {
+            try {
+                await transaction.rollback();
+            } catch (rollbackError) {
+                console.error("Error al hacer rollback:", rollbackError);
+            }
+        }
         console.error("Error detallado:", error);
         res.status(500).json({ error: "Error al crear proyecto: " + error });
     }

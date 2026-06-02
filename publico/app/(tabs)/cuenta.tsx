@@ -1,8 +1,8 @@
 // app/(main)/Perfil.tsx
 import { Ionicons } from "@expo/vector-icons";
 import axios from "axios";
-import { useRouter } from "expo-router";
-import { useEffect, useState } from "react";
+import { useRouter, useFocusEffect } from "expo-router"; // Importado useFocusEffect
+import { useEffect, useState, useCallback } from "react"; // Importado useCallback
 import {
     Image,
     Linking,
@@ -42,8 +42,7 @@ export default function Perfil() {
   const [cvErrorVisible, setCvErrorVisible] = useState(false);
   const [cvErrorMessage, setCvErrorMessage] = useState("");
 
-
-  // Cargar datos del usuario logeado
+  // Cargar datos del usuario logeado al montar el componente por primera vez
   useEffect(() => {
     const loadUser = async () => {
       const data = await getUserData();
@@ -56,14 +55,16 @@ export default function Perfil() {
     loadUser();
   }, []);
 
-  // Obtener datos del perfil cuando userData esté disponible
-  useEffect(() => {
-    if (userData?.carnet) {
-      cargarDatosUsuario();
-    }
-  }, [userData]);
+  // useFocusEffect para que recargue los datos CADA VEZ que vuelvas a enfocar la pantalla
+  useFocusEffect(
+    useCallback(() => {
+      if (userData?.carnet) {
+        cargarDatosUsuario();
+      }
+    }, [userData])
+  );
 
-  // Obtener datos del usuario al cargar el componente
+  // Obtener datos del usuario al cargar el componente o reenfocar
   const cargarDatosUsuario = async () => {
     try {
       setCargando(true);

@@ -10,6 +10,7 @@ import {
     TouchableOpacity,
     View,
 } from "react-native";
+import Toast from "react-native-root-toast"; // Alternativa visual perfecta y libre de crashes para desarrollo
 import { getUserData, UserData } from "../utils/session";
 import { API_URL } from "../utils/config";
 
@@ -53,7 +54,7 @@ export default function Notificaciones() {
     }
   }, [userData]);
 
-  // Cargar notificaciones
+  // Cargar notificaciones desde tu API (notificaciones.ts)
   const cargarNotificaciones = async () => {
     try {
       setCargando(true);
@@ -63,13 +64,36 @@ export default function Notificaciones() {
         return;
       }
 
+      // Tu endpoint dinámico funcional de Express
       const response = await axios.get(
         `${API_URL}/notificaciones/${userData.carnet}`,
       );
-      // Filtrar solo las no leídas
+      
+      // Filtrar solo las no leídas según las reglas de tu negocio
       const notificacionesNoLeidas = response.data.filter(
         (notif: Notificacion) => !notif.estaLeida,
       );
+
+      // Si entran notificaciones nuevas a la lista en tiempo real, disparamos una alerta Toast elegante
+      if (notificacionesNoLeidas.length > notificaciones.length && notificaciones.length > 0) {
+        const nuevasDiferencia = notificacionesNoLeidas.filter(
+          (n: Notificacion) => !notificaciones.some((existing) => existing.idNotificacion === n.idNotificacion)
+        );
+
+        for (const nueva of nuevasDiferencia) {
+          Toast.show(`🔔 ${nueva.titulo}\n${nueva.cuerpo}`, {
+            duration: 4000,
+            position: Toast.positions.TOP,
+            backgroundColor: "#2666DE",
+            textColor: "#fff",
+            shadow: true,
+            animation: true,
+            hideOnPress: true,
+            containerStyle: { borderRadius: 12, marginTop: 40, paddingHorizontal: 20 }
+          });
+        }
+      }
+
       setNotificaciones(notificacionesNoLeidas);
     } catch (error) {
       console.error("Error cargando notificaciones:", error);
@@ -80,8 +104,9 @@ export default function Notificaciones() {
 
   const marcarComoLeida = async (idNotificacion: number) => {
     try {
+      // Consume el método PUT de tu API
       await axios.put(`${API_URL}/notificaciones/${idNotificacion}/leer`);
-      // Quitar la notificación de la lista
+      // Quitar la notificación de la lista localmente de forma reactiva
       setNotificaciones((prev) =>
         prev.filter((notif) => notif.idNotificacion !== idNotificacion),
       );
@@ -143,7 +168,7 @@ export default function Notificaciones() {
       const fechaNotif = parseFechaUTC(fechaCreacion);
 
       const diffMs = ahora.getTime() - fechaNotif.getTime();
-      if (diffMs < 0) return "Ahora"; // En caso de fechas futuras
+      if (diffMs < 0) return "Ahora";
 
       const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
       const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
@@ -181,12 +206,9 @@ export default function Notificaciones() {
   };
 
   const handleNotificacionPress = async (notificacion: Notificacion) => {
-    // Marcar como leída inmediatamente
     await marcarComoLeida(notificacion.idNotificacion);
 
-    // Navegar según el tipo de notificación
     if (notificacion.idProyecto) {
-      // Navegar a detalles del proyecto
       router.push({
         pathname: "/(tabs)/detalles",
         params: {
@@ -197,7 +219,6 @@ export default function Notificaciones() {
         },
       });
     }
-    // Si es de aplicación o general, solo se cierra
   };
 
   const renderNotificacion = ({
@@ -223,16 +244,13 @@ export default function Notificaciones() {
         onPress={() => handleNotificacionPress(item)}
         activeOpacity={0.7}
       >
-        {/* Icono */}
         <View style={styles.cardIcon}>
           <Ionicons name={iconName} size={25} color={palette.border} />
         </View>
 
-        {/* Contenido */}
         <Text style={styles.cardTitle}>{item.titulo}</Text>
         <Text style={styles.cardDesc}>{item.cuerpo}</Text>
 
-        {/* Tiempo */}
         <View style={styles.cardTimeBox}>
           <Text style={styles.cardTime}>
             {getTiempoTranscurrido(item.fechaCreacion)}
@@ -242,7 +260,6 @@ export default function Notificaciones() {
     );
   };
 
-  // Footer: mostrar '...' cuando no hay más notificaciones (siempre que haya al menos una)
   const footerComponent =
     notificaciones.length > 0 ? (
       <Text style={styles.footerDots}>...</Text>
@@ -301,7 +318,7 @@ export default function Notificaciones() {
         )}
       </View>
 
-      {/* Bottom nav */}
+      {/* Bottom nav vinculada correctamente */}
       <View style={styles.bottomNav}>
         <Ionicons
           name="home-outline"
@@ -325,7 +342,7 @@ export default function Notificaciones() {
           name="notifications"
           size={28}
           color="#fff"
-          onPress={() => router.push("/(tabs)/notificaciones")}
+          onPress={() => router.push("/Notificaciones")}
         />
         <Ionicons
           name="person-outline"

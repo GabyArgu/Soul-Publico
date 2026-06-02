@@ -1,17 +1,18 @@
 import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import DateTimePicker from "@react-native-community/datetimepicker";
-import { Picker } from "@react-native-picker/picker";
 import axios from "axios";
 import { useRouter } from "expo-router";
 import { useEffect, useState } from "react";
 import {
-    ImageBackground,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ImageBackground,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import Toast from "react-native-root-toast";
@@ -23,9 +24,8 @@ export default function Crear() {
   // Estados del formulario
   const [nombre, setNombre] = useState("");
   const [carnet, setCarnet] = useState("");
-  const [genero, setGenero] = useState<"M" | "F" | "O" | "">(""); // ✅ NUEVO ESTADO
+  const [genero, setGenero] = useState<"M" | "F" | "O" | "">(""); 
   const [fechaNacimiento, setFechaNacimiento] = useState<Date | null>(null);
-  const [showDatePicker, setShowDatePicker] = useState(false);
   const [email, setEmail] = useState("");
   const [telefono, setTelefono] = useState("");
 
@@ -39,7 +39,17 @@ export default function Crear() {
   const [departamento, setDepartamento] = useState<number | "">("");
   const [municipio, setMunicipio] = useState<number | "">("");
 
-  // Obtener departamentos y carreras al cargar
+  // Estados para controlar la visibilidad de los Modales (Estilo exacto a tu ejemplo)
+  const [modalGeneroVisible, setModalGeneroVisible] = useState(false);
+  const [modalDeptoVisible, setModalDeptoVisible] = useState(false);
+  const [modalMunicipioVisible, setModalMunicipioVisible] = useState(false);
+
+  // Estados para el flujo secuencial estricto del DatePicker (Año -> Mes -> Día)
+  const [dateStep, setDateStep] = useState<"none" | "year" | "month" | "day">("none");
+  const [tempYear, setTempYear] = useState<number>(new Date().getFullYear());
+  const [tempMonth, setTempMonth] = useState<number>(new Date().getMonth());
+
+  // Obtener departamentos al cargar
   useEffect(() => {
     axios
       .get(`${API_URL}/departamentos`)
@@ -94,6 +104,52 @@ export default function Crear() {
     });
   };
 
+  // Lógica secuencial guiada por pasos para la fecha
+  const handleDateChange = (event: any, selectedDate?: Date) => {
+    if (event.type === "dismissed") {
+      setDateStep("none");
+      return;
+    }
+
+    if (selectedDate) {
+      if (dateStep === "year") {
+        setTempYear(selectedDate.getFullYear());
+        // Pasamos automáticamente al mes inmediatamente
+        setTimeout(() => setDateStep("month"), 150);
+      } else if (dateStep === "month") {
+        setTempMonth(selectedDate.getMonth());
+        // Pasamos automáticamente al día final
+        setTimeout(() => setDateStep("day"), 150);
+      } else if (dateStep === "day") {
+        const finalDate = new Date(tempYear, tempMonth, selectedDate.getDate());
+        setFechaNacimiento(finalDate);
+        setDateStep("none");
+      }
+    }
+  };
+
+  // Renderizador dinámico del selector nativo calendar
+  const renderDatePicker = () => {
+    if (dateStep === "none") return null;
+
+    let currentPickerValue = new Date();
+    if (dateStep === "month") {
+      currentPickerValue = new Date(tempYear, new Date().getMonth(), 1);
+    } else if (dateStep === "day") {
+      currentPickerValue = new Date(tempYear, tempMonth, 1);
+    }
+
+    return (
+      <DateTimePicker
+        value={currentPickerValue}
+        mode="date"
+        display="calendar"
+        maximumDate={new Date()}
+        onChange={handleDateChange}
+      />
+    );
+  };
+
   // Validar formulario con retroalimentación específica
   const handleSubmit = async () => {
     if (!nombre.trim()) {
@@ -107,7 +163,7 @@ export default function Crear() {
     if (!genero) {
       showToast("⚠️ Selecciona tu género");
       return;
-    } // ✅ NUEVA VALIDACIÓN
+    } 
     if (!fechaNacimiento) {
       showToast("⚠️ Selecciona una fecha de nacimiento");
       return;
@@ -137,7 +193,7 @@ export default function Crear() {
       const paso1Data = {
         nombre,
         carnet,
-        genero, // ✅ AÑADIR GÉNERO
+        genero, 
         fechaNacimiento: fechaNacimiento.toISOString(),
         email,
         telefono,
@@ -146,15 +202,34 @@ export default function Crear() {
       };
 
       await AsyncStorage.setItem("crearPaso1", JSON.stringify(paso1Data));
-
       console.log("Datos del paso 1 guardados:", paso1Data);
       showToast("✅ Paso 1 completado", true);
-
       router.push("/(auth)/Crear2");
     } catch (error) {
       console.error("Error guardando datos del paso 1:", error);
       showToast("❌ Error guardando datos");
     }
+  };
+
+  // Resolutores de etiquetas de texto
+  const getGeneroLabel = () => {
+    if (genero === "M") return "Masculino";
+    if (genero === "F") return "Femenino";
+    if (genero === "O") return "Otro";
+    return "Género";
+  };
+
+  const getDepartamentoLabel = () => {
+    if (!departamento) return "Departamento";
+    const dep = departamentos.find((d) => d.idDepartamento === departamento);
+    return dep ? dep.nombre : "Departamento";
+  };
+
+  const getMunicipioLabel = () => {
+    if (!departamento) return "Primero selecciona departamento";
+    if (!municipio) return "Municipio";
+    const mun = municipios.find((m) => m.idMunicipio === municipio);
+    return mun ? mun.nombre : "Municipio";
   };
 
   return (
@@ -194,25 +269,23 @@ export default function Crear() {
               />
             </View>
 
-            {/* ✅ PICKER DE GÉNERO - MISMO DISEÑO */}
-            <View style={styles.inputContainer}>
-              <Picker
-                selectedValue={genero}
-                onValueChange={(itemValue) => setGenero(itemValue)}
-                style={styles.picker}
-                dropdownIconColor="#213A8E"
-                mode="dropdown"
-              >
-                <Picker.Item label="Género" value="" />
-                <Picker.Item label="Masculino" value="M" />
-                <Picker.Item label="Femenino" value="F" />
-                <Picker.Item label="Otro" value="O" />
-              </Picker>
-            </View>
-
+            {/* SELECTOR ESTILIZADO DE GÉNERO */}
             <TouchableOpacity
               style={styles.inputContainer}
-              onPress={() => setShowDatePicker(true)}
+              onPress={() => setModalGeneroVisible(true)}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.input, { color: genero ? "#000" : "#666" }]}>
+                {getGeneroLabel()}
+              </Text>
+              <Ionicons name="chevron-down" size={20} color="#213A8E" />
+            </TouchableOpacity>
+
+            {/* SELECCIÓN DE FECHA CON FLUJO SECUENCIAL ESTRICTO */}
+            <TouchableOpacity
+              style={styles.inputContainer}
+              onPress={() => setDateStep("year")}
+              activeOpacity={0.7}
             >
               <Text
                 style={[
@@ -231,17 +304,6 @@ export default function Crear() {
                 style={styles.iconCalendar}
               />
             </TouchableOpacity>
-            {showDatePicker && (
-              <DateTimePicker
-                value={fechaNacimiento || new Date()}
-                mode="date"
-                display="calendar"
-                onChange={(event, selectedDate) => {
-                  setShowDatePicker(false);
-                  if (selectedDate) setFechaNacimiento(selectedDate);
-                }}
-              />
-            )}
 
             <View style={styles.inputContainer}>
               <TextInput
@@ -254,45 +316,37 @@ export default function Crear() {
               />
             </View>
 
-            {/* ✅ PICKER DEPARTAMENTO - MISMO DISEÑO */}
-            <View style={styles.inputContainer}>
-              <Picker
-                selectedValue={departamento}
-                onValueChange={(itemValue) => setDepartamento(itemValue)}
-                style={styles.picker}
-                dropdownIconColor="#213A8E"
-                mode="dropdown"
-              >
-                <Picker.Item label="Departamento" value="" />
-                {departamentos.map((dep) => (
-                  <Picker.Item
-                    key={dep.idDepartamento}
-                    label={dep.nombre}
-                    value={dep.idDepartamento}
-                  />
-                ))}
-              </Picker>
-            </View>
+            {/* SELECTOR ESTILIZADO DE DEPARTAMENTO */}
+            <TouchableOpacity
+              style={styles.inputContainer}
+              onPress={() => setModalDeptoVisible(true)}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.input, { color: departamento ? "#000" : "#666" }]}>
+                {getDepartamentoLabel()}
+              </Text>
+              <Ionicons name="chevron-down" size={20} color="#213A8E" />
+            </TouchableOpacity>
 
-            {/* ✅ PICKER MUNICIPIO - MISMO DISEÑO */}
-            <View style={styles.inputContainer}>
-              <Picker
-                selectedValue={municipio}
-                onValueChange={(itemValue) => setMunicipio(itemValue)}
-                style={styles.picker}
-                dropdownIconColor="#213A8E"
-                mode="dropdown"
-              >
-                <Picker.Item label="Municipio" value="" />
-                {municipios.map((mun) => (
-                  <Picker.Item
-                    key={mun.idMunicipio}
-                    label={mun.nombre}
-                    value={mun.idMunicipio}
-                  />
-                ))}
-              </Picker>
-            </View>
+            {/* SELECTOR ESTILIZADO DE MUNICIPIO (DESHABILITADO SI NO HAY DEPTO) */}
+            <TouchableOpacity
+              style={[
+                styles.inputContainer,
+                !departamento && styles.disabledContainer,
+              ]}
+              onPress={() => departamento && setModalMunicipioVisible(true)}
+              disabled={!departamento}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.input, { color: municipio ? "#000" : "#666" }]}>
+                {getMunicipioLabel()}
+              </Text>
+              <Ionicons
+                name="chevron-down"
+                size={20}
+                color={departamento ? "#213A8E" : "#999"}
+              />
+            </TouchableOpacity>
 
             <View style={styles.inputContainer}>
               <TextInput
@@ -322,6 +376,136 @@ export default function Crear() {
           </View>
         </KeyboardAwareScrollView>
       </View>
+
+      {/* RENDER NATIVO DEL PICKER SECUENCIAL */}
+      {renderDatePicker()}
+
+      {/* ================= MODAL GÉNERO (DISEÑO FIEL A TU ARCHIVO PROYECTO.TSX) ================= */}
+      <Modal
+        visible={modalGeneroVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setModalGeneroVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Selecciona tu Género</Text>
+              <TouchableOpacity onPress={() => setModalGeneroVisible(false)}>
+                <Ionicons name="close" size={24} color="#213A8E" />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.modalContent}>
+              {[
+                { label: "Masculino", value: "M" as const },
+                { label: "Femenino", value: "F" as const },
+                { label: "Otro", value: "O" as const },
+              ].map((item) => (
+                <TouchableOpacity
+                  key={item.value}
+                  style={[
+                    styles.optionItem,
+                    genero === item.value && styles.optionSelected,
+                  ]}
+                  onPress={() => {
+                    setGenero(item.value);
+                    setModalGeneroVisible(false);
+                  }}
+                >
+                  <Ionicons 
+                    name={genero === item.value ? "checkbox" : "square-outline"} 
+                    size={22} 
+                    color={genero === item.value ? "#2666DE" : "#666"} 
+                  />
+                  <Text style={styles.optionText}>{item.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ================= MODAL DEPARTAMENTOS (DISEÑO FIEL A TU ARCHIVO PROYECTO.TSX) ================= */}
+      <Modal
+        visible={modalDeptoVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setModalDeptoVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Selecciona Departamento</Text>
+              <TouchableOpacity onPress={() => setModalDeptoVisible(false)}>
+                <Ionicons name="close" size={24} color="#213A8E" />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.modalContent}>
+              {departamentos.map((dep) => (
+                <TouchableOpacity
+                  key={dep.idDepartamento}
+                  style={[
+                    styles.optionItem,
+                    departamento === dep.idDepartamento && styles.optionSelected,
+                  ]}
+                  onPress={() => {
+                    setDepartamento(dep.idDepartamento);
+                    setModalDeptoVisible(false);
+                  }}
+                >
+                  <Ionicons 
+                    name={departamento === dep.idDepartamento ? "checkbox" : "square-outline"} 
+                    size={22} 
+                    color={departamento === dep.idDepartamento ? "#2666DE" : "#666"} 
+                  />
+                  <Text style={styles.optionText}>{dep.nombre}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ================= MODAL MUNICIPIOS (DISEÑO FIEL A TU ARCHIVO PROYECTO.TSX) ================= */}
+      <Modal
+        visible={modalMunicipioVisible}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setModalMunicipioVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Selecciona Municipio</Text>
+              <TouchableOpacity onPress={() => setModalMunicipioVisible(false)}>
+                <Ionicons name="close" size={24} color="#213A8E" />
+              </TouchableOpacity>
+            </View>
+            <ScrollView style={styles.modalContent}>
+              {municipios.map((mun) => (
+                <TouchableOpacity
+                  key={mun.idMunicipio}
+                  style={[
+                    styles.optionItem,
+                    municipio === mun.idMunicipio && styles.optionSelected,
+                  ]}
+                  onPress={() => {
+                    setMunicipio(mun.idMunicipio);
+                    setModalMunicipioVisible(false);
+                  }}
+                >
+                  <Ionicons 
+                    name={municipio === mun.idMunicipio ? "checkbox" : "square-outline"} 
+                    size={22} 
+                    color={municipio === mun.idMunicipio ? "#2666DE" : "#666"} 
+                  />
+                  <Text style={styles.optionText}>{mun.nombre}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </ImageBackground>
   );
 }
@@ -349,44 +533,29 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#EFF1F8",
     borderRadius: 12,
-    paddingHorizontal: 10,
+    paddingHorizontal: 15,
     marginBottom: 15,
     borderLeftWidth: 15,
     borderLeftColor: "#2666DE",
     height: 52,
+  },
+  disabledContainer: {
+    opacity: 0.5,
   },
   input: {
     flex: 1,
     fontSize: 15,
     fontFamily: "Inter-Medium",
     color: "#000",
-    fontWeight: "medium",
   },
-
-  picker: {
-    flex: 1,
-    fontSize: 15,
-    fontFamily: "Inter-Medium",
-    fontWeight: "medium",
-    color: "#000",
-    height: 52,
-    minHeight: 52,
-    includeFontPadding: false,
-    textAlignVertical: "center",
-    marginVertical: 0,
-    paddingVertical: 0,
-  },
-
   iconCalendar: {
-    marginRight: 10,
+    marginRight: 0,
   },
-
   buttonsRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     marginTop: 15,
   },
-
   buttonYellow: {
     backgroundColor: "#2666DE",
     width: 60,
@@ -400,7 +569,6 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 5,
   },
-
   buttonBlue: {
     backgroundColor: "#F9DC50",
     width: 60,
@@ -413,5 +581,50 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 4,
     elevation: 5,
+  },
+
+  // ESTILOS DE ESTRUCTURA DE MODAL SACADOS DIRECTAMENTE DE PROYECTO.TSX
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "flex-end",
+  },
+  modalContainer: {
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 20,
+    maxHeight: "80%",
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontFamily: "Inter-Bold",
+    color: "#000",
+    fontWeight: "bold",
+  },
+  modalContent: {
+    marginBottom: 20,
+  },
+  optionItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0",
+  },
+  optionSelected: {
+    backgroundColor: "#f5f5f5",
+  },
+  optionText: {
+    fontSize: 16,
+    fontFamily: "Inter-Medium",
+    color: "#000",
+    marginLeft: 10,
   },
 });

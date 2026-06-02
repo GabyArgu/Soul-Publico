@@ -231,29 +231,24 @@ export default function Aplicaciones() {
           };
 
     return (
-      <View
+      <TouchableOpacity
+        activeOpacity={0.7}
         style={[
           styles.card,
           { backgroundColor: palette.color, borderColor: palette.borderColor },
         ]}
+        onPress={() =>
+          router.push({
+            pathname: "/(tabs)/detallesA",
+            params: {
+              idAplicacion: item.idAplicacion.toString(),
+              carnetUsuario: userData?.carnet,
+              nombreUsuario: userData?.nombreCompleto,
+              generoUsuario: userData?.genero,
+            },
+          })
+        }
       >
-        <TouchableOpacity
-          style={styles.cardIcon}
-          onPress={() =>
-            router.push({
-              pathname: "/(tabs)/detallesA",
-              params: {
-                idAplicacion: item.idAplicacion.toString(),
-                carnetUsuario: userData?.carnet,
-                nombreUsuario: userData?.nombreCompleto,
-                generoUsuario: userData?.genero,
-              },
-            })
-          }
-        >
-          <Ionicons name="ellipsis-vertical" size={20} color="#333" />
-        </TouchableOpacity>
-
         <Text style={styles.cardTitle}>{truncateText(item.titulo, 33)}</Text>
         <Text style={styles.cardDesc}>
           {truncateText(item.descripcion, 110)}
@@ -275,7 +270,7 @@ export default function Aplicaciones() {
             {item.horas}
           </Text>
         </View>
-      </View>
+      </TouchableOpacity>
     );
   };
 
@@ -811,7 +806,6 @@ const styles = StyleSheet.create({
     borderWidth: 3.5,
     position: "relative",
   },
-  cardIcon: { position: "absolute", top: 19, right: 13 },
   cardTitle: {
     fontSize: 15,
     fontWeight: "bold",

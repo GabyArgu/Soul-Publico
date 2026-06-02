@@ -44,6 +44,7 @@ export default function DetalleProyecto() {
   const [cargandoGuardado, setCargandoGuardado] = useState(false);
   const [userData, setUserData] = useState<UserData | null>(null);
   const [yaAplico, setYaAplico] = useState(false);
+  const [procesandoAplicacion, setProcesandoAplicacion] = useState(false);
 
   const idProyecto = params.idProyecto;
 
@@ -261,6 +262,7 @@ export default function DetalleProyecto() {
     }
 
     try {
+      setProcesandoAplicacion(true);
       const usuario = {
         idUsuario,
         nombreCompleto: userData.nombreCompleto || "Sin nombre",
@@ -284,6 +286,8 @@ export default function DetalleProyecto() {
     } catch (error) {
       console.error(error);
       showToast("Error al enviar la aplicación", false);
+    } finally {
+      setProcesandoAplicacion(false);
     }
   };
 
@@ -595,19 +599,23 @@ export default function DetalleProyecto() {
           <TouchableOpacity
             style={[
               styles.buttonRight,
-              (yaAplico || !disponibleParaAplicar) && {
+              (yaAplico || !disponibleParaAplicar || procesandoAplicacion) && {
                 backgroundColor: "#ccc",
                 shadowColor: "#999",
               },
             ]}
             onPress={handleAplicarClick}
-            disabled={yaAplico || !disponibleParaAplicar}
+            disabled={yaAplico || !disponibleParaAplicar || procesandoAplicacion}
           >
-            <Ionicons
-              name={yaAplico ? "checkmark-circle" : "send-outline"}
-              size={26}
-              color="#fff"
-            />
+            {procesandoAplicacion ? (
+              <ActivityIndicator size="small" color="#fff" />
+            ) : (
+              <Ionicons
+                name={yaAplico ? "checkmark-circle" : "send-outline"}
+                size={26}
+                color="#fff"
+              />
+            )}
           </TouchableOpacity>
         </View>
 
