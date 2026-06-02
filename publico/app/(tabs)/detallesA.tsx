@@ -118,7 +118,7 @@ export default function DetalleAplicacion() {
         id: 2,
         nombre: "Revisado",
         fecha: app.revisadoEn || "",
-        completado: !!app.revisadoEn,
+        completado: !!app.revisadoEn || app.estado === "Aceptado" || app.estado === "Finalizado",
         activo: app.estado === "Revisado",
         descripcion: "Tu aplicación está siendo revisada por la institución",
       },
@@ -126,7 +126,7 @@ export default function DetalleAplicacion() {
         id: 3,
         nombre: "Aceptado",
         fecha: app.aceptadoEn || "",
-        completado: !!app.aceptadoEn,
+        completado: !!app.aceptadoEn || app.estado === "Finalizado",
         activo: app.estado === "Aceptado",
         descripcion: "¡Felicidades! Tu aplicación ha sido aceptada",
       },
@@ -148,7 +148,15 @@ export default function DetalleAplicacion() {
       },
     ];
 
-    setTrackingEstados(estados);
+    // Si está rechazado, removemos los pasos de Aceptado y Finalizado para no confundir el camino
+    let estadosFiltrados = estados;
+    if (app.estado === "Rechazado" || !!app.rechazadoEn) {
+      estadosFiltrados = estados.filter(e => e.nombre !== "Aceptado" && e.nombre !== "Finalizado");
+    } else {
+      estadosFiltrados = estados.filter(e => e.nombre !== "Rechazado");
+    }
+
+    setTrackingEstados(estadosFiltrados);
   };
 
   const showToast = (message: string, success: boolean = false) => {
@@ -207,15 +215,15 @@ export default function DetalleAplicacion() {
       case "Enviado":
         return "#2666DE";
       case "Revisado":
-        return "#F9DC50";
+        return "#EAC306";
       case "Aceptado":
         return "#4CAF50";
       case "Rechazado":
         return "#E53935";
       case "Finalizado":
-        return "#666";
+        return "#2666DE"; // ✅ Modificado de '#666' a azul del sistema
       default:
-        return "#666";
+        return "#2666DE"; // ✅ Modificado por defecto a azul
     }
   };
 
@@ -338,7 +346,7 @@ export default function DetalleAplicacion() {
 
       <ScrollView
         style={styles.contentBackground}
-        contentContainerStyle={{ paddingBottom: 80 }}
+        contentContainerStyle={{ paddingBottom: 130 }}
       >
         {/* Tracking de Estados */}
         <View style={styles.trackingContainer}>
@@ -356,7 +364,14 @@ export default function DetalleAplicacion() {
                 { backgroundColor: getEstadoColor(aplicacion.estado) },
               ]}
             >
-              <Text style={styles.estadoActualText}>{aplicacion.estado}</Text>
+              <Text 
+                style={[
+                  styles.estadoActualText, 
+                  { color: "#fff" } // Forzamos siempre texto blanco legible
+                ]}
+              >
+                {aplicacion.estado}
+              </Text>
             </View>
           </View>
 
@@ -370,7 +385,7 @@ export default function DetalleAplicacion() {
                   estado.activo && styles.stepContainerActive,
                 ]}
               >
-                {/* Línea conectadora */}
+                {/* Línea conectadora (Caminito) */}
                 {index > 0 && (
                   <View
                     style={[
@@ -718,7 +733,6 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   estadoActualText: {
-    color: "#fff",
     fontWeight: "bold",
     fontSize: 14,
     fontFamily: "MyriadPro-Bold",
@@ -728,24 +742,26 @@ const styles = StyleSheet.create({
   },
   stepContainer: {
     flexDirection: "row",
-    alignItems: "flex-start",
+    alignItems: "center",
     marginBottom: 25,
     position: "relative",
-    padding: 12,
+    paddingVertical: 4,
+    paddingHorizontal: 12,
     borderRadius: 12,
   },
   stepContainerActive: {
     backgroundColor: "#F8FAFC",
     borderLeftWidth: 4,
     borderLeftColor: "#2666DE",
+
   },
   stepConnector: {
     position: "absolute",
-    left: 25,
-    top: -15,
-    width: 2,
-    height: 30,
-    zIndex: 1,
+    left: 31, 
+    top: -46, 
+    width: 2.5,
+    height: 70, 
+    zIndex: -1,
   },
   stepIconContainer: {
     width: 40,
@@ -755,16 +771,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginRight: 15,
     borderWidth: 2,
-    zIndex: 2,
+    zIndex: 2, 
   },
   stepContent: {
     flex: 1,
-    paddingTop: 2,
   },
   stepHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "flex-start",
+    alignItems: "center",
     marginBottom: 6,
   },
   stepName: {
